@@ -1,22 +1,38 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
-import path from "path";
 import { defineConfig } from "vite";
 import vinext from "vinext";
 
-export default defineConfig({
-  plugins: [
-    vinext(),
-    // O ambiente "rsc" é onde os Server Components rodam; "ssr" é filho dele.
-    // Sem isso o Worker não sabe qual bundle servir.
-    cloudflare({
-      viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
-    }),
-    tailwindcss(),
-  ],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "."),
+/*
+ * O plugin do Cloudflare entra SÓ no build.
+ *
+ * Com ele registrado durante `vinext dev`, toda rota responde 404 — inclusive
+ * a raiz — e o log não mostra erro nenhum, só `GET / 404`. O build de produção
+ * continua passando, então o sintoma aparece apenas em desenvolvimento.
+ *
+ * Testado no vinext 0.1.8 com as duas formas documentadas: com `rsc()`
+ * explícito (as três entradas virtuais) e sem. As duas dão 404 em dev.
+ *
+ * Como `vinext deploy` e `wrangler dev` consomem a saída do BUILD, o deploy em
+ * Workers não perde nada. O que se perde é acesso a bindings
+ * (`cloudflare:workers`) durante o dev — este projeto ainda não usa nenhum.
+ * Quando usar, o caminho é `npm run preview`, que builda e sobe o workerd.
+ */
+export default defineConfig(({ command }) => {
+  const paraWorkers = command === "build";
+
+  return {
+    plugins: [
+      vinext(),
+      ...(paraWorkers
+        ? [cloudflare({ viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] } })]
+        : []),
+      tailwindcss(),
+    ],
+    resolve: {
+      // import.meta.dirname, não __dirname: o configLoader nativo do Vite 8
+      // avisa que __dirname deixará de ser suportado.
+      alias: { "@": import.meta.dirname },
     },
-  },
+  };
 });

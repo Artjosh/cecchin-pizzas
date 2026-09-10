@@ -61,7 +61,33 @@ npm run deploy    # build + @vinext/cloudflare deploy
 | `@vitejs/plugin-rsc` | `^0.5.26` | peer opcional do vinext; a faixa é estreita |
 | `next` | devDependency | **só os tipos.** vinext reimplementa a API, mas `Metadata`, `LinkProps` etc. vêm do pacote `next`. Nada dele entra no bundle |
 
-Não registre `@vitejs/plugin-rsc` no `vite.config.ts` — o vinext faz isso.
+Não registre `@vitejs/plugin-rsc` no `vite.config.ts` — o vinext faz isso, e
+aborta com *"Your config also registers it manually"* se você registrar.
+
+## ⚠ O plugin do Cloudflare só entra no build
+
+Com `cloudflare()` ativo durante `vinext dev`, **toda rota responde 404** —
+inclusive a raiz — e o log não mostra erro, só `GET / 404 in 66ms`.
+
+O build de produção continua passando e `vinext start` serve tudo em 200, o
+que esconde o problema: ele aparece **só em desenvolvimento**.
+
+Testado no vinext 0.1.8 com as duas formas documentadas:
+
+| tentativa | dev |
+|---|---|
+| `vinext()` + `cloudflare()` | 404 em tudo |
+| `vinext({ rsc: false })` + `rsc({ entries })` + `cloudflare()` | 404 em tudo |
+| `vinext()` sem `cloudflare()` | **200** |
+
+Por isso o `vite.config.ts` condiciona o plugin a `command === "build"`.
+
+O que se perde: acesso a bindings (`cloudflare:workers`) durante o dev. Este
+projeto ainda não usa nenhum. Quando usar, o caminho é `npm run preview`, que
+builda e sobe o workerd de verdade.
+
+O snippet de config do README do vinext está desatualizado em relação à 0.1.8:
+ele mostra `rsc()` registrado à mão, o que a versão atual recusa.
 
 ## Deploy
 
@@ -81,6 +107,7 @@ lidos via `import { env } from "cloudflare:workers"` — sem `getPlatformProxy()
 | `tsc --noEmit` | passa |
 | `vinext build` | passa — 6 rotas |
 | `vinext start` + curl nas 6 rotas | **200 em todas**, conteúdo renderizado no servidor |
+| `vinext dev` nas 6 rotas | **200 em todas** |
 | `wrangler dev` (workerd real) | **não testado** |
 | deploy em Workers | **não feito** |
 
