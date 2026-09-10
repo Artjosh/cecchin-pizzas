@@ -112,6 +112,7 @@ export function BookingView() {
 
           return (
             <button
+              type="button"
               key={step.num}
               onClick={() => setCurrentStep(step.num)}
               className={cn(
@@ -248,6 +249,7 @@ export function BookingView() {
                         },
                       ].map((sug) => (
                         <button
+                          type="button"
                           key={sug.name}
                           onClick={() => {
                             setAddress(sug.addr);
@@ -417,6 +419,7 @@ export function BookingView() {
                         "Encontro de Amigos",
                       ].map((occ) => (
                         <button
+                          type="button"
                           key={occ}
                           onClick={() => setOccasion(occ)}
                           className={cn(
@@ -434,6 +437,7 @@ export function BookingView() {
 
                   <div className="mt-space-lg flex justify-end">
                     <button
+                      type="button"
                       onClick={() => setCurrentStep(2)}
                       className="h-12 px-6 bg-primary text-on-primary rounded-lg font-label-lg text-label-lg flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all"
                     >
@@ -495,6 +499,7 @@ export function BookingView() {
                         </div>
                         <div className="flex items-center gap-space-sm bg-surface-container-lowest px-2 py-1.5 rounded-lg shadow-sm">
                           <button
+                            type="button"
                             onClick={() => adjustGuests(item.type, -1)}
                             className="w-9 h-9 rounded-md bg-surface-container hover:bg-surface-container-high flex items-center justify-center font-headline-sm text-headline-sm text-on-surface transition-all active:scale-90"
                           >
@@ -504,6 +509,7 @@ export function BookingView() {
                             {item.count}
                           </span>
                           <button
+                            type="button"
                             onClick={() => adjustGuests(item.type, 1)}
                             className="w-9 h-9 rounded-md bg-primary text-on-primary hover:opacity-90 flex items-center justify-center font-headline-sm text-headline-sm transition-all active:scale-90"
                           >
@@ -524,6 +530,7 @@ export function BookingView() {
                       </div>
                       <div className="flex items-center gap-space-sm bg-surface-container-lowest px-2 py-1.5 rounded-lg shadow-sm">
                         <button
+                          type="button"
                           onClick={() => adjustGuests("toddlers", -1)}
                           className="w-9 h-9 rounded-md bg-surface-container hover:bg-surface-container-high flex items-center justify-center font-headline-sm text-headline-sm text-on-surface transition-all active:scale-90"
                         >
@@ -533,6 +540,7 @@ export function BookingView() {
                           {toddlers}
                         </span>
                         <button
+                          type="button"
                           onClick={() => adjustGuests("toddlers", 1)}
                           className="w-9 h-9 rounded-md bg-surface-container hover:bg-surface-container-high flex items-center justify-center font-headline-sm text-headline-sm text-on-surface transition-all active:scale-90"
                         >
@@ -569,6 +577,7 @@ export function BookingView() {
 
                   <div className="mt-space-lg flex items-center justify-between">
                     <button
+                      type="button"
                       onClick={() => setCurrentStep(1)}
                       className="h-12 px-5 bg-surface-container text-on-surface rounded-lg font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container-high transition-all"
                     >
@@ -576,6 +585,7 @@ export function BookingView() {
                       <span>Voltar</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => setCurrentStep(3)}
                       className="h-12 px-6 bg-primary text-on-primary rounded-lg font-label-lg text-label-lg flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all"
                     >
@@ -724,6 +734,7 @@ export function BookingView() {
 
                   <div className="mt-space-lg flex items-center justify-between">
                     <button
+                      type="button"
                       onClick={() => setCurrentStep(2)}
                       className="h-12 px-5 bg-surface-container text-on-surface rounded-lg font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container-high transition-all"
                     >
@@ -731,6 +742,7 @@ export function BookingView() {
                       <span>Voltar</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => setCurrentStep(4)}
                       className="h-12 px-6 bg-primary text-on-primary rounded-lg font-label-lg text-label-lg flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all"
                     >
@@ -760,6 +772,7 @@ export function BookingView() {
 
                   <div className="grid grid-cols-2 gap-space-sm mb-space-lg">
                     <button
+                      type="button"
                       onClick={() => setPaymentMethod("pix")}
                       className={cn(
                         "flex items-center justify-center gap-2 p-space-md rounded-xl font-label-lg text-label-lg transition-all",
@@ -780,6 +793,7 @@ export function BookingView() {
                       </span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => setPaymentMethod("card")}
                       className={cn(
                         "flex items-center justify-center gap-2 p-space-md rounded-xl font-label-lg text-label-lg transition-all",
@@ -1003,6 +1017,7 @@ export function BookingView() {
                               value="00020126580014br.gov.bcb.pix0136cecchinpizzas-reserva-8425204000053039865802BR5925CECCHIN PIZZAS ARTESANAIS6013PORTO ALEGRE"
                             />
                             <button
+                              type="button"
                               onClick={handleCopyPix}
                               className="h-10 px-3 bg-surface-container hover:bg-surface-container-high rounded text-on-surface font-label-sm text-label-sm flex items-center gap-1 transition-all"
                             >
@@ -1095,6 +1110,7 @@ export function BookingView() {
                     </label>
                     <div className="flex items-center justify-between pt-space-xs">
                       <button
+                        type="button"
                         onClick={() => setCurrentStep(3)}
                         className="h-12 px-5 bg-surface-container text-on-surface rounded-lg font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container-high transition-all"
                       >
@@ -1102,14 +1118,15 @@ export function BookingView() {
                         <span>Voltar</span>
                       </button>
                       <button
+                        type="button"
                         onClick={() =>
                           alert(
                             "Reserva #CP-2025-0842 gerada com sucesso! Assim que o sinal de 40% for validado, nossa central de operações entrará em contato via WhatsApp para confirmar detalhes de acesso."
                           )
                         }
-                        className="h-14 px-8 bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center gap-3 shadow-lg hover:opacity-95 active:scale-98 transition-all"
+                        className="h-12 px-8 bg-primary text-on-primary rounded-lg font-label-lg text-label-lg flex items-center gap-3 shadow-lg hover:opacity-90 active:scale-95 transition-all"
                       >
-                        <BadgeCheck className="w-6 h-6" />
+                        <BadgeCheck className="w-5 h-5" />
                         <span>Pagar Sinal & Confirmar Reserva</span>
                       </button>
                     </div>
@@ -1258,7 +1275,9 @@ export function BookingView() {
                 </div>
               </div>
               <a
-                href="#"
+                href="https://wa.me/5551999999999"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-full py-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-2 transition-all"
               >
                 <MessageCircle className="w-[18px] h-[18px] text-tertiary" />

@@ -1,8 +1,6 @@
+import { EmbarkChecklist } from "../components/EmbarkChecklist";
 import {
-  Check,
   ChevronRight,
-  ClipboardList,
-  Map,
   MapPin,
   MessageCircle,
   Navigation,
@@ -46,7 +44,7 @@ export function FieldRouteView() {
             <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">
               Chegada Local
             </span>
-            <span className="font-headline-sm text-headline-sm text-on-surface font-bold text-primary">
+            <span className="font-headline-sm text-headline-sm text-primary font-bold">
               18:15
             </span>
           </div>
@@ -69,11 +67,11 @@ export function FieldRouteView() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 mt-6">
-          <button className="flex-1 bg-primary hover:opacity-90 text-on-primary font-label-lg text-label-lg py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-opacity">
+          <button type="button" className="flex-1 bg-primary hover:opacity-90 text-on-primary font-label-lg text-label-lg py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-opacity border border-transparent">
             <Navigation className="w-5 h-5 fill-current" />
             Iniciar Rota GPS
           </button>
-          <button className="flex-1 bg-surface-container hover:bg-surface-container-high text-on-surface font-label-lg text-label-lg py-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-outline-variant/30">
+          <button type="button" className="flex-1 bg-surface-container hover:bg-surface-container-high text-on-surface font-label-lg text-label-lg py-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-outline-variant/30">
             <MessageCircle className="w-5 h-5 text-tertiary" />
             Avisar Base
           </button>
@@ -81,49 +79,7 @@ export function FieldRouteView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-space-lg">
-        {/* Checklist */}
-        <div className="bg-surface-container-lowest rounded-xl shadow-md p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <ClipboardList className="w-6 h-6 text-primary" />
-            <h2 className="font-headline-sm text-headline-sm text-on-surface font-bold">
-              Checklist de Embarque
-            </h2>
-          </div>
-          <div className="space-y-3">
-            {[
-              { id: 1, label: "Forno a Gás Pro #03 e Pedras", done: true },
-              { id: 2, label: "Botijão de Gás Cheio", done: true },
-              { id: 3, label: "45 Massas Fermentação 48h (Caixa 2)", done: true },
-              { id: 4, label: "Insumos e Queijos Lacrados (Caixa 5)", done: true },
-              { id: 5, label: "Louças, Talheres e Pás", done: false },
-              { id: 6, label: "Maquininha de Cartão", done: false },
-            ].map((item) => (
-              <label
-                key={item.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer"
-              >
-                <div
-                  className={`w-6 h-6 rounded flex items-center justify-center shrink-0 border-2 ${
-                    item.done
-                      ? "bg-primary border-primary text-on-primary"
-                      : "border-outline-variant"
-                  }`}
-                >
-                  {item.done && <Check className="w-4 h-4" />}
-                </div>
-                <span
-                  className={`font-body-md text-body-md ${
-                    item.done
-                      ? "text-on-surface-variant line-through"
-                      : "text-on-surface"
-                  }`}
-                >
-                  {item.label}
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
+        <EmbarkChecklist />
 
         {/* Detalhes do Serviço */}
         <div className="bg-surface-container-lowest rounded-xl shadow-md p-6 flex flex-col">
@@ -165,14 +121,14 @@ export function FieldRouteView() {
           </div>
 
           <div className="mt-4 pt-4 border-t border-outline-variant/30">
-            <button className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md py-3 rounded-lg flex items-center justify-between px-4 transition-colors">
+            <button type="button" className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md py-3 rounded-lg flex items-center justify-between px-4 transition-colors">
               <div className="flex items-center gap-2">
                 <Thermometer className="w-5 h-5 text-tertiary" />
                 <span>Painel de Cocção (Durante Evento)</span>
               </div>
               <ChevronRight className="w-5 h-5" />
             </button>
-            <button className="w-full mt-2 bg-tertiary/10 hover:bg-tertiary/20 text-tertiary font-label-md text-label-md py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
+            <button type="button" className="w-full mt-2 bg-tertiary/10 hover:bg-tertiary/20 text-tertiary font-label-md text-label-md py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
               <Play className="w-5 h-5 fill-current" />
               <span>Iniciar Cronômetro de Montagem</span>
             </button>

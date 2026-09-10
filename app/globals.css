@@ -41,6 +41,13 @@
   --color-tertiary-fixed-dim: #ffb77a;
   --color-on-tertiary-fixed: #2e1500;
 
+  /* Sucesso — o verde de "rodízio em andamento". Estava hardcoded como
+     #34A853 em DispatchView, fora do sistema de cores. */
+  --color-success: #34a853;
+  --color-on-success: #ffffff;
+  --color-success-container: #d7f0dc;
+  --color-on-success-container: #0b3d1c;
+
   --color-error: #ba1a1a;
   --color-on-error: #ffffff;
   --color-error-container: #ffdad6;

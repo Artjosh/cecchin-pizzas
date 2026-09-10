@@ -71,12 +71,13 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
               >
                 📋 Gestão
               </Link>
-              <button
-                type="button"
-                className="px-2 py-1.5 rounded font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-container hover:text-on-surface text-left transition-colors"
+              <span
+                aria-disabled="true"
+                title="Console administrativo ainda não implementado"
+                className="px-2 py-1.5 rounded font-label-sm text-label-sm text-on-surface-variant/50 text-left cursor-not-allowed select-none"
               >
                 ⚙️ Admin
-              </button>
+              </span>
             </div>
           </div>
 
@@ -97,20 +98,24 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                 Despacho & Agenda
               </span>
             </Link>
-            <Link href="#"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
+            <span
+              aria-disabled="true"
+              title="Ainda não implementado"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant/50 cursor-not-allowed select-none"
             >
               <Map className="w-5 h-5" />
               <span className="font-label-lg text-label-lg">Mapa Tático</span>
-            </Link>
-            <Link href="#"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
+            </span>
+            <span
+              aria-disabled="true"
+              title="Ainda não implementado"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant/50 cursor-not-allowed select-none"
             >
               <MessageSquareShare className="w-5 h-5" />
               <span className="font-label-lg text-label-lg">
                 Central WhatsApp
               </span>
-            </Link>
+            </span>
 
             <span className="px-3 pt-4 pb-1 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
               Equipe de Campo
@@ -126,34 +131,40 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
               <Route className="w-5 h-5" />
               <span className="font-label-lg text-label-lg">Minha Rota</span>
             </Link>
-            <Link href="#"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
+            <span
+              aria-disabled="true"
+              title="Ainda não implementado"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant/50 cursor-not-allowed select-none"
             >
               <ListChecks className="w-5 h-5" />
               <span className="font-label-lg text-label-lg">
                 Checklist & Forno
               </span>
-            </Link>
+            </span>
 
             <span className="px-3 pt-4 pb-1 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
               Administração
             </span>
-            <Link href="#"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
+            <span
+              aria-disabled="true"
+              title="Ainda não implementado"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant/50 cursor-not-allowed select-none"
             >
               <BookOpen className="w-5 h-5" />
               <span className="font-label-lg text-label-lg">
                 Catálogo & Preços
               </span>
-            </Link>
-            <Link href="#"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
+            </span>
+            <span
+              aria-disabled="true"
+              title="Ainda não implementado"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant/50 cursor-not-allowed select-none"
             >
               <Truck className="w-5 h-5" />
               <span className="font-label-lg text-label-lg">
                 Fornos & Frota
               </span>
-            </Link>
+            </span>
           </nav>
         </div>
 
@@ -205,19 +216,25 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
               >
                 Agenda
               </Link>
-              <Link href="#"
-                className="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors"
+              <span
+                aria-disabled="true"
+                title="Ainda não implementado"
+                className="font-label-md text-label-md text-on-surface-variant/50 cursor-not-allowed select-none"
               >
                 Mapa
-              </Link>
-              <Link href="#"
-                className="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors"
+              </span>
+              <span
+                aria-disabled="true"
+                title="Ainda não implementado"
+                className="font-label-md text-label-md text-on-surface-variant/50 cursor-not-allowed select-none"
               >
                 Pendências
-              </Link>
+              </span>
             </nav>
             <a
-              href="#"
+              href="https://wa.me/5551999999999"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors"
             >
               <MessageCircle className="w-4 h-4 text-tertiary" />

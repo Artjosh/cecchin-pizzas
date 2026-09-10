@@ -40,7 +40,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
               <Link href="/cliente/contratar"
                 className={cn(
                   "px-3 py-1.5 rounded-full font-label-md text-label-md transition-colors",
-                  pathname.startsWith("/cliente")
+                  pathname.startsWith("/cliente/")
                     ? "bg-primary text-on-primary"
                     : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                 )}
@@ -67,12 +67,13 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
               >
                 Operacional
               </Link>
-              <button
-                type="button"
-                className="px-3 py-1.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+              <span
+                aria-disabled="true"
+                title="Console administrativo ainda não implementado"
+                className="px-3 py-1.5 rounded-full font-label-md text-label-md text-on-surface-variant/50 cursor-not-allowed select-none"
               >
                 Admin
-              </button>
+              </span>
             </div>
 
             <nav className="hidden lg:flex items-center gap-space-md">
@@ -100,7 +101,9 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 </span>
               </div>
               <a
-                href="#"
+                href="https://wa.me/5551999999999"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors"
               >
                 <MessageCircle className="w-4 h-4 text-tertiary" />

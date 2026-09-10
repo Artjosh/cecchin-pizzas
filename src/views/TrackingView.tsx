@@ -30,6 +30,30 @@ export function TrackingView() {
   const [eta, setEta] = useState(18);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  /*
+   * O relógio SÓ é calculado no cliente.
+   *
+   * `new Date()` durante a renderização produz um valor no servidor e outro na
+   * hidratação — o React acusa mismatch e descarta o HTML servido. Como o
+   * horário depende do relógio de quem está olhando, ele nasce nulo e é
+   * preenchido no primeiro efeito.
+   */
+  const [etaClock, setEtaClock] = useState<string | null>(null);
+
+  useEffect(() => {
+    const calcular = () => {
+      const alvo = new Date();
+      alvo.setMinutes(alvo.getMinutes() + eta);
+      setEtaClock(
+        `${alvo.getHours().toString().padStart(2, "0")}:${alvo
+          .getMinutes()
+          .toString()
+          .padStart(2, "0")}`
+      );
+    };
+    calcular();
+  }, [eta]);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setEta((prev) => Math.max(0, prev - 1));
@@ -37,20 +61,18 @@ export function TrackingView() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
+  // O timeout é cancelado no desmonte: sem isso, sair da página no meio do
+  // refresh deixa um setState pendente para um componente que não existe mais.
+  useEffect(() => {
+    if (!isRefreshing) return;
+    const t = setTimeout(() => {
       setIsRefreshing(false);
       setEta((prev) => Math.max(0, prev - 1));
     }, 1000);
-  };
+    return () => clearTimeout(t);
+  }, [isRefreshing]);
 
-  const currentHour = new Date();
-  currentHour.setMinutes(currentHour.getMinutes() + eta);
-  const etaClock = `${currentHour.getHours().toString().padStart(2, "0")}:${currentHour
-    .getMinutes()
-    .toString()
-    .padStart(2, "0")}`;
+  const handleRefresh = () => setIsRefreshing(true);
 
   return (
     <div className="flex flex-col w-full">
@@ -88,6 +110,7 @@ export function TrackingView() {
               Sincronizado via Satélite GPS
             </span>
             <button
+              type="button"
               onClick={handleRefresh}
               className="p-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors"
             >
@@ -119,7 +142,7 @@ export function TrackingView() {
               </h1>
               <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
                 Estimativa de toque no portão às{" "}
-                <span className="font-semibold text-on-surface">{etaClock}</span>
+                <span className="font-semibold text-on-surface">{etaClock ?? "--:--"}</span>
                 . A montagem técnica, nivelamento das pedras refratárias e
                 acendimento do forno iniciarão pontualmente às 18:30.
               </p>
@@ -200,10 +223,10 @@ export function TrackingView() {
                     <span>Rastreamento GPS Ativo (Van Operacional #02)</span>
                   </div>
                   <div className="bg-surface-container-lowest/90 backdrop-blur-md rounded-lg p-1 shadow-md flex items-center gap-1 pointer-events-auto">
-                    <button className="w-8 h-8 flex items-center justify-center rounded text-on-surface hover:bg-surface-container transition-colors">
+                    <button type="button" className="w-8 h-8 flex items-center justify-center rounded text-on-surface hover:bg-surface-container transition-colors">
                       <Plus className="w-[18px] h-[18px]" />
                     </button>
-                    <button className="w-8 h-8 flex items-center justify-center rounded text-on-surface hover:bg-surface-container transition-colors">
+                    <button type="button" className="w-8 h-8 flex items-center justify-center rounded text-on-surface hover:bg-surface-container transition-colors">
                       <Minus className="w-[18px] h-[18px]" />
                     </button>
                   </div>
@@ -248,7 +271,7 @@ export function TrackingView() {
                         </p>
                       </div>
                     </div>
-                    <button className="w-full sm:w-auto px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5 transition-colors">
+                    <button type="button" className="w-full sm:w-auto px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5 transition-colors">
                       <DoorOpen className="w-[18px] h-[18px] text-tertiary" />
                       Instruções de Portaria
                     </button>
@@ -258,7 +281,7 @@ export function TrackingView() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button className="bg-surface-container-lowest p-4 rounded-xl shadow-sm hover:shadow-md transition-all text-left flex flex-col justify-between group">
+              <button type="button" className="bg-surface-container-lowest p-4 rounded-xl shadow-sm hover:shadow-md transition-all text-left flex flex-col justify-between group">
                 <div className="w-9 h-9 rounded-lg bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed mb-3 group-hover:scale-105 transition-transform">
                   <UserPlus className="w-5 h-5" />
                 </div>
@@ -274,7 +297,7 @@ export function TrackingView() {
                   </p>
                 </div>
               </button>
-              <button className="bg-surface-container-lowest p-4 rounded-xl shadow-sm hover:shadow-md transition-all text-left flex flex-col justify-between group">
+              <button type="button" className="bg-surface-container-lowest p-4 rounded-xl shadow-sm hover:shadow-md transition-all text-left flex flex-col justify-between group">
                 <div className="w-9 h-9 rounded-lg bg-surface-container-high flex items-center justify-center text-primary mb-3 group-hover:scale-105 transition-transform">
                   <DoorOpen className="w-5 h-5" />
                 </div>
@@ -290,7 +313,7 @@ export function TrackingView() {
                   </p>
                 </div>
               </button>
-              <button className="bg-surface-container-lowest p-4 rounded-xl shadow-sm hover:shadow-md transition-all text-left flex flex-col justify-between group">
+              <button type="button" className="bg-surface-container-lowest p-4 rounded-xl shadow-sm hover:shadow-md transition-all text-left flex flex-col justify-between group">
                 <div className="w-9 h-9 rounded-lg bg-secondary-container flex items-center justify-center text-on-secondary-container mb-3 group-hover:scale-105 transition-transform">
                   <Receipt className="w-5 h-5" />
                 </div>
@@ -645,19 +668,19 @@ export function TrackingView() {
               </p>
               <div className="flex items-center justify-between bg-surface-container-lowest p-3 rounded-lg shadow-sm">
                 <div className="flex items-center gap-1.5">
-                  <button className="text-tertiary hover:scale-110 transition-transform">
+                  <button type="button" className="text-tertiary hover:scale-110 transition-transform">
                     <Star className="w-6 h-6 fill-current" />
                   </button>
-                  <button className="text-tertiary hover:scale-110 transition-transform">
+                  <button type="button" className="text-tertiary hover:scale-110 transition-transform">
                     <Star className="w-6 h-6 fill-current" />
                   </button>
-                  <button className="text-tertiary hover:scale-110 transition-transform">
+                  <button type="button" className="text-tertiary hover:scale-110 transition-transform">
                     <Star className="w-6 h-6 fill-current" />
                   </button>
-                  <button className="text-tertiary hover:scale-110 transition-transform">
+                  <button type="button" className="text-tertiary hover:scale-110 transition-transform">
                     <Star className="w-6 h-6 fill-current" />
                   </button>
-                  <button className="text-tertiary hover:scale-110 transition-transform">
+                  <button type="button" className="text-tertiary hover:scale-110 transition-transform">
                     <Star className="w-6 h-6 fill-current" />
                   </button>
                 </div>
