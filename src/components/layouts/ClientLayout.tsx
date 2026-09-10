@@ -1,9 +1,12 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "../../lib/utils";
 import { MapPin, MessageCircle, User } from "lucide-react";
 
-export function ClientLayout() {
-  const location = useLocation();
+export function ClientLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
 
   const navLinks = [
     { name: "Contratar Evento", path: "/cliente/contratar" },
@@ -34,33 +37,30 @@ export function ClientLayout() {
 
           <div className="flex items-center gap-space-sm">
             <div className="hidden md:flex items-center gap-1 bg-surface-container-low p-space-xs rounded-full">
-              <Link
-                to="/cliente/contratar"
+              <Link href="/cliente/contratar"
                 className={cn(
                   "px-3 py-1.5 rounded-full font-label-md text-label-md transition-colors",
-                  location.pathname.startsWith("/cliente")
+                  pathname.startsWith("/cliente")
                     ? "bg-primary text-on-primary"
                     : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                 )}
               >
                 Cliente
               </Link>
-              <Link
-                to="/operacional/minha-rota"
+              <Link href="/operacional/minha-rota"
                 className={cn(
                   "px-3 py-1.5 rounded-full font-label-md text-label-md transition-colors",
-                  location.pathname === "/operacional/minha-rota"
+                  pathname === "/operacional/minha-rota"
                     ? "bg-primary text-on-primary"
                     : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                 )}
               >
                 Staff
               </Link>
-              <Link
-                to="/operacional/despacho"
+              <Link href="/operacional/despacho"
                 className={cn(
                   "px-3 py-1.5 rounded-full font-label-md text-label-md transition-colors",
-                  location.pathname === "/operacional/despacho"
+                  pathname === "/operacional/despacho"
                     ? "bg-primary text-on-primary"
                     : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                 )}
@@ -79,10 +79,10 @@ export function ClientLayout() {
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
-                  to={link.path}
+                  href={link.path}
                   className={cn(
                     "transition-colors",
-                    location.pathname === link.path
+                    pathname === link.path
                       ? "text-primary font-bold"
                       : "font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface"
                   )}
@@ -115,7 +115,7 @@ export function ClientLayout() {
       </header>
 
       <main className="w-full pt-20 pb-20 md:pb-0 bg-surface min-h-screen">
-        <Outlet />
+        {children}
       </main>
 
       <footer className="w-full bg-surface-container-low shadow-[0_-1px_6px_rgba(0,0,0,0.03)]">

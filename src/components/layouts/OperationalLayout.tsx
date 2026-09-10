@@ -1,4 +1,7 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "../../lib/utils";
 import {
   CalendarClock,
@@ -12,10 +15,10 @@ import {
   User,
 } from "lucide-react";
 
-export function OperationalLayout() {
-  const location = useLocation();
+export function OperationalLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
 
-  const isDespacho = location.pathname === "/operacional/despacho";
+  const isDespacho = pathname === "/operacional/despacho";
 
   return (
     <div className="min-h-screen bg-surface font-body-md text-body-md text-on-surface antialiased flex">
@@ -43,25 +46,22 @@ export function OperationalLayout() {
               Mudar Visão Operacional
             </span>
             <div className="grid grid-cols-2 gap-1">
-              <Link
-                to="/cliente/contratar"
+              <Link href="/cliente/contratar"
                 className="px-2 py-1.5 rounded font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-container hover:text-on-surface text-left transition-colors"
               >
                 👤 Cliente
               </Link>
-              <Link
-                to="/operacional/minha-rota"
+              <Link href="/operacional/minha-rota"
                 className={cn(
                   "px-2 py-1.5 rounded font-label-sm text-label-sm text-left transition-colors",
-                  location.pathname === "/operacional/minha-rota"
+                  pathname === "/operacional/minha-rota"
                     ? "bg-primary-container text-on-primary-container font-bold"
                     : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                 )}
               >
                 🍕 Equipe
               </Link>
-              <Link
-                to="/operacional/despacho"
+              <Link href="/operacional/despacho"
                 className={cn(
                   "px-2 py-1.5 rounded font-label-sm text-label-sm text-left transition-colors",
                   isDespacho
@@ -84,8 +84,7 @@ export function OperationalLayout() {
             <span className="px-3 pt-2 pb-1 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
               Operações & Despacho
             </span>
-            <Link
-              to="/operacional/despacho"
+            <Link href="/operacional/despacho"
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
                 isDespacho
@@ -98,15 +97,13 @@ export function OperationalLayout() {
                 Despacho & Agenda
               </span>
             </Link>
-            <Link
-              to="#"
+            <Link href="#"
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
             >
               <Map className="w-5 h-5" />
               <span className="font-label-lg text-label-lg">Mapa Tático</span>
             </Link>
-            <Link
-              to="#"
+            <Link href="#"
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
             >
               <MessageSquareShare className="w-5 h-5" />
@@ -118,11 +115,10 @@ export function OperationalLayout() {
             <span className="px-3 pt-4 pb-1 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
               Equipe de Campo
             </span>
-            <Link
-              to="/operacional/minha-rota"
+            <Link href="/operacional/minha-rota"
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
-                location.pathname === "/operacional/minha-rota"
+                pathname === "/operacional/minha-rota"
                   ? "bg-primary-container text-on-primary-container font-bold"
                   : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               )}
@@ -130,8 +126,7 @@ export function OperationalLayout() {
               <Route className="w-5 h-5" />
               <span className="font-label-lg text-label-lg">Minha Rota</span>
             </Link>
-            <Link
-              to="#"
+            <Link href="#"
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
             >
               <ListChecks className="w-5 h-5" />
@@ -143,8 +138,7 @@ export function OperationalLayout() {
             <span className="px-3 pt-4 pb-1 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
               Administração
             </span>
-            <Link
-              to="#"
+            <Link href="#"
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
             >
               <BookOpen className="w-5 h-5" />
@@ -152,8 +146,7 @@ export function OperationalLayout() {
                 Catálogo & Preços
               </span>
             </Link>
-            <Link
-              to="#"
+            <Link href="#"
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all"
             >
               <Truck className="w-5 h-5" />
@@ -202,8 +195,7 @@ export function OperationalLayout() {
           </div>
           <div className="flex items-center gap-space-sm">
             <nav className="hidden lg:flex items-center gap-space-md mr-space-md">
-              <Link
-                to="/operacional/despacho"
+              <Link href="/operacional/despacho"
                 className={cn(
                   "transition-colors",
                   isDespacho
@@ -213,14 +205,12 @@ export function OperationalLayout() {
               >
                 Agenda
               </Link>
-              <Link
-                to="#"
+              <Link href="#"
                 className="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors"
               >
                 Mapa
               </Link>
-              <Link
-                to="#"
+              <Link href="#"
                 className="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors"
               >
                 Pendências
@@ -243,7 +233,7 @@ export function OperationalLayout() {
 
         {/* Page Content */}
         <main className="relative pt-16 bg-surface min-h-screen px-space-lg py-space-lg">
-          <Outlet />
+          {children}
         </main>
       </div>
     </div>

@@ -1,22 +1,22 @@
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
-import {defineConfig} from 'vite';
+import { cloudflare } from "@cloudflare/vite-plugin";
+import tailwindcss from "@tailwindcss/vite";
+import path from "path";
+import { defineConfig } from "vite";
+import vinext from "vinext";
 
-export default defineConfig(() => {
-  return {
-    plugins: [react(), tailwindcss()],
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
+export default defineConfig({
+  plugins: [
+    vinext(),
+    // O ambiente "rsc" é onde os Server Components rodam; "ssr" é filho dele.
+    // Sem isso o Worker não sabe qual bundle servir.
+    cloudflare({
+      viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
+    }),
+    tailwindcss(),
+  ],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "."),
     },
-    server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
-    },
-  };
+  },
 });
