@@ -1,0 +1,6 @@
+{
+  "name": "Cecchin Pizzas",
+  "description": "Sistema de gestão e reserva para rodízio de pizzas artesanais a domicílio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
