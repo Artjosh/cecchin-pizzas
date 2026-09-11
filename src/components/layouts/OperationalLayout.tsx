@@ -15,17 +15,22 @@ import {
   User,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { MenuDoUsuario } from "../MenuDoUsuario";
 
 export function OperationalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, canAccess } = useAuth();
+  const { podeVer } = useAuth();
 
   const isDespacho = pathname === "/operacional/despacho";
 
-  // Security check - kick out clients
-  if (!canAccess(['staff', 'gestao', 'admin'])) {
-    redirect("/cliente/contratar");
-  }
+  /*
+   * O guarda NAO mora mais aqui. Este componente e client, e a checagem que
+   * vivia nele produzia um 307 no SSR que parecia autorizacao e nao era: quem
+   * trocasse o estado no DevTools entrava. Quem barra agora e
+   * `app/operacional/layout.tsx`, que e Server Component e le o papel do banco
+   * sob RLS. `podeVer` continua aqui so para esconder link que nao levaria a
+   * lugar nenhum.
+   */
 
   return (
     <div className="min-h-screen bg-surface font-body-md text-body-md text-on-surface antialiased flex">
@@ -50,7 +55,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
 
           <div className="flex flex-col gap-space-xs bg-surface-container-lowest p-space-sm rounded-xl">
             <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
-              Mudar Visão Operacional
+              Ir para
             </span>
             <div className="grid grid-cols-2 gap-1">
               <Link
@@ -70,7 +75,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
               >
                 🍕 Equipe
               </Link>
-              {canAccess(['gestao', 'admin']) && (
+              {podeVer(['gestao']) && (
                 <Link
                   href="/operacional/despacho"
                   className={cn(
@@ -83,7 +88,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   📋 Gestão
                 </Link>
               )}
-              {canAccess(['admin']) && (
+              {podeVer(['admin']) && (
                 <Link
                   href="/admin/catalogo"
                   className={cn(
@@ -100,7 +105,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <nav className="flex flex-col gap-1 overflow-y-auto">
-            {canAccess(['gestao', 'admin']) && (
+            {podeVer(['gestao']) && (
               <>
                 <span className="px-3 pt-2 pb-1 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
                   Operações & Despacho
@@ -172,7 +177,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
               <span className="font-label-lg text-label-lg">Checklist & Forno</span>
             </Link>
 
-            {canAccess(['admin']) && (
+            {podeVer(['admin']) && (
               <>
                 <span className="px-3 pt-4 pb-1 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
                   Administração
@@ -207,19 +212,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex flex-col gap-space-sm border-t border-outline-variant/30 pt-space-md mt-4">
-          <Link href="/cliente/perfil" className="flex items-center gap-space-sm p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <User className="text-on-primary w-[18px] h-[18px]" />
-            </div>
-            <div className="flex flex-col overflow-hidden">
-              <span className="font-label-md text-label-md text-on-surface truncate">
-                {user.name}
-              </span>
-              <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                {user.email}
-              </span>
-            </div>
-          </Link>
+          <MenuDoUsuario />
         </div>
       </aside>
 

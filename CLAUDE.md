@@ -8,25 +8,54 @@ em build, rota ou layout.
 
 ## A coisa mais importante de saber
 
-**Nenhuma tela lê banco.** Zero cliente Supabase, zero route handler, zero
-server action, zero middleware. Todo dado visível é mock escrito no
-componente.
+**Autenticação e papéis são reais; dado de negócio ainda é mock.** Agenda,
+evento e catálogo continuam escritos no componente. Quem é você e o que você
+pode vem do Postgres.
 
-Quando for ligar de verdade, a fronteira já está decidida em
+A fronteira para o resto está em `ARQUITETURA.md` e em
 `../cecchin-pizzas-backend/infra/README.md`: leitura simples vai do Server
 Component direto ao PostgREST; o NestJS entra onde há transação, dinheiro,
 fila, cron ou webhook.
 
-## Autenticação não existe
+## Acesso: três camadas, nenhuma redundante
 
-`src/contexts/AuthContext.tsx` é `useState(defaultUsers.cliente)`. O
-`RoleSwitcher` troca o papel à mão.
+| camada | onde | decide |
+|---|---|---|
+| middleware | `middleware.ts` | tem cookie? Senão, `/entrar` |
+| guarda de papel | layouts de área, Server Component | pode ver esta área? |
+| **RLS** | Postgres | **quais linhas existem para esta pessoa** |
 
-**O guard de papel não é autorização.** `OperationalLayout` chama `redirect()`
-dentro de um client component. O 307 que `/operacional/*` devolve no `curl` é
-SSR do mesmo componente. Quem abrir o DevTools entra em `/admin`.
+O middleware **não** consulta banco: roda em toda requisição, e papel lido de
+cookie é papel que o cliente escolhe.
 
-Não descreva isso como "protegido" em commit, doc ou resposta.
+`useAuth()` serve para DESENHAR — escrever um nome, esconder um link. Nunca
+para proteger dado. Se precisa decidir acesso, use `exigirPapel()` num Server
+Component, e confie na RLS por baixo.
+
+**A sessão nunca aparece no corpo de uma resposta.** Ela mora em dois cookies
+`httpOnly` gravados pelos route handlers. Se escrever um endpoint que repassa
+o corpo do GoTrue, o token vaza para o `response.json()`.
+
+## Policy permissiva se SOMA
+
+A armadilha que já produziu dois defeitos aqui. Ler uma tabela sem filtro
+confiando na RLS para "sobrar só a minha linha" **não funciona**: uma segunda
+policy mais ampla (`usuario_leitura` libera a organização inteira) deixa outras
+linhas visíveis, e o `limit=1` traz uma qualquer.
+
+Aconteceu com a sessão — que resolveu para outra pessoa — e com a tela de
+pedido de staff. Nenhum dos dois apareceu em `tsc`, build ou status HTTP.
+
+**Filtre pelo dono, sempre.** Para "a minha linha", use `meu_perfil()`, que o
+Postgres resolve de `auth.uid()`.
+
+## Segredos no servidor
+
+`SUPABASE_SERVICE_ROLE_KEY` ignora RLS. Só `consultarComoServico()` a usa, e só
+no pedido de login — que acontece antes de existir usuário para a RLS
+reconhecer. Qualquer outro uso precisa de justificativa escrita.
+
+Nada em `src/servidor/` pode ser importado por componente de cliente.
 
 ## Regras de build
 
@@ -65,8 +94,9 @@ As 13 páginas de `app/` são Server Components. Não adicione `"use client"` a
 uma página.
 
 `"use client"` só onde há hook, evento ou animação, e o mais fundo possível na
-árvore. `src/components/Provedores.tsx` é a fronteira que segura `AuthProvider`
-e `RoleSwitcher` para o layout raiz continuar server.
+árvore. `src/components/Provedores.tsx` é a fronteira que segura o
+`AuthProvider` para o layout raiz continuar server — e o usuário desce como
+prop, vindo do servidor.
 
 Seis views são server de propósito: `AdminCatalogView`, `AdminFleetView`,
 `DispatchView`, `FieldRouteView`, `SupportView`, `WhatsAppCentralView`.
@@ -93,7 +123,7 @@ Mudou layout, tela ou componente visual: rode a skill `verificar-tela` e
 
 ```bash
 npm run dev      # vinext dev (porta 3000)
-npm run build    # 13 rotas
+npm run build    # 22 rotas
 npx vinext start --port 3201
 npx tsc --noEmit
 ```

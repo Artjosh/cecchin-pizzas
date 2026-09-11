@@ -1,99 +1,189 @@
 # Arquitetura do frontend
 
-Estado real em 10/09/2026. O que não está marcado como **existe** não existe.
+Estado real em 11/09/2026. O que não está marcado como **existe** não existe.
 
-## A resposta curta
-
-**Este app não fala com banco nenhum.** Nenhuma linha de dado na tela vem do
-Postgres. Toda tela é mock escrito no próprio componente.
-
-```
-grep -rlE 'supabase|createClient|fetch\(|/api/' app src   →  0 arquivos
-```
-
-Não há cliente Supabase, nem route handler, nem server action, nem middleware.
-As dependências de runtime são: vinext, react, motion, lucide-react,
-tailwind-merge, clsx, `@vis.gl/react-google-maps` e `@google/genai`.
-
-## O que está ligado de verdade
+## O que está ligado
 
 | peça | estado |
 |---|---|
-| Google Maps (`LocationPickerMap`) | **existe** — chave em `.env`, geocoding e autocomplete reais |
-| Server Components + SSR | **existe** — 13 páginas, todas server; 6 das 12 views são server |
-| Supabase (Postgres, Auth, Storage, REST) | containers de pé, **nenhum consumido** |
-| NestJS (`/agenda`) | **existe** no repo do backend, **nenhuma tela chama** |
-| Autenticação | **não existe** |
-| Middleware | **não existe** |
+| Autenticação sem senha (magic link + OTP) | **existe** — GoTrue, com polling cross-device |
+| Sessão em cookie `httpOnly` | **existe** — o token nunca chega ao JavaScript |
+| Middleware de sessão | **existe** — `middleware.ts` |
+| Guarda de papel no servidor | **existe** — nos layouts, sobre RLS |
+| Quatro papéis e a promoção entre eles | **existe** — decidido no Postgres |
+| Google Maps | **existe** — geocoding e autocomplete reais |
+| Server Components + SSR | **existe** — 17 páginas server, 5 route handlers |
+| Leitura de dado de negócio (agenda, evento, catálogo) | **ainda mock** |
+| Storage do Supabase | container de pé, **nenhum bucket** |
+| NestJS | existe no repo do backend, **nenhuma tela chama** |
 
-## Autenticação: o que há hoje
+As telas de operação e de contratação continuam com dado escrito no
+componente. O que deixou de ser mock foi **quem é você e o que você pode**.
 
-`src/contexts/AuthContext.tsx` é uma simulação:
+## Autenticação
 
-```ts
-const [user, setUser] = useState<User>(defaultUsers.cliente);
+### Como uma pessoa entra
+
+```
+  computador                     servidor                    celular
+      |                             |                           |
+      |-- e-mail ------------------>|                           |
+      |<-- selector ----------------|--- GoTrue manda o e-mail ->|
+      |                             |                           |
+      |-- polling (selector) ------>|                           |
+      |<-- pendente ----------------|                           |
+      |                             |<-- sessão do magic link --|
+      |-- polling (selector) ------>|                           |
+      |<-- ENTROU (cookie) ---------|                           |
 ```
 
-Um objeto em memória. `RoleSwitcher` troca o papel na mão.
+Duas portas: o **link** e o **código de seis dígitos**. O código resolve na
+mesma aba; o link resolve em qualquer aparelho, e é por isso que existe o
+`selector`.
 
-**O guard de papel é só do cliente.** `OperationalLayout` chama `redirect()`,
-mas é client component. O 307 que `/operacional/*` devolve no `curl` é SSR do
-mesmo componente — não é autorização. Quem abrir o DevTools e trocar o estado
-entra em `/admin`. Isso é aceitável num protótipo e inaceitável no dia em que
-houver dado real por trás.
+### As peças, e por que cada uma existe
 
-O GoTrue do Supabase (`supabase_auth_Nicolas`) está de pé sem ninguém falar
-com ele.
+**`selector`** — identificador público do pedido, em `pedido_login`. Viaja a
+cada ciclo de polling e **não aprova nada**: só pergunta. É o conceito que o
+GoTrue não tem — ele emite um link e espera o clique voltar no mesmo navegador,
+o que deixaria preso quem pede no computador e abre o e-mail no celular.
+
+**O token do GoTrue** — segredo, existe só para quem abriu o e-mail. É ele que
+aprova, e é validado **contra o GoTrue**, não localmente: validar a assinatura
+aqui aceitaria um token já revogado.
+
+**A comparação de e-mail** — o e-mail que o GoTrue devolve é conferido com o do
+pedido. Sem ela, um token válido de outra conta aprovaria este.
+
+**O fragmento da URL** — o GoTrue devolve a sessão em `#access_token=…`, e
+fragmento não vai ao servidor. É exatamente por isso que ele é usado: só o
+navegador o vê. A página `/entrar/confirmar` precisa de JavaScript por causa
+disso, e apaga o fragmento da barra antes de qualquer outra coisa.
+
+**Uso único** — o pedido morre ao virar sessão. O polling seguinte recebe 404, e
+é assim que a aba sabe parar em vez de girar até o timeout.
+
+### Onde a sessão mora
+
+Dois cookies `httpOnly`: `cecchin_acesso` (access token, 1h) e
+`cecchin_renovacao` (refresh, 30 dias). **O corpo das respostas nunca traz
+token.** Um XSS não encontra o que roubar, porque a sessão nunca esteve ao
+alcance de script.
+
+`sameSite: lax`, não `strict`: o retorno do magic link é navegação de topo
+vinda do cliente de e-mail, e `strict` não mandaria o cookie nela.
+
+Sair apaga os cookies **e** revoga no GoTrue — apagar só o cookie deixaria o
+refresh válido por trinta dias.
+
+## Papéis
+
+```
+  cliente ──pede──> [fila] ──gestao ou admin aprova──> staff
+                                                         │
+                                          só admin ──────┴──> gestao, admin
+```
+
+| papel | alcança |
+|---|---|
+| `cliente` | contratar e acompanhar o próprio evento |
+| `staff` | rota, checklist, forno, mapa, WhatsApp |
+| `gestao` | despacho, catálogo, e decide a fila de pedidos |
+| `admin` | tudo, inclusive promover a gestao e admin |
+
+Toda conta nasce `cliente`. Não há tela de cadastro: o primeiro acesso com um
+e-mail cria a conta, e um gatilho em `auth.users` cria o perfil — assim um
+login pelo Google no futuro também ganha perfil, sem depender deste código.
+
+**O papel nunca vem do JWT.** Claim é retrato do instante da emissão: rebaixar
+alguém só surtiria efeito quando o token vencesse. Lido do banco a cada
+checagem, a revogação vale no próximo statement — verificado: promover por SQL
+muda o acesso sem novo login.
+
+## As três camadas de acesso
+
+Cada uma cobre o que a de cima não cobre. Não são redundância.
+
+| camada | onde | o que decide |
+|---|---|---|
+| middleware | `middleware.ts` | tem cookie? Redireciona para `/entrar` |
+| guarda de papel | layouts, Server Component | pode ver esta área? |
+| **RLS** | Postgres | **quais linhas existem para esta pessoa** |
+
+O middleware não consulta o banco de propósito: roda em toda requisição, e um
+papel lido de cookie seria um papel que o cliente escolhe.
+
+As funções que mudam papel — `app.promover()`,
+`app.decidir_solicitacao_staff()` — moram no Postgres e checam ali dentro. A
+tela desabilita botões por conveniência; quem recusa é o banco, inclusive para
+quem chamar o PostgREST direto.
+
+### A armadilha que custou dois defeitos
+
+**Policy permissiva se SOMA.** Duas vezes neste trabalho o código leu uma
+tabela sem filtro, confiando na RLS para sobrar só a linha certa — e uma
+segunda policy, mais ampla, deixava outras linhas visíveis:
+
+1. `sessaoAtual()` lia `usuario?limit=1`. `usuario_leitura` libera a
+   organização inteira, então a **sessão resolvia para outra pessoa**.
+2. `/cliente/equipe` lia `solicitacao_staff?limit=1`. Um admin via o pedido de
+   outra pessoa apresentado como se fosse o dele.
+
+Nenhum dos dois aparecia em `tsc`, no build ou em status HTTP. Os dois
+apareceram olhando a tela e conferindo o e-mail da sessão.
+
+Regra que ficou: **filtre pelo dono, sempre**, mesmo com RLS ligada. E quando o
+que se quer é "a minha linha", use a função que o Postgres resolve —
+`meu_perfil()` deriva de `auth.uid()`, e não de algo que o cliente diz.
 
 ## Server e client
 
-As 13 páginas de `app/` são Server Components — nenhuma tem `"use client"`.
-A fronteira de cliente é declarada onde precisa:
+As páginas de `app/` são Server Components. A fronteira de cliente é declarada
+onde precisa: `src/components/Provedores.tsx` segura o `AuthProvider`, que
+recebe o usuário **como prop, vindo do servidor** — um Server Component não lê
+contexto, e um componente de cliente não consulta banco.
 
-- `src/components/Provedores.tsx` — envolve `AuthProvider` e `RoleSwitcher`
-- as 6 views que usam hook ou animação
+`useAuth()` serve para desenhar: escrever um nome, esconder um link. Não
+protege nada. O `RoleSwitcher`, que trocava de papel no estado do React, foi
+substituído pelo `MenuDoUsuario`.
 
-As outras 6 views (`AdminCatalogView`, `AdminFleetView`, `DispatchView`,
-`FieldRouteView`, `SupportView`, `WhatsAppCentralView`) renderizam no
-servidor. É o que permite que elas leiam banco sem virar client no futuro.
-
-## Como o dado vai chegar (decidido, não implementado)
-
-A regra de `../cecchin-pizzas-backend/infra/README.md` é **o BFF chama, o Nest
-decide**. Traduzindo para este repo:
+## Como o dado de negócio vai chegar
 
 | o que | por onde | por quê |
 |---|---|---|
-| ler catálogo, agenda, evento | Server Component → **PostgREST** do Supabase | leitura simples com RLS; não precisa de intermediário |
-| arquivo (foto, comprovante) | **Storage** do Supabase, direto | nenhum bucket criado ainda |
-| criar reserva, mexer em dinheiro | Route handler do vinext → **NestJS** | precisa de transação, fila e retry; Worker não sustenta |
-| webhook de WhatsApp e pagamento | direto no **NestJS** | chega fora de ordem, repete e falha |
-| sessão e papel | **middleware do vinext** | roda antes do render; é o único lugar que corta a rota de verdade |
+| ler catálogo, agenda, evento | Server Component → **PostgREST** | leitura simples com RLS; intermediário só adiciona salto de rede |
+| arquivo | **Storage**, direto | nenhum bucket criado ainda |
+| criar reserva, mexer em dinheiro | route handler → **NestJS** | transação, fila, retry |
+| webhook | **NestJS** | chega fora de ordem, repete e falha |
 
-O middleware é do BFF, não do Nest: quem precisa barrar a navegação é quem
-renderiza a página. O Nest valida o JWT de novo nas rotas dele, porque
-confiar no chamador é o mesmo que não validar.
+`src/servidor/supabase.ts` já tem `consultar()` (como o usuário, sob RLS) e
+`consultarComoServico()` (ignora RLS). O segundo existe para **um** caso: o
+pedido de login, que acontece antes de haver usuário. Qualquer outro uso precisa
+de justificativa escrita.
 
-## Por que o BFF não basta
+## O primeiro admin
 
-O Worker abre e fecha conexão por requisição, não tem cron e tem teto de CPU.
-Isso já elimina fila, retry, conciliação e as duas rotinas que a planilha roda
-hoje (`atualizacaoCompleta` às 8h, `sincronizarEventos` às 18h). Detalhe em
-`../cecchin-pizzas-backend/infra/README.md`.
+Não há como criar um admin pela interface: promover a admin exige ser admin.
+Numa instalação nova, o primeiro sai por SQL:
 
-## Telas
+```sql
+update usuario set papel = 'admin' where email = 'quem@cecchinpizzas.com.br';
+```
 
-13 rotas. A lista, o papel exigido e o modo tela-cheia estão em `VINEXT.md`.
+A pessoa precisa ter entrado ao menos uma vez, para o perfil existir. O papel
+novo vale na navegação seguinte, sem novo login.
 
-Nenhuma tela persiste nada. `BookingView` calcula orçamento em memória e o
-botão final abre um `alert()`.
+## O que ainda não existe
 
-## Próximo passo, na ordem
+- **nenhuma tela lê dado de negócio do banco** — agenda, evento e catálogo
+  continuam mock
+- **nenhum bucket** de Storage
+- **login pelo Google** — o gatilho de perfil já cobre o caminho; falta
+  habilitar o provedor no GoTrue
+- **rate limit por IP no BFF** — hoje só o do GoTrue, que conta por endpoint
+  dele, não pelos nossos
+- **varredura de pedidos vencidos** — `app.limpar_pedidos_de_login()` existe e
+  ninguém chama; hoje eles só somem quando alguém tropeça neles
 
-1. Middleware de sessão no vinext, trocando `AuthContext` por GoTrue de verdade
-2. Primeira leitura real: `/cliente/eventos` pelo PostgREST, com RLS ligado
-3. `POST` de reserva pelo NestJS
-4. Bucket de comprovante no Storage
-
-Nada disso adianta antes das 36 perguntas de
-`../cecchin-pizzas-backend/modelagem/docs/07-perguntas.md` terem resposta.
+As 36 perguntas de `../cecchin-pizzas-backend/modelagem/docs/07-perguntas.md`
+seguem sem resposta humana, e travam a modelagem — não o acesso.

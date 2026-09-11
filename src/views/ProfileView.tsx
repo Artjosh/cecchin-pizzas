@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { User, Mail, Shield, Settings, LogOut, FileText, Bell } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { NOME_DO_PAPEL, useAuth } from '../contexts/AuthContext';
 
 export function ProfileView() {
-  const { user } = useAuth();
+  const { usuario } = useAuth();
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 p-6">
@@ -19,12 +19,12 @@ export function ProfileView() {
         <div className="md:col-span-1 space-y-6">
           <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/50 shadow-sm flex flex-col items-center text-center">
             <div className="w-24 h-24 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-3xl font-bold mb-4">
-              {user.name.charAt(0)}
+              {usuario?.nome.charAt(0) ?? "?"}
             </div>
-            <h2 className="text-lg font-bold text-on-surface">{user.name}</h2>
-            <p className="text-sm text-on-surface-variant mb-4">{user.email}</p>
+            <h2 className="text-lg font-bold text-on-surface">{usuario?.nome ?? ""}</h2>
+            <p className="text-sm text-on-surface-variant mb-4">{usuario?.email ?? ""}</p>
             <span className="px-3 py-1 bg-surface-container text-on-surface-variant rounded-full text-xs font-medium uppercase tracking-wider">
-              Perfil: {user.role}
+              Perfil: {usuario ? NOME_DO_PAPEL[usuario.papel] : ""}
             </span>
           </div>
 
@@ -60,7 +60,7 @@ export function ProfileView() {
                   <label className="text-sm font-medium text-on-surface">Nome Completo</label>
                   <input
                     type="text"
-                    defaultValue={user.name}
+                    defaultValue={usuario?.nome ?? ""}
                     className="w-full p-2.5 bg-surface-container-low border border-outline-variant/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
@@ -68,7 +68,7 @@ export function ProfileView() {
                   <label className="text-sm font-medium text-on-surface">E-mail</label>
                   <input
                     type="email"
-                    defaultValue={user.email}
+                    defaultValue={usuario?.email ?? ""}
                     className="w-full p-2.5 bg-surface-container-low border border-outline-variant/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>

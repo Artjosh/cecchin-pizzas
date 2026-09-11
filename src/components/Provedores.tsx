@@ -1,24 +1,27 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { AuthProvider } from "../contexts/AuthContext";
-import RoleSwitcher from "./RoleSwitcher";
 
-/*
- * A árvore de providers do cliente.
+import { AuthProvider, type Usuario } from "../contexts/AuthContext";
+
+/**
+ * A fronteira de cliente do layout raiz.
  *
- * No App Router o layout raiz é Server Component e não pode conter contexto
- * do React. Este arquivo é a fronteira: o layout monta <Provedores> e tudo
- * dentro dele passa a enxergar o AuthContext.
+ * O `AuthProvider` usa `createContext`, que só existe no cliente. Sem este
+ * componente no meio, o `app/layout.tsx` inteiro precisaria de `"use client"` —
+ * e um layout raiz client arrasta toda a árvore para o bundle, incluindo as
+ * seis views que existem como Server Component de propósito.
  *
- * O RoleSwitcher fica aqui, e não em cada layout, porque ele é global — é o
- * mesmo lugar que o App.tsx da versão anterior dava a ele.
+ * O usuário chega como prop, vindo do servidor. É a única direção possível:
+ * um Server Component não pode ler contexto, e um client component não pode
+ * consultar o banco.
  */
-export function Provedores({ children }: { children: ReactNode }) {
-  return (
-    <AuthProvider>
-      {children}
-      <RoleSwitcher />
-    </AuthProvider>
-  );
+export function Provedores({
+  usuario,
+  children,
+}: {
+  usuario: Usuario | null;
+  children: ReactNode;
+}) {
+  return <AuthProvider usuario={usuario}>{children}</AuthProvider>;
 }

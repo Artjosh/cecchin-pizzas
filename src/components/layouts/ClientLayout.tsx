@@ -5,10 +5,11 @@ import { usePathname } from "next/navigation";
 import { cn } from "../../lib/utils";
 import { MapPin, MessageCircle, Pizza, User } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { MenuDoUsuario } from "../MenuDoUsuario";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, canAccess } = useAuth();
+  const { podeVer } = useAuth();
 
   /*
    * Telas de mapa ocupam a viewport inteira abaixo do cabeçalho: sem rodapé,
@@ -92,7 +93,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
               >
                 Cliente
               </Link>
-              {canAccess(["staff", "gestao", "admin"]) && (
+              {podeVer(["staff"]) && (
                 <Link
                   href="/operacional/minha-rota"
                   className={cn(
@@ -105,7 +106,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                   Staff/Operacional
                 </Link>
               )}
-              {canAccess(["admin"]) && (
+              {podeVer(["admin"]) && (
                 <Link
                   href="/admin/catalogo"
                   className={cn(
@@ -128,17 +129,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 <MessageCircle className="w-4 h-4 text-tertiary" />
                 <span className="font-label-md text-label-md">Suporte</span>
               </Link>
-              <Link
-                href="/cliente/perfil"
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-              >
-                <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-sm">
-                  <User className="w-4 h-4 text-on-primary" />
-                </div>
-                <div className="hidden sm:block font-label-md text-label-md text-on-surface">
-                  {user.name}
-                </div>
-              </Link>
+              <MenuDoUsuario />
             </div>
           </div>
         </div>

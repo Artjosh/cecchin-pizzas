@@ -1,10 +1,22 @@
 import { OperationalLayout } from "@/src/components/layouts/OperationalLayout";
+import { exigirPapel } from "@/src/servidor/auth/guarda";
 
-/*
- * /admin usa o MESMO shell de /operacional — é o que o App.tsx da versão
- * anterior fazia. A diferença entre as duas áreas é o papel exigido, não o
- * layout: quem controla isso é o AuthProvider.
+/**
+ * /admin usa o MESMO shell de /operacional. O que separa as duas áreas é o
+ * papel exigido, não o layout.
+ *
+ * `gestao` entra porque é aqui que mora a fila de quem pediu para virar staff,
+ * e aprovar isso é trabalho de gestão. Promover alguém a gestao ou admin, não:
+ * essa checagem vive em `app.promover()`, no banco, e nenhuma tela pode
+ * afrouxá-la.
  */
-export default function Layout({ children }: { children: React.ReactNode }) {
+export const dynamic = "force-dynamic";
+
+export default async function Layout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  await exigirPapel(["gestao"], "/admin/catalogo");
   return <OperationalLayout>{children}</OperationalLayout>;
 }
