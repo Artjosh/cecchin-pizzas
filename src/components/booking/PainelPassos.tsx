@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -61,6 +61,17 @@ export function PainelPassos({
   const faltando = pendencias(currentStep);
   const podeAvancar = faltando.length === 0;
   const ultimo = currentStep === PASSOS.length;
+  /* Sem local e data não há deslocamento, e sem deslocamento não há total. */
+  const orcamentoPronto = passoLiberado >= 2;
+
+  /*
+   * Trocar de passo mantinha a rolagem onde estava: o passo novo abria no
+   * meio, com o titulo cortado acima da area visivel.
+   */
+  const corpo = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    corpo.current?.scrollTo({ top: 0 });
+  }, [currentStep]);
 
   useEffect(() => {
     if (recolhido) return;
@@ -77,6 +88,7 @@ export function PainelPassos({
         <button
           type="button"
           onClick={() => aoRecolher(false)}
+          aria-label="Retomar reserva"
           className="pointer-events-auto w-full sm:w-[85vw] max-w-2xl flex items-center gap-space-md bg-surface-container-lowest rounded-2xl shadow-2xl ring-1 ring-on-surface/10 px-space-md py-space-sm text-left hover:bg-surface-container-low transition-colors"
         >
           <div className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-label-md shrink-0">
@@ -87,7 +99,7 @@ export function PainelPassos({
               {passoAtual.titulo}
             </span>
             <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
-              {grandTotal > 0
+              {orcamentoPronto
                 ? formatBRL(grandTotal) + " · " + totalGuests + " convidados"
                 : passoAtual.desc}
             </span>
@@ -102,11 +114,11 @@ export function PainelPassos({
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-end sm:items-center justify-center pointer-events-none">
+    <div className="fixed inset-x-0 bottom-0 top-20 z-30 flex items-end sm:items-center justify-center pointer-events-none">
       <section
         role="dialog"
         aria-label="Reserva do rodízio artesanal"
-        className="pointer-events-auto flex flex-col w-full h-[88dvh] rounded-t-3xl sm:w-[85vw] sm:h-[85dvh] sm:max-w-5xl sm:rounded-3xl bg-surface-container-lowest shadow-2xl ring-1 ring-on-surface/10 overflow-hidden"
+        className="pointer-events-auto flex flex-col w-full h-full rounded-t-3xl sm:w-[85vw] sm:h-[85%] sm:max-w-5xl sm:rounded-3xl bg-surface-container-lowest shadow-2xl ring-1 ring-on-surface/10 overflow-hidden"
       >
         {/* Cabeçalho */}
         <header className="shrink-0 px-space-md sm:px-space-lg pt-space-md pb-space-sm border-b border-outline-variant/30">
@@ -123,6 +135,7 @@ export function PainelPassos({
             <button
               type="button"
               onClick={() => aoRecolher(true)}
+              aria-label="Ver mapa"
               className="shrink-0 flex items-center gap-1 h-9 px-3 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors"
             >
               <MapIcon className="w-4 h-4 text-tertiary" />
@@ -199,7 +212,10 @@ export function PainelPassos({
         </header>
 
         {/* Corpo do passo */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-space-md sm:px-space-lg py-space-md">
+        <div
+          ref={corpo}
+          className="flex-1 overflow-y-auto overscroll-contain px-space-md sm:px-space-lg py-space-md"
+        >
           {children}
         </div>
 
@@ -216,10 +232,12 @@ export function PainelPassos({
                 Total do evento
               </span>
               <span className="font-headline-sm text-headline-sm text-on-surface truncate">
-                {formatBRL(grandTotal)}
+                {orcamentoPronto ? formatBRL(grandTotal) : "—"}
               </span>
               <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                Sinal de 40%: {formatBRL(depositVal)}
+                {orcamentoPronto
+                  ? "Sinal de 40%: " + formatBRL(depositVal)
+                  : "Escolha local e data para calcular"}
               </span>
             </div>
 
