@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { cn } from "../lib/utils";
+import { LocationPickerMap } from "../components/maps/LocationPickerMap";
 import {
   MapPin,
   Pizza,
@@ -203,19 +204,7 @@ export function BookingView() {
                   </div>
 
                   <div className="flex flex-col gap-space-sm mb-space-md">
-                    <label className="font-label-md text-label-md text-on-surface-variant">
-                      Digite o endereço do local do evento:
-                    </label>
-                    <div className="relative">
-                      <Search className="absolute left-3.5 top-3.5 text-on-surface-variant w-5 h-5" />
-                      <input
-                        className="w-full h-12 bg-surface-container-low pl-11 pr-4 rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:bg-surface-container transition-all"
-                        placeholder="Rua, número, bairro e cidade"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                      />
-                    </div>
-                    <div className="flex items-center gap-space-xs flex-wrap pt-space-xs">
+                    <div className="flex items-center gap-space-xs flex-wrap pb-space-xs">
                       <span className="font-label-sm text-label-sm text-on-surface-variant">
                         Sugestões rápidas:
                       </span>
@@ -260,15 +249,16 @@ export function BookingView() {
                     </div>
                   </div>
 
-                  <div className="relative w-full h-64 rounded-xl overflow-hidden shadow-sm bg-surface-container-high mb-space-md">
-                    <div
-                      className="w-full h-full bg-cover bg-center"
-                      style={{
-                        backgroundImage:
-                          "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBMm50HBC8aMDxaN64kkFUbmNtkrTydFuzP4JPCFYxE3Zc24g_euimopJWVCmQsY58xTYuz3PY5n6CgiG5t-IyBXumtsgphoKzxGHgO2KxHOA-VTVGZcewmlZ5AKP8T-Yvr5oHok17XGY7wraakQL0HxWihjEAJOit5ZjEGlNKIlPLg0pN8T3VHnkuH4eQVZ0SX8iFuSHJjDjhjxX9UVN9CxY7UXaRHhc-SccRoQGeKOjov5EOU9ggqw')",
-                      }}
-                    ></div>
-                    <div className="absolute top-3 left-3 bg-surface/95 backdrop-blur-md px-space-md py-space-sm rounded-lg shadow-md flex items-center gap-space-sm">
+                  <LocationPickerMap 
+                    className="h-[400px] mb-space-md" 
+                    onLocationSelect={(loc) => {
+                      setAddress(loc.address);
+                      // Simula um recálculo com base no endereço / coords
+                      setDistanceKm(Math.floor(Math.random() * 30) + 5);
+                      setLogisticsFee(Math.floor(Math.random() * 100) + 50);
+                    }}
+                  >
+                    <div className="absolute top-3 left-3 bg-surface/95 backdrop-blur-md px-space-md py-space-sm rounded-lg shadow-md flex items-center gap-space-sm pointer-events-none">
                       <div className="w-3 h-3 rounded-full bg-tertiary-container animate-pulse"></div>
                       <div className="flex flex-col">
                         <span className="font-label-md text-label-md text-on-surface font-bold">
@@ -279,10 +269,10 @@ export function BookingView() {
                         </span>
                       </div>
                     </div>
-                    <div className="absolute bottom-3 right-3 bg-surface/95 backdrop-blur-md px-space-sm py-1 rounded font-label-sm text-label-sm text-on-surface shadow">
-                      Veículo Utilitário Climatizado • Base POA
+                    <div className="absolute bottom-3 right-3 bg-surface/95 backdrop-blur-md px-space-sm py-1 rounded font-label-sm text-label-sm text-on-surface shadow pointer-events-none">
+                      Veículo Utilitário Climatizado
                     </div>
-                  </div>
+                  </LocationPickerMap>
 
                   <div className="flex flex-col gap-space-sm">
                     <span className="font-label-md text-label-md text-on-surface">

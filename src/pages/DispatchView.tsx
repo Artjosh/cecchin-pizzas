@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { cn } from "../lib/utils";
 import {
   CalendarClock,
@@ -151,10 +152,10 @@ export function DispatchView() {
             </div>
           </div>
           <div className="p-3 bg-surface-container-highest border-t border-outline-variant/20 flex gap-2">
-            <button className="flex-1 bg-primary text-on-primary font-label-md text-label-md py-1.5 rounded-lg flex items-center justify-center gap-1.5 hover:opacity-90">
+            <Link to="/operacional/whatsapp" className="flex-1 bg-primary text-on-primary font-label-md text-label-md py-1.5 rounded-lg flex items-center justify-center gap-1.5 hover:opacity-90">
               <MessageCircle className="w-4 h-4" />
               Monitorar Cliente
-            </button>
+            </Link>
             <button className="w-10 flex items-center justify-center rounded-lg bg-surface-container hover:bg-surface-container-lowest text-on-surface-variant transition-colors border border-outline-variant/50">
               <Car className="w-[18px] h-[18px]" />
             </button>
@@ -224,10 +225,10 @@ export function DispatchView() {
             </div>
           </div>
           <div className="p-3 bg-surface-container-highest border-t border-outline-variant/20 flex gap-2">
-            <button className="flex-1 bg-surface-container hover:bg-surface-container-lowest border border-outline-variant/50 text-on-surface font-label-md text-label-md py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+            <Link to="/operacional/checklist" className="flex-1 bg-surface-container hover:bg-surface-container-lowest border border-outline-variant/50 text-on-surface font-label-md text-label-md py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
               <ChefHat className="w-4 h-4" />
               Painel do Evento
-            </button>
+            </Link>
           </div>
         </div>
         
@@ -282,9 +283,9 @@ export function DispatchView() {
             <button className="flex-1 bg-surface-container hover:bg-surface-container-lowest border border-outline-variant/50 text-on-surface font-label-md text-label-md py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
               Detalhes
             </button>
-            <button className="w-10 flex items-center justify-center rounded-lg bg-surface-container hover:bg-surface-container-lowest text-on-surface-variant transition-colors border border-outline-variant/50">
+            <Link to="/operacional/whatsapp" className="w-10 flex items-center justify-center rounded-lg bg-surface-container hover:bg-surface-container-lowest text-on-surface-variant transition-colors border border-outline-variant/50">
                <MessageCircle className="w-[18px] h-[18px]" />
-            </button>
+            </Link>
           </div>
         </div>
       </div>
@@ -292,7 +293,7 @@ export function DispatchView() {
       <div className="bg-surface-container-lowest rounded-xl shadow-md p-space-md border border-outline-variant/20">
          <div className="flex items-center justify-between mb-space-md">
             <h2 className="font-headline-sm text-headline-sm text-on-surface font-bold">Gestão da Frota de Vans & Fornos</h2>
-            <button className="text-primary font-label-md text-label-md font-bold">Ver Mapa Completo</button>
+            <Link to="/operacional/mapa" className="text-primary font-label-md text-label-md font-bold hover:opacity-80">Ver Mapa Completo</Link>
          </div>
          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-sm">
             {[

@@ -1,9 +1,11 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { MapPin, MessageCircle, User } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 
 export function ClientLayout() {
   const location = useLocation();
+  const { user, canAccess } = useAuth();
 
   const navLinks = [
     { name: "Contratar Evento", path: "/cliente/contratar" },
@@ -15,6 +17,7 @@ export function ClientLayout() {
     <div className="min-h-screen bg-surface font-body-md text-body-md text-on-surface antialiased">
       <header className="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
         <div className="h-20 max-w-7xl mx-auto px-margin md:px-margin-tablet lg:px-margin-desktop flex items-center justify-between gap-space-md">
+          {/* Logo */}
           <div className="flex items-center gap-space-md min-w-max">
             <img
               alt="Cecchin Pizzas Logo"
@@ -32,83 +35,82 @@ export function ClientLayout() {
             </div>
           </div>
 
+          {/* Centered Nav Links */}
+          <nav className="hidden lg:flex items-center justify-center flex-1 gap-space-lg">
+            {navLinks.map((link) => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={cn(
+                  "transition-colors",
+                  location.pathname === link.path
+                    ? "text-primary font-bold border-b-2 border-primary py-1"
+                    : "font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface py-1 border-b-2 border-transparent"
+                )}
+              >
+                {link.name}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Right Actions */}
           <div className="flex items-center gap-space-sm">
-            <div className="hidden md:flex items-center gap-1 bg-surface-container-low p-space-xs rounded-full">
+            <div className="hidden xl:flex items-center gap-1 bg-surface-container-low p-space-xs rounded-full mr-2">
               <Link
                 to="/cliente/contratar"
                 className={cn(
                   "px-3 py-1.5 rounded-full font-label-md text-label-md transition-colors",
-                  location.pathname.startsWith("/cliente")
+                  location.pathname.startsWith("/cliente") && !location.pathname.includes("/admin")
                     ? "bg-primary text-on-primary"
                     : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                 )}
               >
                 Cliente
               </Link>
-              <Link
-                to="/operacional/minha-rota"
-                className={cn(
-                  "px-3 py-1.5 rounded-full font-label-md text-label-md transition-colors",
-                  location.pathname === "/operacional/minha-rota"
-                    ? "bg-primary text-on-primary"
-                    : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                )}
-              >
-                Staff
-              </Link>
-              <Link
-                to="/operacional/despacho"
-                className={cn(
-                  "px-3 py-1.5 rounded-full font-label-md text-label-md transition-colors",
-                  location.pathname === "/operacional/despacho"
-                    ? "bg-primary text-on-primary"
-                    : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                )}
-              >
-                Operacional
-              </Link>
-              <button
-                type="button"
-                className="px-3 py-1.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
-              >
-                Admin
-              </button>
-            </div>
-
-            <nav className="hidden lg:flex items-center gap-space-md">
-              {navLinks.map((link) => (
+              {canAccess(['staff', 'gestao', 'admin']) && (
                 <Link
-                  key={link.path}
-                  to={link.path}
+                  to="/operacional/minha-rota"
                   className={cn(
-                    "transition-colors",
-                    location.pathname === link.path
-                      ? "text-primary font-bold"
-                      : "font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface"
+                    "px-3 py-1.5 rounded-full font-label-md text-label-md transition-colors",
+                    location.pathname.startsWith("/operacional")
+                      ? "bg-primary text-on-primary"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
                   )}
                 >
-                  {link.name}
+                  Staff/Operacional
                 </Link>
-              ))}
-            </nav>
+              )}
+              {canAccess(['admin']) && (
+                <Link
+                  to="/admin/catalogo"
+                  className={cn(
+                    "px-3 py-1.5 rounded-full font-label-md text-label-md transition-colors",
+                    location.pathname.startsWith("/admin")
+                      ? "bg-primary text-on-primary"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  )}
+                >
+                  Admin
+                </Link>
+              )}
+            </div>
 
             <div className="flex items-center gap-space-sm">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container text-on-surface">
-                <span className="w-2 h-2 rounded-full bg-tertiary-container animate-pulse"></span>
-                <span className="font-label-sm text-label-sm text-on-surface">
-                  PWA Online
-                </span>
-              </div>
-              <a
-                href="#"
+              <Link
+                to="/cliente/suporte"
                 className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors"
               >
                 <MessageCircle className="w-4 h-4 text-tertiary" />
                 <span className="font-label-md text-label-md">Suporte</span>
-              </a>
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                <User className="w-4 h-4 text-on-primary" />
-              </div>
+              </Link>
+              <Link to="/cliente/perfil" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-sm">
+                  <User className="w-4 h-4 text-on-primary" />
+                </div>
+                <div className="hidden sm:block text-sm font-medium text-stone-700">
+                  {user.name}
+                </div>
+              </Link>
             </div>
           </div>
         </div>
