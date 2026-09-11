@@ -125,7 +125,13 @@ describe("o e-mail", () => {
    * para a qual o BFF suprime o envio de propósito.
    */
   it("chega com o nosso template, com link E código", async () => {
+    /*
+     * Registrado em `criados` e NÃO apagado no fim do teste: os `return`
+     * antecipados abaixo pulariam a limpeza, e cada execução com SMTP externo
+     * deixava uma conta órfã no banco. Aconteceu: seis delas.
+     */
     const email = `prova.template.${Date.now().toString(36)}@mailpit.local`;
+    criados.push(email);
     await limparEmails();
 
     const ap = new Aparelho();
@@ -151,8 +157,6 @@ describe("o e-mail", () => {
     // ao pedido pollado no computador.
     expect(decodeURIComponent(entregue.link)).toContain(r.corpo.selector);
     expect(decodeURIComponent(entregue.link)).toContain("/entrar/confirmar");
-
-    sql(`delete from auth.users where email = '${email}'`);
   });
 
   it("domínio reservado por RFC não recebe envio, e o pedido continua válido", async () => {
