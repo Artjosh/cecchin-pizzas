@@ -9,7 +9,13 @@
     "start": "vinext start",
     "preview": "vinext build && wrangler dev",
     "deploy": "vinext build && npx @vinext/cloudflare deploy",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck && npm run test:unidade",
+    "test:unidade": "vitest run --project unidade",
+    "test:integracao": "vitest run --project integracao",
+    "test:tudo": "npm run typecheck && vitest run",
+    "test:observar": "vitest --project unidade"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -36,6 +42,7 @@
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
     "vite": "^8.3.0",
+    "vitest": "^3.2.7",
     "wrangler": "^4.0.0"
   }
 }

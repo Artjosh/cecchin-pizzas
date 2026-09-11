@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { EntrarView } from "@/src/views/EntrarView";
 import { sessaoAtual } from "@/src/servidor/auth/sessao-atual";
 import { rotaInicial } from "@/src/servidor/auth/guarda";
+import { destinoSeguro } from "@/src/servidor/auth/destino";
 
 export const metadata = { title: "Entrar · Cecchin Pizzas" };
 export const dynamic = "force-dynamic";
@@ -22,14 +23,4 @@ export default async function Page({
   if (sessao) redirect(destinoSeguro(para) ?? rotaInicial(sessao.usuario.papel));
 
   return <EntrarView para={destinoSeguro(para) ?? ""} />;
-}
-
-/**
- * Só caminho interno. Um `para` absoluto permitiria usar esta tela para mandar
- * alguém, recém-autenticado, para outro domínio — o open redirect clássico.
- */
-function destinoSeguro(bruto: string | undefined): string | null {
-  if (!bruto) return null;
-  if (!bruto.startsWith("/") || bruto.startsWith("//")) return null;
-  return bruto;
 }

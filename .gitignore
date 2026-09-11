@@ -14,5 +14,5 @@ coverage/
 next-env.d.ts
 worker-configuration.d.ts
 
-# Worktrees efemeras criadas por sessoes em background
-.claude/worktrees/
+# Config e worktrees efemeras de sessao de agente
+.claude/

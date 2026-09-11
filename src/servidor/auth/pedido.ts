@@ -54,7 +54,7 @@ function falhar<T>(falha: FalhaLogin, mensagem: string): Resultado<T> {
  * Validar e-mail por regex é um beco sem saída conhecido. A verificação real é
  * a entrega: só entra quem abre a mensagem.
  */
-function emailPlausivel(email: string): boolean {
+export function emailPlausivel(email: string): boolean {
   const arroba = email.indexOf("@");
   return (
     arroba > 0 &&
@@ -66,7 +66,7 @@ function emailPlausivel(email: string): boolean {
 }
 
 /** Token url-safe por RNG criptográfico. Nunca `Math.random`. */
-function gerarSelector(): string {
+export function gerarSelector(): string {
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
   return btoa(String.fromCharCode(...bytes))
@@ -151,6 +151,34 @@ export async function iniciarLogin(
     `pedido_login?email=eq.${encodeURIComponent(email)}`,
     { method: "DELETE" },
   );
+
+  /*
+   * E leva junto os vencidos de todo mundo.
+   *
+   * `pedido_login` guarda a sessão que atravessa do celular para o computador —
+   * credencial em repouso. O que limita o estrago é ela viver minutos, e isso
+   * só é verdade se alguém apagar. Sem cron, o momento natural é este: uma
+   * varredura por login é barata (um DELETE por índice) e mantém a tabela do
+   * tamanho do movimento do dia.
+   *
+   * Quando o NestJS entrar, isto vira tarefa agendada e sai daqui.
+   */
+  const varredura = await consultarComoServico<number>(
+    "rpc/limpar_pedidos_de_login",
+    { method: "POST", body: "{}" },
+  );
+
+  /*
+   * Falha aqui não impede ninguém de entrar — mas precisa APARECER. Como
+   * `consultarComoServico` não lança, uma permissão faltando deixaria a
+   * varredura sem rodar em silêncio, e a tabela de credenciais crescendo sem
+   * que nada quebrasse. Foi o que aconteceu: 403 por falta de USAGE no schema.
+   */
+  if (!varredura.ok) {
+    console.error(
+      `[auth] a varredura de pedidos vencidos falhou: HTTP ${varredura.status} ${varredura.erro}`,
+    );
+  }
 
   const selector = gerarSelector();
 

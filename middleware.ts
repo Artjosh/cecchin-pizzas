@@ -34,6 +34,24 @@ export function middleware(request: NextRequest) {
   if (temSessao) return NextResponse.next();
 
   /*
+   * Rota de API recebe 401, não redirecionamento.
+   *
+   * Um 307 para `/entrar` é seguido pelo `fetch` do navegador, que então
+   * entrega o HTML da tela de login como se fosse a resposta da API — status
+   * 200, corpo que não é JSON. O código do cliente trata isso como sucesso e
+   * quebra longe daqui, num `corpo.pessoas` indefinido.
+   *
+   * Encontrado por `testes/integracao/papeis.test.ts`, que esperava 401 e
+   * recebeu 200 com a página de login dentro.
+   */
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      { mensagem: "Sem sessão.", codigo: "sem_sessao" },
+      { status: 401 },
+    );
+  }
+
+  /*
    * O destino vai junto para a pessoa voltar onde queria estar depois de
    * entrar. Só o caminho e a query — nunca a URL absoluta vinda do pedido, que
    * permitiria mandar o retorno para outro domínio.

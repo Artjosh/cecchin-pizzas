@@ -47,7 +47,8 @@ Aconteceu com a sessão — que resolveu para outra pessoa — e com a tela de
 pedido de staff. Nenhum dos dois apareceu em `tsc`, build ou status HTTP.
 
 **Filtre pelo dono, sempre.** Para "a minha linha", use `meu_perfil()`, que o
-Postgres resolve de `auth.uid()`.
+Postgres resolve de `auth.uid()`. Há teste de regressão para os dois casos em
+`testes/integracao` e em `supabase/tests/03_rls_leitura.sql`.
 
 ## Segredos no servidor
 
@@ -112,6 +113,19 @@ primeiro e não está declarado.
 Vai para `useEffect`, com um marcador (`--:--`) no primeiro render.
 
 ## Verificar antes de dizer que está pronto
+
+```bash
+npm test           # typecheck + 106 testes de unidade. Rápido.
+npm run test:tudo  # o de cima + 75 de integração. Exige Supabase e `npm run dev`.
+```
+
+Mexeu em acesso, papel, policy ou rota de API: **rode `test:tudo`**, e rode
+também `npm test` no repositório do backend (136 testes de pgTAP). Detalhe em
+`TESTES.md`.
+
+Teste novo de acesso vai em `testes/integracao`, falando HTTP de verdade — sem
+mock de `fetch`. O que um mock esconderia é exatamente o que se quer medir:
+que o cookie sai `HttpOnly`, que o corpo não traz token, que a RLS recusa.
 
 `tsc --noEmit` e build passando **não dizem nada sobre interface**. Painel
 escondido atrás do cabeçalho, botão coberto e preço fantasma passam pelos dois.
