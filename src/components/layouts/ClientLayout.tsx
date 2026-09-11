@@ -10,6 +10,15 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, canAccess } = useAuth();
 
+  /*
+   * Telas de mapa ocupam a viewport inteira abaixo do cabeçalho: sem rodapé,
+   * sem respiro embaixo e sem rolagem da página — quem rola é o painel que
+   * flutua sobre o mapa. O cabeçalho é `fixed` e tem 80px (h-20) em todos os
+   * breakpoints, daí o `pt-20` com `h-[100dvh]`: `box-sizing: border-box`
+   * mantém o padding dentro da altura, então a área útil fica exata.
+   */
+  const telaCheia = pathname === "/cliente/contratar";
+
   const navLinks = [
     { name: "Contratar Evento", path: "/cliente/contratar" },
     { name: "Rastreio Ao Vivo", path: "/cliente/rastreio" },
@@ -17,7 +26,12 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="min-h-screen bg-surface font-body-md text-body-md text-on-surface antialiased">
+    <div
+      className={cn(
+        "bg-surface font-body-md text-body-md text-on-surface antialiased",
+        telaCheia ? "h-[100dvh] overflow-hidden" : "min-h-screen",
+      )}
+    >
       <header className="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
         <div className="h-20 max-w-7xl mx-auto px-margin md:px-margin-tablet lg:px-margin-desktop flex items-center justify-between gap-space-md">
           {/* Logo */}
@@ -48,7 +62,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                   "transition-colors",
                   pathname === link.path
                     ? "text-primary font-bold border-b-2 border-primary py-1"
-                    : "font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface py-1 border-b-2 border-transparent"
+                    : "font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface py-1 border-b-2 border-transparent",
                 )}
               >
                 {link.name}
@@ -63,34 +77,35 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 href="/cliente/contratar"
                 className={cn(
                   "px-3 py-1.5 rounded-full font-label-md text-label-md transition-colors",
-                  pathname.startsWith("/cliente/") && !pathname.includes("/admin")
+                  pathname.startsWith("/cliente/") &&
+                    !pathname.includes("/admin")
                     ? "bg-primary text-on-primary"
-                    : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                    : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface",
                 )}
               >
                 Cliente
               </Link>
-              {canAccess(['staff', 'gestao', 'admin']) && (
+              {canAccess(["staff", "gestao", "admin"]) && (
                 <Link
                   href="/operacional/minha-rota"
                   className={cn(
                     "px-3 py-1.5 rounded-full font-label-md text-label-md transition-colors",
                     pathname.startsWith("/operacional")
                       ? "bg-primary text-on-primary"
-                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface",
                   )}
                 >
                   Staff/Operacional
                 </Link>
               )}
-              {canAccess(['admin']) && (
+              {canAccess(["admin"]) && (
                 <Link
                   href="/admin/catalogo"
                   className={cn(
                     "px-3 py-1.5 rounded-full font-label-md text-label-md transition-colors",
                     pathname.startsWith("/admin")
                       ? "bg-primary text-on-primary"
-                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface",
                   )}
                 >
                   Admin
@@ -106,11 +121,14 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 <MessageCircle className="w-4 h-4 text-tertiary" />
                 <span className="font-label-md text-label-md">Suporte</span>
               </Link>
-              <Link href="/cliente/perfil" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <Link
+                href="/cliente/perfil"
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              >
                 <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-sm">
                   <User className="w-4 h-4 text-on-primary" />
                 </div>
-                <div className="hidden sm:block text-sm font-medium text-stone-700">
+                <div className="hidden sm:block font-label-md text-label-md text-on-surface">
                   {user.name}
                 </div>
               </Link>
@@ -119,26 +137,35 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="w-full pt-20 pb-20 md:pb-0 bg-surface min-h-screen">
+      <main
+        className={cn(
+          "w-full pt-20 bg-surface",
+          telaCheia
+            ? "h-[100dvh] overflow-hidden"
+            : "pb-20 md:pb-0 min-h-screen",
+        )}
+      >
         {children}
       </main>
 
-      <footer className="w-full bg-surface-container-low shadow-[0_-1px_6px_rgba(0,0,0,0.03)]">
-        <div className="max-w-7xl mx-auto px-margin md:px-margin-tablet lg:px-margin-desktop py-space-xl flex flex-col md:flex-row items-center justify-between gap-space-md">
-          <div className="flex items-center gap-space-sm">
-            <span className="font-headline-sm text-headline-sm text-primary">
-              Cecchin Pizzas
-            </span>
-            <span className="font-body-sm text-body-sm text-on-surface-variant">
-              • Rodízio Artesanal Forno a Lenha em Casa
-            </span>
+      {!telaCheia && (
+        <footer className="w-full bg-surface-container-low shadow-[0_-1px_6px_rgba(0,0,0,0.03)]">
+          <div className="max-w-7xl mx-auto px-margin md:px-margin-tablet lg:px-margin-desktop py-space-xl flex flex-col md:flex-row items-center justify-between gap-space-md">
+            <div className="flex items-center gap-space-sm">
+              <span className="font-headline-sm text-headline-sm text-primary">
+                Cecchin Pizzas
+              </span>
+              <span className="font-body-sm text-body-sm text-on-surface-variant">
+                • Rodízio Artesanal Forno a Lenha em Casa
+              </span>
+            </div>
+            <p className="font-body-sm text-body-sm text-on-surface-variant text-center md:text-right">
+              Atendimento exclusivo em Porto Alegre, Canoas, Novo Hamburgo, São
+              Leopoldo e Região.
+            </p>
           </div>
-          <p className="font-body-sm text-body-sm text-on-surface-variant text-center md:text-right">
-            Atendimento exclusivo em Porto Alegre, Canoas, Novo Hamburgo, São
-            Leopoldo e Região.
-          </p>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }

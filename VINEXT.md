@@ -55,6 +55,20 @@ Os dois layouts são client por causa do `usePathname()` (link ativo).
 `/admin` usa o mesmo shell de `/operacional` — o que separa as duas áreas é o
 papel exigido, não o layout.
 
+## Tela cheia
+
+`/cliente/contratar` é a única rota em modo full-bleed: o mapa ocupa a
+viewport inteira abaixo do cabeçalho e o assistente de reserva flutua sobre
+ele. `ClientLayout` liga esse modo por rota — sem rodapé, sem respiro
+embaixo, sem rolagem de página. Quem rola é o painel.
+
+O cabeçalho é `fixed` com 80px (`h-20`) em todos os breakpoints. Daí
+`pt-20` junto de `h-[100dvh]`: com `box-sizing: border-box` o padding fica
+dentro da altura, então a área do mapa é exata e nada transborda.
+
+`dvh` em vez de `vh` por causa da barra de endereço do navegador móvel, que
+some ao rolar — `100vh` deixaria o rodapé do painel embaixo dela.
+
 ## Controle de acesso
 
 `OperationalLayout` chama `redirect()` quando o papel não permite. Em client
@@ -130,9 +144,9 @@ lidos via `import { env } from "cloudflare:workers"` — sem `getPlatformProxy()
 | | |
 |---|---|
 | `tsc --noEmit` | passa |
-| `vinext build` | passa — 6 rotas |
-| `vinext start` + curl nas 6 rotas | **200 em todas**, conteúdo renderizado no servidor |
-| `vinext dev` nas 6 rotas | **200 em todas** |
+| `vinext build` | passa — 13 rotas |
+| `vinext start` + curl nas 13 rotas | 200 nas de cliente; **307** nas de operação e admin, pelo guard de papel |
+| `vinext dev` | passa |
 | `wrangler dev` (workerd real) | **não testado** |
 | deploy em Workers | **não feito** |
 
