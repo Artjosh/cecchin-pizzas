@@ -1,12 +1,13 @@
 # Testes
 
-317 asserções, em quatro camadas. Nenhuma usa navegador.
+332 asserções, em quatro camadas. Nenhuma usa navegador, e nenhuma manda
+e-mail para alguém de verdade.
 
 | camada | onde | quantas | precisa de quê |
 |---|---|--:|---|
 | typecheck | `tsc --noEmit` | — | nada |
-| unidade | `cecchin-pizzas/testes/unidade` | 106 | nada |
-| integração HTTP | `cecchin-pizzas/testes/integracao` | 75 | Supabase + `npm run dev` |
+| unidade | `cecchin-pizzas/testes/unidade` | 120 | nada |
+| integração HTTP | `cecchin-pizzas/testes/integracao` | 76 | Supabase + `npm run dev` |
 | RLS em pgTAP | `cecchin-pizzas-backend/supabase/tests` | 136 | Supabase |
 
 ## Rodar
@@ -53,6 +54,35 @@ selector, mapeamento de falha para status HTTP, cálculo de orçamento.
 São afirmações sobre coisas cuja quebra **não aparece em teste de
 comportamento**: `httpOnly: false` não quebra nenhuma tela, e um open redirect
 funciona perfeitamente — para o site de quem montou o link.
+
+### E-mail nos testes: nenhum sai
+
+A suíte **não depende de caixa de entrada nenhuma**, e isso não é conveniência:
+com a Brevo ligada em desenvolvimento, ler o código do Mailpit deixaria de
+funcionar, e mandar mensagem de teste para endereços reais gastaria cota e
+produziria bounce.
+
+Duas peças resolvem:
+
+**`admin/generate_link`** devolve `email_otp` na própria resposta e **não
+dispara envio**. O código é do GoTrue de verdade, e a verificação que o teste
+exercita depois é exatamente a que um usuário faria.
+
+**TLD reservada pela RFC 2606.** Os endereços de teste ficam em `.test`, e o
+BFF suprime o envio para eles — antes de chegar ao provedor. Hard bounce corrói
+a entregabilidade de TODO o resto, inclusive do e-mail de acesso de um cliente
+real.
+
+Só um teste ainda olha o Mailpit: o que confere o template da mensagem. Ele se
+desliga sozinho quando o SMTP externo está ligado, porque aí não há caixa local
+para ler.
+
+Para provar entrega de verdade, fora da suíte:
+
+```bash
+cd cecchin-pizzas-backend
+npm run email:prova -- voce@dominio.com
+```
 
 ### integração HTTP
 

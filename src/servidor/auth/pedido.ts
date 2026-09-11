@@ -6,6 +6,7 @@ import {
   verificarCodigo,
 } from "../supabase";
 import { ehSessaoGoTrue, type SessaoGoTrue } from "../sessao";
+import { podeReceber } from "./enderecos";
 
 /**
  * Login sem senha, com confirmação em outro aparelho.
@@ -189,9 +190,23 @@ export async function iniciarLogin(
   const base = config.auth.urlPublica.replace(/\/$/, "");
   const retorno = `${base}/entrar/confirmar?selector=${encodeURIComponent(selector)}`;
 
-  const envio = await pedirAcesso(email, retorno);
+  /*
+   * Domínio reservado por RFC nunca recebe: a mensagem viraria hard bounce, e
+   * bounce corrói a entregabilidade de todo o resto — inclusive do e-mail de
+   * acesso de um cliente real. A supressão acontece ANTES de delegar ao GoTrue,
+   * porque quem envia é ele.
+   */
+  const enviavel = podeReceber(email);
 
-  if (!envio.ok) {
+  const envio = enviavel
+    ? await pedirAcesso(email, retorno)
+    : { ok: false, status: 0, dados: null, erro: "dominio reservado" };
+
+  if (!enviavel) {
+    console.info(
+      `[auth] envio suprimido para ${email}: domínio reservado por RFC 2606.`,
+    );
+  } else if (!envio.ok) {
     console.error(
       `[auth] o GoTrue recusou o pedido de ${email}: HTTP ${envio.status} ${envio.erro}`,
     );
@@ -228,9 +243,17 @@ export async function iniciarLogin(
       selector,
       email,
       email_enviado: envio.ok,
+      /*
+       * Três desfechos, três frases. O do meio existe porque "tente de novo em
+       * instantes" é mentira para um domínio que não existe: tentar de novo
+       * nunca vai funcionar, e a pessoa ficaria repetindo em vez de corrigir o
+       * endereço.
+       */
       mensagem: envio.ok
         ? "Enviamos um link e um código de acesso para o seu e-mail."
-        : "Não foi possível enviar o e-mail agora. Tente novamente em instantes.",
+        : enviavel
+          ? "Não foi possível enviar o e-mail agora. Tente novamente em instantes."
+          : "Este endereço não recebe e-mail. Confira e tente outro.",
     },
   };
 }

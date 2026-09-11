@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 
-import { Aparelho, apagarContas, emailDeTeste, esperarEmail, limparEmails, sql } from "./ajuda";
+import { Aparelho, apagarContas, codigoDeAcesso, emailDeTeste, sql } from "./ajuda";
 
 /**
  * A RLS vista de fora, sem o BFF no caminho.
@@ -33,11 +33,9 @@ afterAll(() => apagarContas(criados));
  * própria conta consegue fazer de qualquer jeito.
  */
 async function tokenDe(email: string, papel = "cliente"): Promise<string> {
-  await limparEmails();
-
   const ap = new Aparelho();
   const inicio = await ap.pedir("/api/auth/login?passo=iniciar", { corpo: { email } });
-  const { codigo } = await esperarEmail(email);
+  const { codigo } = await codigoDeAcesso(email);
 
   const r = await fetch(`${SUPABASE}/auth/v1/verify`, {
     method: "POST",

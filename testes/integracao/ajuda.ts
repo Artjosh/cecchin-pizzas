@@ -109,7 +109,62 @@ export async function limparEmails(): Promise<void> {
   await fetch(`${MAILPIT}/api/v1/messages`, { method: "DELETE" });
 }
 
-/** Espera o e-mail de acesso chegar e devolve o código e o link. */
+const SUPABASE = process.env.SUPABASE_URL ?? "http://127.0.0.1:54321";
+const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+
+/**
+ * O código de seis dígitos, sem passar por caixa de entrada nenhuma.
+ *
+ * **Por que não ler do Mailpit.** O Mailpit só recebe quando o SMTP local está
+ * ligado; com a Brevo configurada, o e-mail sai para o mundo e a suíte ficaria
+ * sem como entrar. Pior: os endereços de teste usam TLD reservada por RFC, que
+ * o BFF nem tenta enviar — de propósito, para não gerar hard bounce.
+ *
+ * `admin/generate_link` resolve os dois: devolve `email_otp` na resposta e
+ * **não dispara envio**. O código é do GoTrue de verdade, e a verificação que
+ * o teste exercita depois é a mesma que um usuário real faria.
+ *
+ * Exige `service_role`, o que é adequado: é ferramenta de teste, roda fora do
+ * navegador, e a chave nunca sai do processo do Vitest.
+ */
+export async function codigoDeAcesso(
+  email: string,
+  selector?: string,
+): Promise<{ codigo: string; link: string }> {
+  /*
+   * `redirect_to` vai no TOPO do corpo, não dentro de `options` — ali o GoTrue
+   * ignora em silêncio e cai no `site_url`, e o link volta sem o selector.
+   * É o que o teste de cross-device precisa: sem selector no link, o clique no
+   * celular não tem como liberar a aba do computador.
+   */
+  const retorno = selector
+    ? `${BFF}/entrar/confirmar?selector=${encodeURIComponent(selector)}`
+    : `${BFF}/entrar/confirmar`;
+
+  const r = await fetch(`${SUPABASE}/auth/v1/admin/generate_link`, {
+    method: "POST",
+    headers: {
+      apikey: SERVICE,
+      authorization: `Bearer ${SERVICE}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ type: "magiclink", email, redirect_to: retorno }),
+  });
+
+  const corpo = await r.json();
+  if (!r.ok || !corpo.email_otp) {
+    throw new Error(`generate_link falhou para ${email}: ${JSON.stringify(corpo)}`);
+  }
+
+  return { codigo: corpo.email_otp, link: corpo.action_link };
+}
+
+/**
+ * Espera o e-mail chegar no Mailpit.
+ *
+ * Só serve com o SMTP local ligado. Quem precisa apenas do código deve usar
+ * `codigoDeAcesso()`, que não depende de entrega.
+ */
 export async function esperarEmail(
   paraEmail: string,
 ): Promise<{ codigo: string; link: string; assunto: string }> {
@@ -140,8 +195,6 @@ export async function entrar(
   email: string,
   aparelho = new Aparelho(),
 ): Promise<Aparelho> {
-  await limparEmails();
-
   const inicio = await aparelho.pedir("/api/auth/login?passo=iniciar", {
     corpo: { email },
   });
@@ -149,7 +202,7 @@ export async function entrar(
     throw new Error(`não deu para pedir acesso de ${email}: ${inicio.texto}`);
   }
 
-  const { codigo } = await esperarEmail(email);
+  const { codigo } = await codigoDeAcesso(email);
 
   const fim = await aparelho.pedir("/api/auth/login?passo=codigo", {
     corpo: { selector: inicio.corpo.selector, codigo },
@@ -161,10 +214,16 @@ export async function entrar(
   return aparelho;
 }
 
-/** Um e-mail único por execução, para os testes não se atrapalharem. */
+/**
+ * Um e-mail único por execução, em TLD reservada pela RFC 2606.
+ *
+ * `.test` nunca existe e nunca recebe. O BFF suprime o envio para ele, então
+ * nenhum teste gasta cota da Brevo, manda mensagem para gente de verdade, ou
+ * gera hard bounce — que corroeria a entregabilidade dos e-mails reais.
+ */
 export function emailDeTeste(prefixo: string): string {
   const marca = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  return `${prefixo}.${marca}@teste-cecchin.exemplo`;
+  return `${prefixo}.${marca}@cecchin.test`;
 }
 
 /**

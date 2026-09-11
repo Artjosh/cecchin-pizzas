@@ -3,10 +3,9 @@ import { afterAll, describe, expect, it } from "vitest";
 import {
   Aparelho,
   apagarContas,
+  codigoDeAcesso,
   emailDeTeste,
   entrar,
-  esperarEmail,
-  limparEmails,
   sql,
 } from "./ajuda";
 
@@ -50,7 +49,6 @@ async function abrirLink(link: string): Promise<{
 describe("cross-device", () => {
   it("o computador entra sem nunca tocar no link", async () => {
     const email = conta("cross");
-    await limparEmails();
 
     const computador = new Aparelho();
     const inicio = await computador.pedir("/api/auth/login?passo=iniciar", {
@@ -63,7 +61,7 @@ describe("cross-device", () => {
     });
     expect(antes.corpo.status).toBe("pendente");
 
-    const { link } = await esperarEmail(email);
+    const { link } = await codigoDeAcesso(email, selector);
     const { destino, sessao } = await abrirLink(link);
 
     expect(destino).toContain("/entrar/confirmar");
@@ -99,13 +97,12 @@ describe("cross-device", () => {
 
   it("o pedido é de uso único: o polling seguinte não entra de novo", async () => {
     const email = conta("unico");
-    await limparEmails();
 
     const pc = new Aparelho();
     const inicio = await pc.pedir("/api/auth/login?passo=iniciar", { corpo: { email } });
     const selector = inicio.corpo.selector;
 
-    const { link } = await esperarEmail(email);
+    const { link } = await codigoDeAcesso(email, selector);
     const { sessao } = await abrirLink(link);
     await new Aparelho().pedir("/api/auth/aprovar", { corpo: { selector, sessao } });
 
@@ -148,12 +145,11 @@ describe("o selector sozinho não aprova nada", () => {
     const atacante = conta("atacante");
 
     // O atacante tem uma sessão legítima, da conta DELE.
-    await limparEmails();
     const dele = new Aparelho();
     const inicioDele = await dele.pedir("/api/auth/login?passo=iniciar", {
       corpo: { email: atacante },
     });
-    const { link } = await esperarEmail(atacante);
+    const { link } = await codigoDeAcesso(atacante, inicioDele.corpo.selector);
     const { sessao: sessaoDoAtacante } = await abrirLink(link);
     await dele.pedir("/api/auth/aprovar", {
       corpo: { selector: inicioDele.corpo.selector, sessao: sessaoDoAtacante },
@@ -194,11 +190,10 @@ describe("o selector sozinho não aprova nada", () => {
 
   it("pedido expirado não é aprovável nem com token bom", async () => {
     const email = conta("expira-aprova");
-    await limparEmails();
 
     const pc = new Aparelho();
     const inicio = await pc.pedir("/api/auth/login?passo=iniciar", { corpo: { email } });
-    const { link } = await esperarEmail(email);
+    const { link } = await codigoDeAcesso(email, inicio.corpo.selector);
     const { sessao } = await abrirLink(link);
 
     sql(`update pedido_login set expira_em = now() - interval '1 second'

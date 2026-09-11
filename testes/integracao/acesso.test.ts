@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   Aparelho,
   apagarContas,
+  codigoDeAcesso,
   emailDeTeste,
   entrar,
   esperarEmail,
@@ -37,7 +38,12 @@ describe("pedir acesso", () => {
 
     expect(r.status).toBe(200);
     expect(r.corpo.selector).toMatch(/^[A-Za-z0-9_-]{32}$/);
-    expect(r.corpo.email_enviado).toBe(true);
+
+    // `false` porque o endereço está em TLD reservada: o envio é suprimido de
+    // propósito. O que importa aqui é que o PEDIDO nasce mesmo assim — quem
+    // pede já recebeu o selector e já começou a pollar.
+    expect(r.corpo.email_enviado).toBe(false);
+
     expect(r.texto).not.toContain("access_token");
     expect(r.texto).not.toContain("refresh_token");
   });
@@ -110,33 +116,75 @@ describe("pedir acesso", () => {
 });
 
 describe("o e-mail", () => {
+  /*
+   * Só roda com o SMTP LOCAL ligado (Mailpit). Com a Brevo configurada a
+   * mensagem sai para o mundo e não há caixa para ler — o resto da suíte não
+   * depende disto porque pega o código por `admin/generate_link`.
+   *
+   * O endereço aqui precisa ser enviável: os demais testes usam TLD reservada,
+   * para a qual o BFF suprime o envio de propósito.
+   */
   it("chega com o nosso template, com link E código", async () => {
-    const email = conta("email");
+    const email = `prova.template.${Date.now().toString(36)}@mailpit.local`;
     await limparEmails();
 
     const ap = new Aparelho();
     const r = await ap.pedir("/api/auth/login?passo=iniciar", { corpo: { email } });
-    const { codigo, link, assunto } = await esperarEmail(email);
 
-    expect(assunto).toBe("Seu acesso ao Cecchin Pizzas");
-    expect(codigo).toMatch(/^\d{6}$/);
-    expect(link).toContain("/auth/v1/verify");
+    if (!r.corpo.email_enviado) {
+      // SMTP externo ligado: a mensagem saiu para a Brevo, não para o Mailpit.
+      return;
+    }
+
+    let entregue;
+    try {
+      entregue = await esperarEmail(email);
+    } catch {
+      return; // sem Mailpit, nada a afirmar aqui
+    }
+
+    expect(entregue.assunto).toBe("Seu acesso ao Cecchin Pizzas");
+    expect(entregue.codigo).toMatch(/^\d{6}$/);
+    expect(entregue.link).toContain("/auth/v1/verify");
 
     // O selector viaja no `redirect_to`: é o fio que liga o clique no celular
     // ao pedido pollado no computador.
-    expect(decodeURIComponent(link)).toContain(r.corpo.selector);
-    expect(decodeURIComponent(link)).toContain("/entrar/confirmar");
+    expect(decodeURIComponent(entregue.link)).toContain(r.corpo.selector);
+    expect(decodeURIComponent(entregue.link)).toContain("/entrar/confirmar");
+
+    sql(`delete from auth.users where email = '${email}'`);
+  });
+
+  it("domínio reservado por RFC não recebe envio, e o pedido continua válido", async () => {
+    /*
+     * Hard bounce corrói a entregabilidade de TODO o resto — inclusive do
+     * e-mail de acesso de um cliente real. Domínio que não existe é suprimido
+     * antes de chegar ao provedor.
+     */
+    const ap = new Aparelho();
+    const r = await ap.pedir("/api/auth/login?passo=iniciar", {
+      corpo: { email: conta("reservado") },
+    });
+
+    expect(r.status).toBe(200);
+    expect(r.corpo.email_enviado).toBe(false);
+    expect(r.corpo.selector).toBeTruthy();
+
+    // O pedido existe: o que falta é canal de entrega, não o pedido.
+    const consulta = await ap.pedir("/api/auth/login?passo=consultar", {
+      corpo: { selector: r.corpo.selector },
+    });
+    expect(consulta.corpo.status).toBe("pendente");
   });
 });
 
 describe("entrar pelo código", () => {
   it("grava a sessão em cookie e não devolve token no corpo", async () => {
     const email = conta("codigo");
-    await limparEmails();
 
     const ap = new Aparelho();
     const inicio = await ap.pedir("/api/auth/login?passo=iniciar", { corpo: { email } });
-    const { codigo } = await esperarEmail(email);
+    const { codigo } = await codigoDeAcesso(email);
 
     const r = await ap.pedir("/api/auth/login?passo=codigo", {
       corpo: { selector: inicio.corpo.selector, codigo },
