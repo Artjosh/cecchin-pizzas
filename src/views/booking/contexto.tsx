@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { QG_CECCHIN } from "../../lib/operacao";
 
 export type TipoLocal = "casa" | "salao" | "cobertura" | "chacara";
 export type TipoForno = "gas" | "electric";
@@ -18,8 +19,8 @@ export interface Coordenada {
   lng: number;
 }
 
-/** Base operacional em Porto Alegre. Origem do cálculo de deslocamento. */
-export const BASE_OPERACIONAL: Coordenada = { lat: -30.0346, lng: -51.2177 };
+/** Base operacional usada pela rota e pelo cálculo de deslocamento. */
+export const BASE_OPERACIONAL: Coordenada = QG_CECCHIN.coordenada;
 
 /**
  * Tabela de deslocamento — PROVISÓRIA.
@@ -114,8 +115,10 @@ interface Reserva {
   setOccasion: (v: string) => void;
   /** Ponto escolhido no mapa ou na busca. Recalcula distância e taxa. */
   escolherLocal: (local: { address: string } & Coordenada) => void;
-  /** Atalho de bairro: distância e taxa já vêm prontas, sem coordenada. */
-  escolherSugestao: (s: { addr: string; km: number; fee: number }) => void;
+  /** Atalho de bairro: também posiciona o pino e calcula a rota até o local. */
+  escolherSugestao: (
+    s: { addr: string; km: number; fee: number } & Coordenada,
+  ) => void;
 
   // passo 2
   adults: number;
@@ -202,9 +205,9 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
   );
 
   const escolherSugestao = useCallback(
-    (s: { addr: string; km: number; fee: number }) => {
+    (s: { addr: string; km: number; fee: number } & Coordenada) => {
       setAddress(s.addr);
-      setCoordenada(null);
+      setCoordenada({ lat: s.lat, lng: s.lng });
       setDistanceKm(s.km);
       setLogisticsFee(s.fee);
     },

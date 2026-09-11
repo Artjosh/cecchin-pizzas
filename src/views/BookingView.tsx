@@ -1,20 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, MapPin } from "lucide-react";
-import { LocationPickerMap } from "../components/maps/LocationPickerMap";
+import { BadgeCheck, Crosshair, LocateFixed } from "lucide-react";
 import { PainelPassos } from "../components/booking/PainelPassos";
-import { ProvedorReserva, useReserva } from "./booking/contexto";
-import { Passo1Local } from "./booking/Passo1Local";
+import { LocationPickerMap } from "../components/maps/LocationPickerMap";
+import { Passo1Local, SUGESTOES } from "./booking/Passo1Local";
 import { Passo2Convidados } from "./booking/Passo2Convidados";
 import { Passo3Forno } from "./booking/Passo3Forno";
 import { Passo4Resumo } from "./booking/Passo4Resumo";
+import { ProvedorReserva, useReserva } from "./booking/contexto";
 
-/**
- * A tela de contratação é o mapa. Todo o resto — cabeçalho, trilha de passos,
- * formulário e orçamento — vive num painel sobre ele, que o cliente recolhe
- * quando quer marcar o ponto exato do evento.
- */
+/** A contratação acompanha o mapa; o cartão aberto pode ser recolhido. */
 export function BookingView() {
   return (
     <ProvedorReserva>
@@ -24,49 +20,88 @@ export function BookingView() {
 }
 
 function Assistente() {
-  const [recolhido, setRecolhido] = useState(false);
+  const [painelAberto, setPainelAberto] = useState(true);
+  const [modoMarcacao, setModoMarcacao] = useState(false);
   const {
     currentStep,
     address,
-    distanceKm,
-    logisticsFee,
+    coordenada,
     escolherLocal,
-    formatBRL,
+    escolherSugestao,
   } = useReserva();
 
   return (
     <div className="relative h-full w-full bg-surface-container">
       <LocationPickerMap
         className="absolute inset-0"
-        controles={recolhido}
+        controles
+        address={address}
+        selectedLocation={coordenada}
+        markingMode={modoMarcacao}
+        onMarkingModeChange={setModoMarcacao}
+        addressAction={
+          <button
+            type="button"
+            aria-pressed={modoMarcacao}
+            aria-label={modoMarcacao ? "Cancelar marcação no mapa" : "Marcar ponto no mapa"}
+            aria-describedby="dica-marcar-ponto"
+            onClick={() => {
+              setModoMarcacao((ativo) => !ativo);
+              setPainelAberto(false);
+            }}
+            className={`group relative flex h-12 shrink-0 items-center gap-1.5 rounded-xl px-3 font-label-md text-label-md shadow-md transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer ${
+              modoMarcacao
+                ? "bg-tertiary text-on-tertiary ring-2 ring-on-surface/20"
+                : "bg-primary text-on-primary"
+            }`}
+          >
+            {modoMarcacao ? (
+              <Crosshair className="h-4 w-4" />
+            ) : (
+              <LocateFixed className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">
+              {modoMarcacao ? "Clique no mapa" : "Marcar ponto"}
+            </span>
+            <span
+              id="dica-marcar-ponto"
+              role="tooltip"
+              className="pointer-events-none absolute right-0 top-full z-30 mt-2 w-56 rounded-lg bg-on-surface px-3 py-2 text-left font-body-sm text-surface opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+            >
+              {modoMarcacao
+                ? "Marcação ativa: clique com o botão esquerdo no mapa para posicionar o pino."
+                : "Ative para marcar o ponto exato com um clique no mapa."}
+            </span>
+          </button>
+        }
+        addressBelow={
+          <div className="flex w-full flex-wrap items-center gap-1.5 rounded-lg bg-surface/95 px-2 py-1.5 shadow-sm backdrop-blur-md">
+            <span className="font-label-sm text-label-sm text-on-surface-variant">
+              Sugestões:
+            </span>
+            {SUGESTOES.map((sugestao) => (
+              <button
+                key={sugestao.name}
+                type="button"
+                onClick={() => escolherSugestao(sugestao)}
+                className="basis-20 flex-1 whitespace-nowrap rounded-md bg-surface-container px-3 py-1 font-label-sm text-label-sm text-on-surface transition-colors hover:bg-surface-container-high"
+              >
+                {sugestao.name}
+              </button>
+            ))}
+          </div>
+        }
         onLocationSelect={(local) => {
           escolherLocal(local);
-          setRecolhido(true);
+          setModoMarcacao(false);
+          setPainelAberto(false);
         }}
-      >
-        {/* Só aparece com o painel recolhido; senão fica atrás dele. */}
-        {recolhido && distanceKm > 0 && (
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[min(92%,34rem)] bg-surface/95 backdrop-blur-md px-space-md py-space-sm rounded-xl shadow-lg flex items-center gap-space-sm">
-            <span className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <MapPin className="w-[18px] h-[18px]" />
-            </span>
-            <span className="flex flex-col min-w-0">
-              <span className="font-label-md text-label-md text-on-surface truncate">
-                {distanceKm} km da Base Operacional · {formatBRL(logisticsFee)}
-              </span>
-              <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                {address}
-              </span>
-            </span>
-          </div>
-        )}
-      </LocationPickerMap>
+      />
 
-      {/* Selo de confiança: sai do caminho quando o painel está aberto. */}
-      {recolhido && (
-        <div className="hidden sm:flex absolute top-3 right-3 items-center gap-space-sm bg-surface/95 backdrop-blur-md px-space-md py-space-sm rounded-xl shadow-lg">
-          <span className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <BadgeCheck className="w-5 h-5" />
+      {!painelAberto && (
+        <div className="absolute right-3 top-32 hidden items-center gap-space-sm rounded-xl bg-surface/95 px-space-md py-space-sm shadow-lg backdrop-blur-md sm:flex">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <BadgeCheck className="h-5 w-5" />
           </span>
           <span className="flex flex-col">
             <span className="font-label-md text-label-md text-on-surface">
@@ -80,17 +115,15 @@ function Assistente() {
       )}
 
       <PainelPassos
-        recolhido={recolhido}
-        aoRecolher={setRecolhido}
+        aberto={painelAberto}
+        aoAbrir={setPainelAberto}
         aoConfirmar={() =>
           alert(
             "Reserva #CP-2025-0842 gerada com sucesso! Assim que o sinal de 40% for validado, nossa central de operações entrará em contato via WhatsApp para confirmar detalhes de acesso.",
           )
         }
       >
-        {currentStep === 1 && (
-          <Passo1Local aoAbrirMapa={() => setRecolhido(true)} />
-        )}
+        {currentStep === 1 && <Passo1Local />}
         {currentStep === 2 && <Passo2Convidados />}
         {currentStep === 3 && <Passo3Forno />}
         {currentStep === 4 && <Passo4Resumo />}

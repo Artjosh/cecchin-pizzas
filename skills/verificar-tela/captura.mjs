@@ -1,7 +1,7 @@
 /**
  * Captura a interface nos três breakpoints e salva PNG por momento do fluxo.
  *
- * Uso:  ALVO=http://localhost:3000 node .claude/skills/verificar-tela/captura.mjs
+ * Uso:  ALVO=http://localhost:3000 node skills/verificar-tela/captura.mjs
  *
  * O trecho marcado FLUXO é o único que muda de tela para tela. Os breakpoints
  * não mudam.
@@ -33,7 +33,7 @@ for (const tela of TELAS) {
   // Falha alto: erro de console vira defeito silencioso na imagem.
   pag.on("pageerror", (e) => console.error(`[${tela.nome}] ${e.message}`));
 
-  await pag.goto(BASE + ROTA, { waitUntil: "networkidle" });
+  await pag.goto(BASE + ROTA, { waitUntil: "domcontentloaded" });
   await pag.waitForTimeout(600);
   await pag.screenshot({ path: `${SAIDA}/${tela.nome}-1-inicial.png` });
 
@@ -42,13 +42,18 @@ for (const tela of TELAS) {
   // Prefira getByLabel e getByRole: se o seletor não acha o elemento, o
   // problema costuma ser falta de nome acessível, não o seletor.
 
-  await pag.getByLabel("Ver mapa").click();
+  await pag.getByLabel("Fechar etapa e ver mapa").click();
   await pag.waitForTimeout(400);
-  await pag.screenshot({ path: `${SAIDA}/${tela.nome}-2-fundo.png` });
+  await pag.getByLabel("Marcar ponto no mapa").click();
+  await pag.screenshot({ path: `${SAIDA}/${tela.nome}-2-marcacao.png` });
+  await pag.mouse.click(tela.width / 2, tela.height / 2);
+  await pag.getByLabel("Marcar ponto no mapa").waitFor();
 
+  await pag.getByRole("button", { name: "Moinhos de Vento, POA" }).click();
+  await pag.waitForTimeout(1200);
+  await pag.screenshot({ path: `${SAIDA}/${tela.nome}-2b-rota.png` });
   await pag.getByLabel("Retomar reserva").click();
   await pag.waitForTimeout(400);
-  await pag.getByRole("button", { name: "Moinhos de Vento, POA" }).click();
   await pag.getByRole("button", { name: "Casa Térrea" }).click();
   await pag.fill("#data-evento", "2026-12-20");
   await pag.fill("#hora-evento", "20:00");
@@ -56,8 +61,12 @@ for (const tela of TELAS) {
   await pag.waitForTimeout(300);
   await pag.screenshot({ path: `${SAIDA}/${tela.nome}-3-preenchido.png` });
 
+  await pag.getByText(/Equipe chega/).hover();
+  await pag.waitForTimeout(150);
+  await pag.screenshot({ path: `${SAIDA}/${tela.nome}-3b-dica-chegada.png` });
+
   for (let i = 0; i < 3; i += 1) {
-    await pag.getByRole("button", { name: /^Avançar/ }).click();
+    await pag.getByRole("button", { name: "Avançar" }).click();
     await pag.waitForTimeout(350);
   }
   await pag.screenshot({ path: `${SAIDA}/${tela.nome}-4-final.png` });

@@ -50,7 +50,7 @@ salva quatro momentos: estado inicial, o estado que a ação principal revela,
 o formulário preenchido e a tela final.
 
 ```bash
-ALVO=http://localhost:3000 node .claude/skills/verificar-tela/captura.mjs
+ALVO=http://localhost:3000 node skills/verificar-tela/captura.mjs
 ```
 
 Adapte o trecho de preenchimento à tela que está verificando. Os breakpoints

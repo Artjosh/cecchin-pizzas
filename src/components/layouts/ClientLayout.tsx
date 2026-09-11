@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "../../lib/utils";
-import { MapPin, MessageCircle, User } from "lucide-react";
+import { MapPin, MessageCircle, Pizza, User } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -42,13 +42,20 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
               src="https://lh3.googleusercontent.com/aida/AEtjO1XJKfgjCG5hs6_lk1Xf7VXf_zdDIH5N7glhls6Pr5H9fy0dIYbYr422JqulNRSKzPKIpvfVtjWZCJTYEDx0gT3ZJ4hytVWunb_ul7t_-15oZdEFMmSFPKEN9HKiwmsa9OEtAV80R__685pluk6b3TTwkKMXD1HWXKGbC1flmdywhdg_RoNEFL1ohkXfIp_nfEi1Xn_EtLfTrrNwRbZNqRg0uSzN7MpsQw0mNGueLXa3VivNF1QNLxL9vumV"
             />
             <div className="hidden sm:flex flex-col">
-              <span className="font-headline-sm text-headline-sm text-primary leading-tight">
+              <span className="flex items-center gap-1 font-headline-sm text-headline-sm text-primary leading-tight">
+                <Pizza className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 Cecchin Pizzas
               </span>
               <span className="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
                 <MapPin className="w-[13px] h-[13px] text-tertiary" />
                 Grande Porto Alegre & Serra
               </span>
+              {telaCheia && (
+                <span className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant leading-tight">
+                  <span className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span>Reserve o Rodízio Artesanal</span>
+                </span>
+              )}
             </div>
           </div>
 
