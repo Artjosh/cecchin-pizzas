@@ -25,7 +25,8 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "types": [
-      "vite/client"
+      "vite/client",
+      "google.maps"
     ]
   },
   "include": [

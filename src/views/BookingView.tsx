@@ -625,7 +625,7 @@ export function BookingView() {
                       />
                       <div className="absolute top-3 right-3 w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center peer-checked:bg-primary">
                         {ovenType === "gas" && (
-                          <span className="w-2 h-2 rounded-full bg-white"></span>
+                          <span className="w-2 h-2 rounded-full bg-surface-container-lowest"></span>
                         )}
                       </div>
                       <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-space-sm">
@@ -655,7 +655,7 @@ export function BookingView() {
                       />
                       <div className="absolute top-3 right-3 w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center peer-checked:bg-primary">
                         {ovenType === "electric" && (
-                          <span className="w-2 h-2 rounded-full bg-white"></span>
+                          <span className="w-2 h-2 rounded-full bg-surface-container-lowest"></span>
                         )}
                       </div>
                       <div className="w-10 h-10 rounded-lg bg-tertiary/10 text-tertiary flex items-center justify-center mb-space-sm">

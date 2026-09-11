@@ -35,12 +35,37 @@ Os dois layouts são client por causa do `usePathname()` (link ativo).
 
 ```
 /                          → redirect para /cliente/contratar
-/cliente/contratar         BookingView
-/cliente/rastreio          TrackingView
-/cliente/eventos           placeholder
-/operacional/despacho      DispatchView
-/operacional/minha-rota    FieldRouteView
+
+/cliente/contratar         BookingView          cliente
+/cliente/rastreio          TrackingView         cliente
+/cliente/eventos           ClientEventsView     cliente
+/cliente/perfil            ProfileView          cliente
+/cliente/suporte           SupportView          cliente
+
+/operacional/despacho      DispatchView         gestão, admin
+/operacional/minha-rota    FieldRouteView       staff, gestão, admin
+/operacional/mapa          TacticalMapView      staff, gestão, admin
+/operacional/whatsapp      WhatsAppCentralView  staff, gestão, admin
+/operacional/checklist     StaffChecklistView   staff, gestão, admin
+
+/admin/catalogo            AdminCatalogView     admin
+/admin/frota               AdminFleetView       admin
 ```
+
+`/admin` usa o mesmo shell de `/operacional` — o que separa as duas áreas é o
+papel exigido, não o layout.
+
+## Controle de acesso
+
+`OperationalLayout` chama `redirect()` quando o papel não permite. Em client
+component isso funciona: lança um erro que o roteador intercepta, sem
+`useEffect`.
+
+Verificado no servidor — `/operacional/despacho` com papel `cliente` responde
+**307** e o HTML não carrega nada do conteúdo operacional. Não é `display:none`.
+
+O papel vem do `AuthProvider`, montado em `src/components/Provedores.tsx`. O
+layout raiz continua Server Component; só a árvore de providers é client.
 
 ## Comandos
 
