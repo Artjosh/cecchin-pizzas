@@ -18,9 +18,11 @@ o outro escreveu no intervalo.
 
 ## A coisa mais importante de saber
 
-**Autenticação e papéis são reais; dado de negócio ainda é mock.** Agenda,
-evento e catálogo continuam escritos no componente. Quem é você e o que você
-pode vem do Postgres.
+**Autenticação, papéis e leituras de negócio são reais.** Agenda, catálogo,
+equipe, clientes, mapa, checklist, suporte, rastreio e localidades leem o
+PostgREST sob RLS. Quem é você e o que você pode fazer também vem do Postgres.
+Os desenhos de referência em `src/views/desenho/` continuam estáticos de
+propósito.
 
 A fronteira para o resto está em `ARQUITETURA.md` e em
 `../cecchin-pizzas-backend/infra/README.md`: leitura simples vai do Server
