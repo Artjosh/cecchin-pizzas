@@ -1,6 +1,6 @@
 # Testes
 
-332 asserções, em quatro camadas. Nenhuma usa navegador, e nenhuma manda
+347 asserções, em quatro camadas. Nenhuma usa navegador, e nenhuma manda
 e-mail para alguém de verdade.
 
 | camada | onde | quantas | precisa de quê |
@@ -8,7 +8,7 @@ e-mail para alguém de verdade.
 | typecheck | `tsc --noEmit` | — | nada |
 | unidade | `cecchin-pizzas/testes/unidade` | 120 | nada |
 | integração HTTP | `cecchin-pizzas/testes/integracao` | 76 | Supabase + `npm run dev` |
-| RLS em pgTAP | `cecchin-pizzas-backend/supabase/tests` | 136 | Supabase |
+| RLS em pgTAP | `cecchin-pizzas-backend/supabase/tests` | 151 | Supabase |
 
 ## Rodar
 
@@ -127,6 +127,17 @@ asserções são sobre as linhas do cenário, não sobre totais.
 apaga contas e pedidos. Sem isso, uma execução interrompida envenena a
 seguinte.
 
+### View não respeita RLS por padrão
+
+Vale um parágrafo próprio porque é a falha mais silenciosa que este banco pode
+ter. Uma view roda com os direitos de QUEM A CRIOU — `postgres`, que ignora
+RLS. Sem `security_invoker=true`, `vw_evento` entrega os 12.300 eventos, com
+telefone e endereço, para qualquer conta autenticada. A view funciona, devolve
+dado certo, e o vazamento só aparece quando alguém pergunta à pessoa errada.
+
+`06_views.sql` afirma isso estruturalmente (nenhuma view de `public` pode ser
+definer) e comportamentalmente (o que cada papel alcança em cada view).
+
 ## O que estes testes encontraram
 
 Todos passavam por `tsc`, pelo build e por status 200 antes de existirem:
@@ -142,6 +153,15 @@ Todos passavam por `tsc`, pelo build e por status 200 antes de existirem:
 4. **`authenticated` tinha UPDATE e DELETE em `solicitacao_staff`.** A RLS
    segurava, mas "passa e não faz nada" é garantia mais fraca que "não passa".
    Revogados.
+5. **Cliente alcançava `vw_pendencia`.** Não era vazamento entre contas — eram
+   as anotações internas sobre a própria festa ("cobrar sinal", "confirmar
+   número"), fila de trabalho da operação aparecendo para quem contratou. As
+   views operacionais ganharam predicado de papel.
+6. **Reaplicar `006_views.sql` transformava as nove views em DEFINER.**
+   `create or replace view` não preserva `reloptions`, e o `security_invoker`
+   só era aplicado no 007. Uma correção de view desligava a RLS de todas em
+   silêncio — aconteceu comigo, neste trabalho. O bloco passou a viver também
+   no 006.
 
 ## Ao acrescentar teste
 
