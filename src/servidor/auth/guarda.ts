@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { sessaoAtual, podeAcessar, type Papel, type Sessao } from "./sessao-atual";
+import { lerSessao, podeAcessar, type Papel, type Sessao } from "./sessao-atual";
 
 /**
  * Guarda de rota do lado servidor.
@@ -17,12 +17,27 @@ import { sessaoAtual, podeAcessar, type Papel, type Sessao } from "./sessao-atua
  * barreiras porque a de cima é conveniência e a de baixo é a regra.
  */
 
-/** Exige sessão. Sem ela, manda para o login guardando o destino. */
+/**
+ * Exige sessão.
+ *
+ * Dois desfechos para quem não tem, e a diferença é o que impede a pessoa de
+ * ficar presa:
+ *
+ *   * sem cookie nenhum → vai para `/entrar`, direto;
+ *   * cookie que não presta → passa por `/api/auth/encerrar`, que APAGA os dois
+ *     e só então manda ao login.
+ *
+ * Sem o segundo caminho, ela seria redirecionada ao login carregando os mesmos
+ * cookies quebrados, para sempre — e antes disso o próprio `/entrar` quebrava,
+ * porque este módulo tentava apagar o cookie de dentro de um Server Component.
+ */
 export async function exigirSessao(destino?: string): Promise<Sessao> {
-  const sessao = await sessaoAtual();
-  if (sessao) return sessao;
+  const r = await lerSessao();
+  if (r.estado === "ativa") return r.sessao;
 
   const para = destino ? `?para=${encodeURIComponent(destino)}` : "";
+
+  if (r.estado === "suja") redirect(`/api/auth/encerrar${para}`);
   redirect(`/entrar${para}`);
 }
 

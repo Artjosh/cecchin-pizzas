@@ -12,11 +12,22 @@ import {
 /**
  * Quem está autenticado, do ponto de vista do servidor.
  *
- * **Este é o único lugar de onde o papel pode vir.** Ele é lido de `usuario` no
- * Postgres, com o token do próprio usuário, sob RLS. Não vem de claim de JWT,
- * não vem de cookie legível, não vem de estado de React. Quem trocar o papel no
- * DevTools troca um rótulo na tela e nada mais: a consulta seguinte volta a
- * falar a verdade, e a policy do banco nunca viu a mentira.
+ * **Este módulo NÃO escreve cookie.** Regra dura, e a razão dela é um defeito
+ * que deixou o app inutilizável: `cookies().set()` e `.delete()` lançam quando
+ * chamados de Server Component — só route handler, server action e middleware
+ * podem escrever.
+ *
+ * A versão anterior gravava a sessão renovada e apagava a inválida daqui, e
+ * `sessaoAtual()` é chamada do `app/layout.tsx`. Resultado: bastava o access
+ * token vencer com um refresh inválido para TODA página virar 500 — inclusive
+ * `/entrar`, que era a única capaz de consertar. A única saída era limpar os
+ * cookies no navegador.
+ *
+ * Agora quem persiste é o middleware, que pode escrever na resposta, e quem
+ * limpa é `/api/auth/encerrar`. Aqui só se lê.
+ *
+ * **O papel é lido do banco, sempre.** Não vem de claim de JWT, não vem de
+ * cookie legível, não vem de estado de React.
  */
 
 export const PAPEIS = ["cliente", "staff", "gestao", "admin"] as const;
@@ -30,11 +41,22 @@ export interface UsuarioDaSessao {
   organizacaoId: string;
 }
 
-/** O que a sessão carrega junto com o usuário. */
 export interface Sessao {
   usuario: UsuarioDaSessao;
   accessToken: string;
 }
+
+/**
+ * O que uma leitura de sessão pode encontrar.
+ *
+ * `suja` é o caso que importa: há cookie, e ele não serve. Quem chama precisa
+ * mandar limpar — devolver `null` faria a pessoa ser redirecionada para o
+ * login carregando os mesmos cookies quebrados, para sempre.
+ */
+export type EstadoDaSessao =
+  | { estado: "ativa"; sessao: Sessao }
+  | { estado: "ausente" }
+  | { estado: "suja" };
 
 interface LinhaUsuario {
   id: string;
@@ -48,15 +70,14 @@ async function perfil(accessToken: string): Promise<UsuarioDaSessao | null> {
   /*
    * `meu_perfil()` e não um `select ... limit=1` sobre `usuario`.
    *
-   * A primeira versão deste código lia a tabela sem filtro, confiando na RLS
-   * para sobrar só a linha certa. **Isso resolvia para o usuário errado.**
-   * Policy permissiva se SOMA: `usuario_leitura` libera a organização inteira,
-   * então `usuario_proprio` não estreitava nada e o `limit=1` trazia uma linha
-   * qualquer — a sessão virava de outra pessoa.
+   * A primeira versão lia a tabela sem filtro, confiando na RLS para sobrar só
+   * a linha certa. **Isso resolvia para o usuário errado.** Policy permissiva
+   * se SOMA: `usuario_leitura` libera a organização inteira, então
+   * `usuario_proprio` não estreitava nada e o `limit=1` trazia uma linha
+   * qualquer.
    *
    * Quem resolve a identidade agora é o Postgres: `auth.uid()` sai do JWT que o
-   * PostgREST já verificou. Nada aqui depende de o cliente dizer quem é, nem de
-   * a RLS por acaso deixar uma linha só visível.
+   * PostgREST já verificou.
    */
   const r = await consultar<LinhaUsuario[]>("rpc/meu_perfil", accessToken, {
     method: "POST",
@@ -75,57 +96,80 @@ async function perfil(accessToken: string): Promise<UsuarioDaSessao | null> {
   };
 }
 
-/**
- * Lê a sessão dos cookies, renovando quando o access token venceu.
- *
- * Devolve `null` quando não há sessão válida. Não lança e não redireciona:
- * quem chama decide o que fazer, e uma página pública precisa poder perguntar
- * sem consequência.
- */
-export async function sessaoAtual(): Promise<Sessao | null> {
+/** Lê a sessão sem tocar em cookie. Distingue "não tem" de "tem e não presta". */
+export async function lerSessao(): Promise<EstadoDaSessao> {
   const jar = await cookies();
   const acesso = jar.get(COOKIE_ACESSO)?.value;
   const renovacao = jar.get(COOKIE_RENOVACAO)?.value;
 
+  if (!acesso && !renovacao) return { estado: "ausente" };
+
   if (acesso) {
     const usuario = await perfil(acesso);
-    if (usuario) return { usuario, accessToken: acesso };
+    if (usuario) return { estado: "ativa", sessao: { usuario, accessToken: acesso } };
   }
 
   /*
-   * Access token vencido ou revogado. O refresh token vive muito mais, e é o que
-   * evita pedir um magic link novo a cada hora.
+   * Access vencido ou revogado. O refresh vive muito mais, e é o que evita
+   * pedir um magic link novo a cada hora.
+   *
+   * A sessão obtida aqui vale só para ESTA requisição — persistir é trabalho do
+   * middleware. Repetir a renovação a cada render é desperdício conhecido e
+   * aceito: acontece na janela entre o vencimento e a próxima navegação, que é
+   * quando o middleware grava o par novo.
    */
-  if (!renovacao) return null;
-
-  const nova = await renovarSessao(renovacao);
-  if (!nova.ok || !ehSessaoGoTrue(nova.dados)) {
-    // Refresh inválido: apaga os dois cookies para o browser parar de tentar.
-    jar.delete(COOKIE_ACESSO);
-    jar.delete(COOKIE_RENOVACAO);
-    return null;
+  if (renovacao) {
+    const nova = await renovarSessao(renovacao);
+    if (nova.ok && ehSessaoGoTrue(nova.dados)) {
+      const usuario = await perfil(nova.dados.access_token);
+      if (usuario) {
+        return {
+          estado: "ativa",
+          sessao: { usuario, accessToken: nova.dados.access_token },
+        };
+      }
+    }
   }
 
-  gravarSessao(jar, nova.dados);
+  // Havia cookie e nada funcionou.
+  return { estado: "suja" };
+}
 
-  const usuario = await perfil(nova.dados.access_token);
-  return usuario ? { usuario, accessToken: nova.dados.access_token } : null;
+/** Atalho para quem só quer o caso feliz. */
+export async function sessaoAtual(): Promise<Sessao | null> {
+  const r = await lerSessao();
+  return r.estado === "ativa" ? r.sessao : null;
 }
 
 type Jar = Awaited<ReturnType<typeof cookies>>;
 
-/** Grava a sessão nos dois cookies httpOnly. */
+/**
+ * Grava a sessão nos dois cookies.
+ *
+ * Só pode ser chamada de route handler, server action ou middleware. O
+ * `try/catch` não é zelo: é a garantia de que uma chamada no lugar errado
+ * degrade para "a sessão não persistiu" em vez de derrubar a página — que foi
+ * exatamente o defeito que este módulo carregava.
+ */
 export function gravarSessao(
   jar: Jar,
   sessao: { access_token: string; refresh_token: string; expires_in?: number },
 ): void {
-  jar.set(COOKIE_ACESSO, sessao.access_token, opcoesAcesso(sessao.expires_in ?? 3600));
-  jar.set(COOKIE_RENOVACAO, sessao.refresh_token, opcoesRenovacao());
+  try {
+    jar.set(COOKIE_ACESSO, sessao.access_token, opcoesAcesso(sessao.expires_in ?? 3600));
+    jar.set(COOKIE_RENOVACAO, sessao.refresh_token, opcoesRenovacao());
+  } catch (erro) {
+    console.error("[auth] não deu para gravar a sessão neste contexto:", erro);
+  }
 }
 
 export function limparSessao(jar: Jar): void {
-  jar.delete(COOKIE_ACESSO);
-  jar.delete(COOKIE_RENOVACAO);
+  try {
+    jar.delete(COOKIE_ACESSO);
+    jar.delete(COOKIE_RENOVACAO);
+  } catch (erro) {
+    console.error("[auth] não deu para limpar a sessão neste contexto:", erro);
+  }
 }
 
 /** Hierarquia dos papéis: cada um alcança o que está abaixo. */

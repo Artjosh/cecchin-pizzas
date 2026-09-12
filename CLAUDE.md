@@ -36,6 +36,29 @@ Component, e confie na RLS por baixo.
 `httpOnly` gravados pelos route handlers. Se escrever um endpoint que repassa
 o corpo do GoTrue, o token vaza para o `response.json()`.
 
+## Server Component NÃO escreve cookie
+
+`cookies().set()` e `.delete()` LANÇAM em Server Component. Só route handler,
+server action e middleware podem escrever.
+
+Isso já travou o app inteiro: a renovação de sessão morava em `sessaoAtual()`,
+que o `app/layout.tsx` chama. Bastava o token vencer com refresh inválido para
+toda página virar 500 — inclusive `/entrar`, a única capaz de consertar. A
+saída era limpar cookie no navegador à mão.
+
+Onde cada coisa mora agora:
+
+| escrita | onde |
+|---|---|
+| renovar a sessão | `middleware.ts` |
+| gravar no login | route handler de `/api/auth/*` |
+| apagar sessão quebrada | `/api/auth/encerrar` |
+| **ler** | qualquer lugar, via `lerSessao()` / `sessaoAtual()` |
+
+`lerSessao()` distingue `ausente` de `suja` de propósito: cookie que não presta
+precisa ser APAGADO, não só ignorado — senão a pessoa é mandada ao login
+carregando o mesmo cookie quebrado, para sempre.
+
 ## Policy permissiva se SOMA
 
 A armadilha que já produziu dois defeitos aqui. Ler uma tabela sem filtro
