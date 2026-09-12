@@ -5,16 +5,20 @@ description: Trocar mock por dado real numa tela. Use ao conectar qualquer tela 
 
 # Ligar dado numa tela
 
-Hoje **nenhuma tela lê banco**. Todo dado visível é mock no componente. Esta
-skill é o caminho para tirar o primeiro.
+Agenda, catálogo, equipe, clientes, mapa, checklist, suporte, rastreio e
+localidades já usam PostgREST sob RLS. Esta skill é o caminho para ligar uma
+tela nova ou substituir a última lacuna de dados. Confira
+`../ARQUITETURA.md` antes de assumir que algo ainda é mock.
 
 ## Antes: três coisas têm que ser verdade
 
 1. **A regra de negócio está respondida.** Se a dúvida aparece em
    `../cecchin-pizzas-backend/modelagem/docs/07-perguntas.md`, ela não se
    resolve por inferência. Pergunte.
-2. **A tabela está carregada.** Financeiro, `Configurações` da agenda e
-   auditoria histórica ainda **não foram carregados**. Ver `migracao/ETL.md`.
+2. **A tabela está carregada.** Despesas, contas abertas, auditoria,
+   vigências de preço, taxas de deslocamento e janela de pico já foram
+   carregadas. Receitas continuam sem fonte e tempos de deslocamento na fonte
+   estão vazios. Ver `../cecchin-pizzas-backend/migracao/ETL.md`.
 3. **Existe sessão.** RLS depende de `app.org_atual()`, que depende de um JWT.
    Sem autenticação, a consulta volta vazia ou vaza — nenhum dos dois é bom.
 
@@ -63,6 +67,6 @@ requisição, não tem cron e tem teto de CPU.
 
 ## Depois
 
-Atualize `ARQUITETURA.md` e a tabela de estado do
-`../cecchin-pizzas-backend/README.md`. Os dois afirmam hoje que nenhuma tela lê
-banco; no dia em que uma ler, os dois passam a mentir.
+Atualize `ARQUITETURA.md` e, quando a mudança alterar uma capacidade do banco,
+`../cecchin-pizzas-backend/README.md`. Os dois registram o estado atual e não
+devem voltar a afirmar que telas ligadas ao banco são mocks.
