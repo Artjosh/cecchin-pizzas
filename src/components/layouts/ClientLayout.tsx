@@ -140,7 +140,9 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           "w-full pt-20 bg-surface",
           telaCheia
             ? "h-[100dvh] overflow-hidden"
-            : "pb-20 md:pb-0 min-h-screen",
+            // `pb-24` no desktop também: o interruptor de fonte é `fixed`
+            // no canto inferior direito e cobre o que estiver embaixo dele.
+            : "pb-24 min-h-screen",
         )}
       >
         {children}

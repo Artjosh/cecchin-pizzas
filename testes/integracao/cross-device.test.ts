@@ -196,7 +196,17 @@ describe("o selector sozinho não aprova nada", () => {
     const { link } = await codigoDeAcesso(email, inicio.corpo.selector);
     const { sessao } = await abrirLink(link);
 
-    sql(`update pedido_login set expira_em = now() - interval '1 second'
+    /*
+     * Uma hora para trás, e não um segundo.
+     *
+     * O `now()` é o relógio do Postgres, dentro do Docker; a comparação de
+     * vencimento acontece no Node, no relógio do host. Os dois derivam — a VM
+     * do Docker Desktop já apareceu dois segundos à frente aqui — e com margem
+     * de um segundo o teste passa a depender de qual relógio está na frente no
+     * momento. Uma hora é maior do que qualquer deriva plausível e não muda o
+     * que se está medindo: o pedido está vencido.
+     */
+    sql(`update pedido_login set expira_em = now() - interval '1 hour'
           where selector = '${inicio.corpo.selector}'`);
 
     const r = await new Aparelho().pedir("/api/auth/aprovar", {

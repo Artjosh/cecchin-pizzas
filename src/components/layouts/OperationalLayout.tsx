@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { redirect, usePathname } from "next/navigation";
 import { cn } from "../../lib/utils";
 import {
@@ -13,8 +14,10 @@ import {
   Map,
   MapPinned,
   MessageCircle,
+  Menu,
   MessageSquareShare,
   Route,
+  X,
   Truck,
   User,
   Users,
@@ -30,6 +33,21 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
   const isDespacho = pathname === "/operacional/despacho";
 
   /*
+   * A barra lateral é gaveta abaixo de `lg`.
+   *
+   * Ela ocupava 288px fixos em qualquer largura. Num celular de 390px sobravam
+   * 100px para o conteúdo: o título quebrava letra a letra e os cartões viravam
+   * uma coluna ilegível. E esta é a tela de quem está em campo — `Minha Rota` e
+   * `Checklist & Forno` se usam no celular, dentro da van, não na mesa.
+   */
+  const [menuAberto, setMenuAberto] = useState(false);
+
+  // Navegou: fecha. Sem isto a gaveta continua aberta sobre a tela nova.
+  useEffect(() => {
+    setMenuAberto(false);
+  }, [pathname]);
+
+  /*
    * O guarda NAO mora mais aqui. Este componente e client, e a checagem que
    * vivia nele produzia um 307 no SSR que parecia autorizacao e nao era: quem
    * trocasse o estado no DevTools entrava. Quem barra agora e
@@ -40,8 +58,23 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-surface font-body-md text-body-md text-on-surface antialiased flex">
+      {/* Fundo que fecha a gaveta. Só existe com ela aberta, e só no celular. */}
+      {menuAberto && (
+        <button
+          type="button"
+          aria-label="Fechar menu"
+          onClick={() => setMenuAberto(false)}
+          className="fixed inset-0 z-40 bg-inverse-surface/40 lg:hidden"
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-72 bg-surface-container-low shadow-[1px_0_12px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between p-space-md">
+      <aside
+        className={cn(
+          "fixed left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-surface-container-low shadow-[1px_0_12px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between p-space-md overflow-y-auto transition-transform lg:translate-x-0",
+          menuAberto ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
         <div className="flex flex-col gap-space-lg">
           <div className="flex items-center gap-space-sm pt-space-xs">
             <img
@@ -295,11 +328,22 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content Area */}
-      <div className="pl-72 w-full flex flex-col">
+      <div className="w-full lg:pl-72 flex flex-col min-w-0">
         {/* Header */}
-        <header className="sticky top-0 left-72 right-0 h-16 bg-surface/90 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-space-lg flex items-center justify-between">
-          <div className="flex items-center gap-space-md">
-            <span className="px-2.5 py-1 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm font-bold flex items-center gap-1.5">
+        <header className="sticky top-0 right-0 h-16 bg-surface/90 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-30 px-space-md md:px-space-lg flex items-center justify-between gap-space-sm">
+          <div className="flex items-center gap-space-sm min-w-0">
+            <button
+              type="button"
+              onClick={() => setMenuAberto((v) => !v)}
+              aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={menuAberto}
+              className="w-10 h-10 -ml-1 rounded-lg flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors lg:hidden shrink-0"
+            >
+              {menuAberto ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+            {/* O aviso de cobertura some no celular: ocupa a largura inteira e
+                não é o que quem abre a tela no campo precisa ler primeiro. */}
+            <span className="hidden md:flex px-2.5 py-1 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm font-bold items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-tertiary-container"></span>
               Operação ao Vivo: POA, Canoas, SL & NH
             </span>
@@ -321,7 +365,13 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 bg-surface p-space-lg">
+        {/*
+          `pb-24` e não `pb-space-lg`: o interruptor de fonte é `fixed` no canto
+          inferior direito e cobria o último botão de cada tela — o `Detalhes`
+          do último cartão da agenda, o `desligar` da última linha do catálogo.
+          Sai junto com o interruptor, quando a última tela estiver ligada.
+        */}
+        <main className="flex-1 bg-surface p-space-md md:p-space-lg pb-24 min-w-0">
           {children}
         </main>
       </div>
