@@ -1,6 +1,7 @@
 import {
   AgendaFiltravel,
   type EventoDaAgenda,
+  type ResponsavelDisponivel,
 } from "../components/AgendaFiltravel";
 import { DispatchFilters } from "../components/DispatchFilters";
 import { exigirPapel } from "../servidor/auth/guarda";
@@ -306,17 +307,30 @@ async function DespachoDoBanco() {
   const sessao = await exigirPapel(["staff"]);
   const hoje = new Date().toISOString().slice(0, 10);
 
-  const leitura = comoLeitura<EventoDaAgenda>(
-    await consultar<EventoDaAgenda[]>(
+  const [eventosR, responsaveisR] = await Promise.all([
+    consultar<EventoDaAgenda[]>(
       "vw_evento?select=id,data_evento,horario,horario_texto,cliente_nome," +
-        "cliente_telefone,responsavel_nome,inteiros,meios,total_do_evento," +
-        "situacao,cidade,bairro,endereco,tipo_evento_nome,modelo_forno_nome," +
-        "modelo_rodizio_nome,codigo_legado,atencao,horario_saida" +
+        "cliente_telefone,responsavel_id,responsavel_nome,inteiros,meios," +
+        "total_do_evento,situacao,cidade,bairro,endereco,tipo_evento_nome," +
+        "modelo_forno_nome,modelo_rodizio_nome,codigo_legado,atencao," +
+        "horario_saida" +
         `&data_evento=gte.${hoje}&status=eq.confirmado` +
         "&order=data_evento.asc&limit=60",
       sessao.accessToken,
     ),
-  );
+    /*
+     * Só responsáveis ATIVOS entram na lista de alocação. Os 362 vieram da
+     * planilha e boa parte não trabalha mais; oferecer todos transformaria o
+     * `select` numa lista impossível de percorrer.
+     */
+    consultar<ResponsavelDisponivel[]>(
+      "responsavel?select=id,nome&ativo=is.true&order=nome.asc&limit=500",
+      sessao.accessToken,
+    ),
+  ]);
+
+  const leitura = comoLeitura<EventoDaAgenda>(eventosR);
+  const responsaveis = responsaveisR.dados ?? [];
 
   return (
     <div className="flex flex-col w-full h-full gap-space-lg">
@@ -353,7 +367,12 @@ async function DespachoDoBanco() {
       )}
 
       {leitura.estado === "ok" && (
-        <AgendaFiltravel eventos={leitura.linhas} hoje={hoje} />
+        <AgendaFiltravel
+          eventos={leitura.linhas}
+          hoje={hoje}
+          responsaveis={responsaveis}
+          podeAlocar
+        />
       )}
     </div>
   );

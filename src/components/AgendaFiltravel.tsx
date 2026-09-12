@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ChevronRight,
@@ -40,6 +41,7 @@ export interface EventoDaAgenda {
   horario_texto: string | null;
   cliente_nome: string | null;
   cliente_telefone: string | null;
+  responsavel_id: string | null;
   responsavel_nome: string | null;
   inteiros: number | null;
   meios: number | null;
@@ -133,12 +135,22 @@ function montarAbas(eventos: EventoDaAgenda[], hoje: string): Aba[] {
   return abas;
 }
 
+/** Quem pode levar um evento. Vem do servidor: a lista é a mesma para todos. */
+export interface ResponsavelDisponivel {
+  id: string;
+  nome: string;
+}
+
 export function AgendaFiltravel({
   eventos,
   hoje,
+  responsaveis = [],
+  podeAlocar = false,
 }: {
   eventos: EventoDaAgenda[];
   hoje: string;
+  responsaveis?: ResponsavelDisponivel[];
+  podeAlocar?: boolean;
 }) {
   const [aba, setAba] = useState("todos");
   const [busca, setBusca] = useState("");
@@ -250,7 +262,12 @@ export function AgendaFiltravel({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-space-md">
           {visiveis.map((evento) => (
-            <CartaoEvento key={evento.id} evento={evento} />
+            <CartaoEvento
+              key={evento.id}
+              evento={evento}
+              responsaveis={responsaveis}
+              podeAlocar={podeAlocar}
+            />
           ))}
         </div>
       )}
@@ -264,8 +281,51 @@ export function AgendaFiltravel({
  * Abre no próprio cartão em vez de navegar: quem está despachando quer conferir
  * um número de convidados sem perder a lista que acabou de filtrar.
  */
-function CartaoEvento({ evento }: { evento: EventoDaAgenda }) {
+function CartaoEvento({
+  evento,
+  responsaveis,
+  podeAlocar,
+}: {
+  evento: EventoDaAgenda;
+  responsaveis: ResponsavelDisponivel[];
+  podeAlocar: boolean;
+}) {
+  const router = useRouter();
+  const [pendente, comecar] = useTransition();
   const [aberto, setAberto] = useState(false);
+  const [alocando, setAlocando] = useState(false);
+  const [falha, setFalha] = useState<string | null>(null);
+
+  /*
+   * Alocar responsável é o outro lado do elo conta-responsável. Sem isto, a
+   * conta ligada não adianta: os 154 eventos futuros vieram da planilha com
+   * `responsavel_id` nulo, porque lá o nome de quem respondeu era anotado
+   * depois do evento.
+   */
+  async function alocar(responsavel: string) {
+    setFalha(null);
+    setAlocando(true);
+
+    try {
+      const r = await fetch("/api/operacao/evento", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ evento: evento.id, responsavel }),
+      });
+
+      if (!r.ok) {
+        const detalhe = (await r.json().catch(() => ({}))) as { mensagem?: string };
+        setFalha(detalhe.mensagem ?? "O servidor recusou a alocação.");
+        return;
+      }
+
+      comecar(() => router.refresh());
+    } catch {
+      setFalha("Falha de rede. A alocação não foi gravada.");
+    } finally {
+      setAlocando(false);
+    }
+  }
 
   const pessoas = (evento.inteiros ?? 0) + Math.ceil((evento.meios ?? 0) / 2);
   const local =
@@ -334,9 +394,31 @@ function CartaoEvento({ evento }: { evento: EventoDaAgenda }) {
             <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">
               Responsável
             </span>
-            <span className="font-label-md text-label-md text-on-surface truncate">
-              {evento.responsavel_nome ?? "não alocado"}
-            </span>
+            {podeAlocar && responsaveis.length > 0 ? (
+              <>
+                <label className="sr-only" htmlFor={`resp-${evento.id}`}>
+                  Responsável por {evento.cliente_nome ?? "este evento"}
+                </label>
+                <select
+                  id={`resp-${evento.id}`}
+                  value={evento.responsavel_id ?? ""}
+                  disabled={alocando || pendente}
+                  onChange={(e) => void alocar(e.target.value)}
+                  className="font-label-md text-label-md text-on-surface bg-transparent -ml-1 px-1 py-0.5 rounded max-w-[11rem] truncate focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                >
+                  <option value="">não alocado</option>
+                  {responsaveis.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.nome}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <span className="font-label-md text-label-md text-on-surface truncate">
+                {evento.responsavel_nome ?? "não alocado"}
+              </span>
+            )}
           </div>
         </div>
 
@@ -348,6 +430,15 @@ function CartaoEvento({ evento }: { evento: EventoDaAgenda }) {
             {formatBRL(Number(evento.total_do_evento ?? 0))}
           </span>
         </div>
+
+        {falha && (
+          <p
+            role="alert"
+            className="font-body-sm text-body-sm text-primary bg-primary/10 rounded-lg p-space-sm"
+          >
+            {falha}
+          </p>
+        )}
 
         {aberto && (
           <dl className="flex flex-col gap-1 pt-2 border-t border-outline-variant/30 font-body-sm text-body-sm">

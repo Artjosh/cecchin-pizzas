@@ -1,4 +1,10 @@
-import { BadgeCheck, Link2, UserX } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
+
+import {
+  LigarResponsavel,
+  type ContaDaOperacao,
+  type ResponsavelParaLigar,
+} from "../components/LigarResponsavel";
 
 import {
   CabecalhoDoPainel,
@@ -47,7 +53,7 @@ interface Funcionario {
 export async function OperacaoEquipeView() {
   const sessao = await exigirPapel(["gestao"]);
 
-  const [responsaveisR, funcionariosR] = await Promise.all([
+  const [responsaveisR, funcionariosR, contasR] = await Promise.all([
     consultar<Responsavel[]>(
       "responsavel?select=id,nome,slug,usuario_id,ativo&order=ativo.desc,nome.asc&limit=500",
       sessao.accessToken,
@@ -56,12 +62,23 @@ export async function OperacaoEquipeView() {
       "funcionario?select=id,nome,ativo&order=nome.asc&limit=500",
       sessao.accessToken,
     ),
+    /*
+     * Só contas de operação entram na lista de escolha. Cliente não responde
+     * por evento — `app.ligar_responsavel()` recusa, e oferecer no `select` o
+     * que o banco vai negar é convite a erro.
+     */
+    consultar<ContaDaOperacao[]>(
+      "usuario?select=id,nome,email,papel&papel=in.(staff,gestao,admin)" +
+        "&ativo=is.true&order=nome.asc&limit=500",
+      sessao.accessToken,
+    ),
   ]);
 
   const responsaveis = comoLeitura(responsaveisR);
   const lista = responsaveis.estado === "ok" ? responsaveis.linhas : [];
   const semConta = lista.filter((r) => r.usuario_id === null).length;
   const funcionarios = funcionariosR.dados ?? [];
+  const contas = contasR.dados ?? [];
 
   return (
     <div className="flex flex-col gap-space-lg">
@@ -80,9 +97,14 @@ export async function OperacaoEquipeView() {
             em Minha rota.
           </p>
           <p>
-            Os 362 vieram da planilha, onde só havia o nome. Ligar cada um a uma
-            conta é trabalho de gente — e nem todos vão ter conta: a planilha
-            registrava também quem respondia pelo evento sem ser da casa.
+            Os 362 vieram da planilha, onde só havia o nome. Ligue abaixo, um a
+            um: só quem já tem conta de operação aparece na lista, porque
+            cliente não responde por evento.
+          </p>
+          <p>
+            <strong>Nem todos vão ter conta</strong>, e isso não é pendência: a
+            planilha registrava também quem respondia pelo evento sem ser da
+            casa.
           </p>
         </LacunaDeDados>
       )}
@@ -104,31 +126,10 @@ export async function OperacaoEquipeView() {
         )}
 
         {responsaveis.estado === "ok" && (
-          <Tabela colunas={["Nome", "Conta", "Situação"]}>
-            {lista.map((r) => (
-              <Linha key={r.id}>
-                <Celula destaque>{r.nome}</Celula>
-                <Celula>
-                  {r.usuario_id ? (
-                    <span className="inline-flex items-center gap-1.5 text-tertiary">
-                      <Link2 className="w-4 h-4" />
-                      ligada
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 text-on-surface-variant">
-                      <UserX className="w-4 h-4" />
-                      sem conta
-                    </span>
-                  )}
-                </Celula>
-                <Celula>
-                  <Etiqueta tom={r.ativo ? "bom" : "neutro"}>
-                    {r.ativo ? "ativo" : "inativo"}
-                  </Etiqueta>
-                </Celula>
-              </Linha>
-            ))}
-          </Tabela>
+          <LigarResponsavel
+            responsaveis={lista as ResponsavelParaLigar[]}
+            contas={contas}
+          />
         )}
       </section>
 
