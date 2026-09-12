@@ -2,7 +2,7 @@
  * Configuração do BFF, lida do ambiente uma vez.
  *
  * **Nada aqui tem prefixo `NEXT_PUBLIC_`, de propósito.** Este módulo só é
- * importado por route handler, middleware e Server Component — nunca por
+ * importado por route handler, proxy e Server Component — nunca por
  * componente de cliente. Uma variável com aquele prefixo seria embutida no
  * bundle do browser, e `SUPABASE_SERVICE_ROLE_KEY` no bundle é o fim do
  * isolamento por RLS: a chave ignora toda policy.

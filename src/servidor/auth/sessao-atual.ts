@@ -14,7 +14,7 @@ import {
  *
  * **Este módulo NÃO escreve cookie.** Regra dura, e a razão dela é um defeito
  * que deixou o app inutilizável: `cookies().set()` e `.delete()` lançam quando
- * chamados de Server Component — só route handler, server action e middleware
+ * chamados de Server Component — só route handler, server action e proxy
  * podem escrever.
  *
  * A versão anterior gravava a sessão renovada e apagava a inválida daqui, e
@@ -23,7 +23,7 @@ import {
  * `/entrar`, que era a única capaz de consertar. A única saída era limpar os
  * cookies no navegador.
  *
- * Agora quem persiste é o middleware, que pode escrever na resposta, e quem
+ * Agora quem persiste é o proxy, que pode escrever na resposta, e quem
  * limpa é `/api/auth/encerrar`. Aqui só se lê.
  *
  * **O papel é lido do banco, sempre.** Não vem de claim de JWT, não vem de
@@ -114,9 +114,9 @@ export async function lerSessao(): Promise<EstadoDaSessao> {
    * pedir um magic link novo a cada hora.
    *
    * A sessão obtida aqui vale só para ESTA requisição — persistir é trabalho do
-   * middleware. Repetir a renovação a cada render é desperdício conhecido e
+   * proxy. Repetir a renovação a cada render é desperdício conhecido e
    * aceito: acontece na janela entre o vencimento e a próxima navegação, que é
-   * quando o middleware grava o par novo.
+   * quando o proxy grava o par novo.
    */
   if (renovacao) {
     const nova = await renovarSessao(renovacao);
@@ -146,7 +146,7 @@ type Jar = Awaited<ReturnType<typeof cookies>>;
 /**
  * Grava a sessão nos dois cookies.
  *
- * Só pode ser chamada de route handler, server action ou middleware. O
+ * Só pode ser chamada de route handler, server action ou proxy. O
  * `try/catch` não é zelo: é a garantia de que uma chamada no lugar errado
  * degrade para "a sessão não persistiu" em vez de derrubar a página — que foi
  * exatamente o defeito que este módulo carregava.

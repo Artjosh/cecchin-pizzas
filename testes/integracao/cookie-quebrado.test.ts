@@ -14,7 +14,7 @@ import { Aparelho, BFF } from "./ajuda";
  * Quem usava o app ficava preso: a única saída era limpar cookie no navegador à
  * mão. Aconteceu duas vezes com o usuário deste projeto.
  *
- * Agora quem escreve é o middleware e `/api/auth/encerrar`, e a sessão quebrada
+ * Agora quem escreve é o proxy e `/api/auth/encerrar`, e a sessão quebrada
  * se limpa sozinha na primeira navegação.
  */
 
@@ -58,7 +58,7 @@ describe("nenhuma tela responde 500 com sessão quebrada", () => {
 });
 
 describe("a sessão quebrada se limpa sozinha", () => {
-  it("refresh morto: o middleware manda apagar os dois cookies", async () => {
+  it("refresh morto: o proxy manda apagar os dois cookies", async () => {
     const r = await fetch(`${BFF}/cliente/contratar`, {
       headers: { cookie: "cecchin_renovacao=nao-e-um-token" },
       redirect: "manual",

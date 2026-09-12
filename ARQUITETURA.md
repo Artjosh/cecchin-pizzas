@@ -8,7 +8,7 @@ Estado real em 12/09/2026. O que não está marcado como **existe** não existe.
 |---|---|
 | Autenticação sem senha (magic link + OTP) | **existe** — GoTrue, com polling cross-device |
 | Sessão em cookie `httpOnly` | **existe** — o token nunca chega ao JavaScript |
-| Middleware de sessão | **existe** — `middleware.ts` |
+| Proxy de sessão | **existe** — `proxy.ts` |
 | Guarda de papel no servidor | **existe** — nos layouts, sobre RLS |
 | Quatro papéis e a promoção entre eles | **existe** — decidido no Postgres |
 | Google Maps | **existe** — geocoding e autocomplete reais |
@@ -124,11 +124,11 @@ Cada uma cobre o que a de cima não cobre. Não são redundância.
 
 | camada | onde | o que decide |
 |---|---|---|
-| middleware | `middleware.ts` | tem cookie? Redireciona para `/entrar` |
+| proxy | `proxy.ts` | tem cookie? Redireciona para `/entrar` |
 | guarda de papel | layouts, Server Component | pode ver esta área? |
 | **RLS** | Postgres | **quais linhas existem para esta pessoa** |
 
-O middleware não consulta o banco de propósito: roda em toda requisição, e um
+O proxy não consulta o banco de propósito: roda em toda requisição, e um
 papel lido de cookie seria um papel que o cliente escolhe.
 
 As funções que mudam papel — `app.promover()`,

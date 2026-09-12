@@ -18,9 +18,9 @@ import { renovarSessao } from "./src/servidor/supabase";
  * vencer para toda página virar 500 — inclusive `/entrar`, a única que poderia
  * consertar. A saída era limpar cookie no navegador à mão.
  *
- * Middleware pode escrever na resposta. É aqui que a rotação mora.
+ * O Proxy pode escrever na resposta. É aqui que a rotação mora.
  *
- * **O que este middleware deliberadamente NÃO faz: checar papel.** Ele roda em
+ * **O que este Proxy deliberadamente NÃO faz: checar papel.** Ele roda em
  * toda requisição; saber o papel exigiria uma consulta ao banco por navegação,
  * e papel lido de cookie é papel que o cliente escolhe. Quem decide isso são os
  * layouts, que são Server Components e leem de `usuario` sob RLS — ver
@@ -29,7 +29,7 @@ import { renovarSessao } from "./src/servidor/supabase";
 
 const PUBLICAS = ["/entrar", "/api/auth"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const publica = PUBLICAS.some(

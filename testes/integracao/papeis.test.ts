@@ -46,7 +46,7 @@ function idDe(email: string): string {
   return sql(`select id from usuario where email = '${email}'`);
 }
 
-describe("middleware: sem sessão não se chega a lugar nenhum", () => {
+describe("proxy: sem sessão não se chega a lugar nenhum", () => {
   it.each([
     "/cliente/contratar",
     "/cliente/eventos",
@@ -75,7 +75,7 @@ describe("middleware: sem sessão não se chega a lugar nenhum", () => {
     const r = await new Aparelho().pedir("/api/auth/login?passo=consultar", {
       corpo: { selector: "qualquer-coisa" },
     });
-    // 404 do pedido inexistente, e não 307 do middleware.
+    // 404 do pedido inexistente, e não 307 do proxy.
     expect(r.status).toBe(404);
   });
 });

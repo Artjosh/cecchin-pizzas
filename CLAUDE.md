@@ -33,11 +33,11 @@ fila, cron ou webhook.
 
 | camada | onde | decide |
 |---|---|---|
-| middleware | `middleware.ts` | tem cookie? Senão, `/entrar` |
+| proxy | `proxy.ts` | tem cookie? Senão, `/entrar` |
 | guarda de papel | layouts de área, Server Component | pode ver esta área? |
 | **RLS** | Postgres | **quais linhas existem para esta pessoa** |
 
-O middleware **não** consulta banco: roda em toda requisição, e papel lido de
+O proxy **não** consulta banco: roda em toda requisição, e papel lido de
 cookie é papel que o cliente escolhe.
 
 `useAuth()` serve para DESENHAR — escrever um nome, esconder um link. Nunca
@@ -51,7 +51,7 @@ o corpo do GoTrue, o token vaza para o `response.json()`.
 ## Server Component NÃO escreve cookie
 
 `cookies().set()` e `.delete()` LANÇAM em Server Component. Só route handler,
-server action e middleware podem escrever.
+server action e proxy podem escrever.
 
 Isso já travou o app inteiro: a renovação de sessão morava em `sessaoAtual()`,
 que o `app/layout.tsx` chama. Bastava o token vencer com refresh inválido para
@@ -62,7 +62,7 @@ Onde cada coisa mora agora:
 
 | escrita | onde |
 |---|---|
-| renovar a sessão | `middleware.ts` |
+| renovar a sessão | `proxy.ts` |
 | gravar no login | route handler de `/api/auth/*` |
 | apagar sessão quebrada | `/api/auth/encerrar` |
 | **ler** | qualquer lugar, via `lerSessao()` / `sessaoAtual()` |
