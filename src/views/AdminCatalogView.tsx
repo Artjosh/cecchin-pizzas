@@ -1,4 +1,9 @@
 import { AlertTriangle, Edit2, Flame, Plus, Trash2, Utensils } from "lucide-react";
+
+import {
+  CatalogoEditavel,
+  type ItemDoCatalogo,
+} from "../components/CatalogoEditavel";
 import { cn } from "../lib/utils";
 import { formatBRL } from "../lib/moeda";
 import { exigirPapel } from "../servidor/auth/guarda";
@@ -98,25 +103,23 @@ async function CatalogoDoBanco() {
     }
   }
 
-  const linhas = [
+  const itens: ItemDoCatalogo[] = [
     ...(leituraRodizios.estado === "ok" ? leituraRodizios.linhas : []).map((m) => {
       const preco = precoDe.get(m.id);
       return {
         id: m.id,
+        tipo: "rodizio" as const,
         nome: m.nome,
-        tipo: "Rodízio",
-        preco: preco ? formatBRL(Number(preco.preco)) : "—",
+        preco: preco ? Number(preco.preco) : null,
         ativo: m.ativo,
-        detalhe: m.horas_montagem
-          ? `${m.horas_montagem}h de montagem`
-          : null,
+        detalhe: m.horas_montagem ? `${m.horas_montagem}h de montagem` : null,
       };
     }),
     ...(leituraFornos.estado === "ok" ? leituraFornos.linhas : []).map((f) => ({
       id: f.id,
+      tipo: "forno" as const,
       nome: f.nome,
-      tipo: "Forno",
-      preco: "incluso",
+      preco: null,
       ativo: f.ativo,
       detalhe: null,
     })),
@@ -125,17 +128,16 @@ async function CatalogoDoBanco() {
   const semPreco = precoDe.size === 0;
 
   return (
-    <Moldura
-      subtitulo={`${linhas.length} itens no catálogo do banco.`}
-      linhas={linhas}
+    <CatalogoEditavel
+      subtitulo={`${itens.length} itens no catálogo do banco.`}
+      itens={itens}
+      hoje={hoje}
       aviso={
         semPreco
-          ? "Nenhum preço vigente cadastrado. `preco_vigencia` está vazia — o valor de cada evento foi digitado evento a evento na planilha, e a tabela de preço existe como proposta. Ver modelagem/docs/07-perguntas.md."
+          ? "Nenhum preço vigente cadastrado. `preco_vigencia` está vazia — o valor de cada evento foi digitado evento a evento na planilha. Use a etiqueta ao lado de cada rodízio para gravar o primeiro preço."
           : null
       }
-      erro={
-        leituraRodizios.estado === "erro" ? leituraRodizios.motivo : null
-      }
+      erro={leituraRodizios.estado === "erro" ? leituraRodizios.motivo : null}
     />
   );
 }
