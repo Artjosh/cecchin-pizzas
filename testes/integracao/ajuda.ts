@@ -87,6 +87,11 @@ export class Aparelho {
     }
   }
 
+  /** Define um cookie como o browser faria. Para preferência, não sessão. */
+  definirCookie(nome: string, valor: string) {
+    this.cookies.set(nome, valor);
+  }
+
   temCookie(nome: string) {
     return this.cookies.has(nome);
   }

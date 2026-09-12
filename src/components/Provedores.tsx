@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { AuthProvider, type Usuario } from "../contexts/AuthContext";
+import { SeletorDeFonte } from "./SeletorDeFonte";
 
 /**
  * A fronteira de cliente do layout raiz.
@@ -23,5 +24,11 @@ export function Provedores({
   usuario: Usuario | null;
   children: ReactNode;
 }) {
-  return <AuthProvider usuario={usuario}>{children}</AuthProvider>;
+  return (
+    <AuthProvider usuario={usuario}>
+      {children}
+      {/* Enquanto mock e banco convivem. Some junto com o último mock. */}
+      <SeletorDeFonte />
+    </AuthProvider>
+  );
 }

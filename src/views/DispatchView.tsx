@@ -1,4 +1,9 @@
 import { DispatchFilters } from "../components/DispatchFilters";
+import { cn } from "../lib/utils";
+import { formatBRL } from "../lib/moeda";
+import { exigirPapel } from "../servidor/auth/guarda";
+import { consultar } from "../servidor/supabase";
+import { comoLeitura, fonteDeDados } from "../servidor/fonte";
 import {
   CalendarClock,
   Car,
@@ -12,7 +17,12 @@ import {
   CarFront,
 } from "lucide-react";
 
-export function DispatchView() {
+/**
+ * O desenho. NÃO MEXER sem motivo: é a referência do que a operação quer
+ * enxergar, com casos que o banco ainda não tem (três pessoas numa van, massa
+ * contada, forno nomeado). Sai quando existir dado equivalente.
+ */
+function DespachoDesenhado() {
   return (
     <div className="flex flex-col w-full h-full gap-space-lg">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
@@ -274,5 +284,245 @@ export function DispatchView() {
          </div>
       </div>
     </div>
+  );
+}
+
+/* ===========================================================================
+ * A MESMA TELA, LENDO O BANCO
+ *
+ * O desenho acima fica intacto: ele tem casos que o banco ainda não tem — três
+ * equipes numa van, massa contada, forno nomeado — e é a referência visual do
+ * que a operação quer enxergar. Some quando existir dado equivalente, não
+ * antes.
+ *
+ * Daqui para baixo, a mesma linguagem de cartão alimentada por `vw_evento`.
+ * ======================================================================== */
+
+interface EventoDaAgenda {
+  id: string;
+  data_evento: string;
+  horario: string | null;
+  horario_texto: string | null;
+  cliente_nome: string | null;
+  cliente_telefone: string | null;
+  responsavel_nome: string | null;
+  inteiros: number | null;
+  meios: number | null;
+  total_do_evento: string | number | null;
+  situacao: string | null;
+  cidade: string | null;
+  bairro: string | null;
+  endereco: string | null;
+  tipo_evento_nome: string | null;
+  modelo_forno_nome: string | null;
+  modelo_rodizio_nome: string | null;
+  codigo_legado: string | null;
+  atencao: boolean | null;
+  horario_saida: string | null;
+}
+
+/**
+ * A cor da borda vem da SITUAÇÃO, que a view calcula — não de um estado que
+ * esta tela inventaria. `vw_evento.situacao` é a mesma regra que a planilha
+ * usa há oito anos.
+ */
+function corDaSituacao(situacao: string | null): string {
+  if (!situacao) return "border-outline-variant";
+  const s = situacao.toLowerCase();
+  if (s.includes("cobrar") || s.includes("pendente")) return "border-primary";
+  if (s.includes("confirm")) return "border-tertiary";
+  return "border-outline-variant";
+}
+
+function comoHora(bruto: string | null, texto: string | null): string {
+  if (texto?.trim()) return texto.trim();
+  if (!bruto) return "—";
+  // `time` do Postgres chega como `20:00:00`.
+  return bruto.slice(0, 5);
+}
+
+function comoDia(iso: string): string {
+  // Dividido na mão em vez de `new Date(iso)`: o construtor interpreta
+  // `2026-09-12` como UTC e, num fuso negativo, mostra o dia anterior.
+  const [, mes, dia] = iso.split("-");
+  return `${dia}/${mes}`;
+}
+
+function CartaoEvento({ evento }: { evento: EventoDaAgenda }) {
+  const pessoas =
+    (evento.inteiros ?? 0) + Math.ceil((evento.meios ?? 0) / 2);
+
+  const local =
+    [evento.bairro, evento.cidade].filter(Boolean).join(" · ") || "Sem endereço";
+
+  return (
+    <div
+      className={cn(
+        "bg-surface-container-lowest rounded-xl shadow-sm border-t-4 overflow-hidden flex flex-col hover:shadow-lg transition-shadow",
+        corDaSituacao(evento.situacao),
+      )}
+    >
+      <div className="p-4 border-b border-outline-variant/30 flex items-center justify-between bg-surface-container-low/50">
+        <div className="flex items-center gap-2 min-w-0">
+          {evento.atencao && (
+            <AlertTriangle className="w-4 h-4 text-primary shrink-0" />
+          )}
+          <span className="font-label-md text-label-md text-on-surface font-bold truncate">
+            {evento.situacao ?? "Sem situação"}
+          </span>
+        </div>
+        <span className="font-label-sm text-label-sm text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded shrink-0">
+          {comoDia(evento.data_evento)}
+        </span>
+      </div>
+
+      <div className="p-4 flex-1 flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold truncate">
+              {evento.cliente_nome ?? "Sem cliente"}
+              {pessoas > 0 && ` • ${pessoas}p`}
+            </h3>
+            <span className="font-label-sm text-label-sm text-on-surface-variant">
+              {[evento.codigo_legado, evento.tipo_evento_nome]
+                .filter(Boolean)
+                .join(" • ") || "—"}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2">
+          <MapPin className="w-5 h-5 text-tertiary shrink-0 mt-0.5" />
+          <div className="flex flex-col min-w-0">
+            <span className="font-body-md text-body-md text-on-surface font-medium leading-tight truncate">
+              {evento.endereco ?? local}
+            </span>
+            <span className="font-label-sm text-label-sm text-on-surface-variant truncate">
+              {local}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 bg-surface-container-low p-2 rounded-lg">
+          <div className="flex flex-col">
+            <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">
+              Cronograma
+            </span>
+            <span className="font-label-md text-label-md text-on-surface">
+              {comoHora(evento.horario_saida, null)}{" "}
+              <span className="text-primary">→</span>{" "}
+              {comoHora(evento.horario, evento.horario_texto)}
+            </span>
+          </div>
+          <div className="w-px h-8 bg-outline-variant/50"></div>
+          <div className="flex flex-col min-w-0">
+            <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">
+              Responsável
+            </span>
+            <span className="font-label-md text-label-md text-on-surface truncate">
+              {evento.responsavel_nome ?? "não alocado"}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-label-sm font-label-sm">
+          <span className="text-on-surface-variant truncate">
+            {evento.modelo_forno_nome ?? evento.modelo_rodizio_nome ?? "—"}
+          </span>
+          <span className="text-on-surface font-semibold">
+            {formatBRL(Number(evento.total_do_evento ?? 0))}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-3 bg-surface-container-highest border-t border-outline-variant/20 flex gap-2">
+        {evento.cliente_telefone ? (
+          <a
+            href={`https://wa.me/55${evento.cliente_telefone.replace(/\D/g, "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 bg-primary text-on-primary font-label-md text-label-md py-1.5 rounded-lg flex items-center justify-center gap-1.5 hover:opacity-90"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Falar com cliente
+          </a>
+        ) : (
+          <span className="flex-1 bg-surface-container text-on-surface-variant font-label-md text-label-md py-1.5 rounded-lg flex items-center justify-center gap-1.5">
+            Sem telefone
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+async function DespachoDoBanco() {
+  const sessao = await exigirPapel(["staff"]);
+  const hoje = new Date().toISOString().slice(0, 10);
+
+  const leitura = comoLeitura(
+    await consultar<EventoDaAgenda[]>(
+      "vw_evento?select=id,data_evento,horario,horario_texto,cliente_nome," +
+        "cliente_telefone,responsavel_nome,inteiros,meios,total_do_evento," +
+        "situacao,cidade,bairro,endereco,tipo_evento_nome,modelo_forno_nome," +
+        "modelo_rodizio_nome,codigo_legado,atencao,horario_saida" +
+        `&data_evento=gte.${hoje}&status=eq.confirmado` +
+        "&order=data_evento.asc&limit=60",
+      sessao.accessToken,
+    ),
+  );
+
+  return (
+    <div className="flex flex-col w-full h-full gap-space-lg">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+        <div className="flex flex-col max-w-xl">
+          <div className="flex items-center gap-space-xs text-primary font-label-md text-label-md uppercase tracking-wider mb-space-xs">
+            <CalendarClock className="w-4 h-4" />
+            Agenda do banco
+          </div>
+          <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
+            Agenda e Despacho de Eventos
+          </h1>
+          <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+            {leitura.estado === "ok"
+              ? `${leitura.linhas.length} eventos confirmados de hoje em diante.`
+              : "Eventos confirmados de hoje em diante."}
+          </p>
+        </div>
+      </div>
+
+      <DispatchFilters />
+
+      {leitura.estado === "erro" && (
+        <p
+          role="alert"
+          className="font-body-md text-body-md text-primary bg-primary/10 rounded-xl p-space-md"
+        >
+          Não foi possível ler a agenda: {leitura.motivo}
+        </p>
+      )}
+
+      {leitura.estado === "vazio" && (
+        <p className="font-body-md text-body-md text-on-surface-variant bg-surface-container-low rounded-xl p-space-md">
+          Nenhum evento confirmado de hoje em diante.
+        </p>
+      )}
+
+      {leitura.estado === "ok" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-space-md">
+          {leitura.linhas.map((evento) => (
+            <CartaoEvento key={evento.id} evento={evento} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export async function DispatchView() {
+  return (await fonteDeDados()) === "real" ? (
+    <DespachoDoBanco />
+  ) : (
+    <DespachoDesenhado />
   );
 }

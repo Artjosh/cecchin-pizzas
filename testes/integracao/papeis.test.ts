@@ -26,12 +26,19 @@ function conta(prefixo: string): string {
 afterAll(() => apagarContas(criados));
 
 /** Entra e promove por SQL — o mesmo caminho do primeiro admin de verdade. */
-async function entrarComo(prefixo: string, papel: string): Promise<Aparelho> {
+async function entrarComo(
+  prefixo: string,
+  papel: string,
+  fonte?: "real",
+): Promise<Aparelho> {
   const email = conta(prefixo);
   const ap = await entrar(email);
   if (papel !== "cliente") {
     sql(`update usuario set papel = '${papel}' where email = '${email}'`);
   }
+  // O cookie de fonte não é httpOnly: é preferência de quem olha, e o
+  // `Aparelho` o define como o browser faria.
+  if (fonte) ap.definirCookie("cecchin_fonte", fonte);
   return ap;
 }
 
@@ -212,5 +219,36 @@ describe("troca de papel pela API", () => {
     const emails = r.corpo.pessoas.map((p: any) => p.email);
     expect(emails).not.toContain(cliente);
     expect(r.corpo.pessoas.every((p: any) => p.papel !== "cliente")).toBe(true);
+  });
+});
+
+describe("telas do cliente não viram telas da operação", () => {
+  /*
+   * A terceira aparição do mesmo erro: a policy permite ver o próprio E ver
+   * tudo quando se é da operação, e policy permissiva se SOMA. Quem é admin e
+   * abre uma tela "minha" recebia a base inteira.
+   *
+   * Aconteceu em `usuario` (a sessão resolvia para outra pessoa), em
+   * `solicitacao_staff` (pedido alheio como se fosse o dele) e em
+   * `/cliente/eventos` (a agenda inteira como "Meus eventos").
+   */
+  it("Meus eventos não mostra a agenda da operação para um admin", async () => {
+    const ap = await entrarComo("c-meus-admin", "admin", "real");
+
+    const r = await ap.pedir("/cliente/eventos", {
+      metodo: "GET",
+    });
+
+    expect(r.status).toBe(200);
+    // O banco tem 12.300 eventos; nenhum é dele.
+    expect(r.texto).toContain("ainda não tem evento");
+  });
+
+  it("e a agenda da operação continua completa para o mesmo admin", async () => {
+    const ap = await entrarComo("c-agenda-admin", "admin", "real");
+    const r = await ap.pedir("/operacional/despacho");
+
+    expect(r.status).toBe(200);
+    expect(r.texto).toContain("eventos confirmados de hoje");
   });
 });

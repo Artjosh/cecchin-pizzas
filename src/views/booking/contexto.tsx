@@ -83,15 +83,13 @@ export const PASSOS = [
   { num: 4, titulo: "Resumo & Sinal", desc: "Garantia via PIX" },
 ] as const;
 
-export function formatBRL(valor: number): string {
-  return (
-    "R$ " +
-    valor.toLocaleString("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-  );
-}
+/*
+ * Reexportado de `lib/moeda.ts`, que não tem `"use client"`. Server Component
+ * precisa importar de lá: daqui, o RSC entrega uma referência de cliente em
+ * vez da função.
+ */
+import { formatBRL } from "../../lib/moeda";
+export { formatBRL };
 
 function hoje(): string {
   return new Date().toISOString().slice(0, 10);
