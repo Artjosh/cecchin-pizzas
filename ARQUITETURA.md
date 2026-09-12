@@ -1,6 +1,6 @@
 # Arquitetura do frontend
 
-Estado real em 11/09/2026. O que não está marcado como **existe** não existe.
+Estado real em 12/09/2026. O que não está marcado como **existe** não existe.
 
 ## O que está ligado
 
@@ -12,13 +12,14 @@ Estado real em 11/09/2026. O que não está marcado como **existe** não existe.
 | Guarda de papel no servidor | **existe** — nos layouts, sobre RLS |
 | Quatro papéis e a promoção entre eles | **existe** — decidido no Postgres |
 | Google Maps | **existe** — geocoding e autocomplete reais |
-| Server Components + SSR | **existe** — 17 páginas server, 5 route handlers |
-| Leitura de dado de negócio (agenda, evento, catálogo) | **ainda mock** |
+| Server Components + SSR | **existe** — páginas protegidas e route handlers dinâmicos |
+| Leitura de dado de negócio | **existe** — agenda, catálogo, equipe, clientes, mapa, checklist, suporte, rastreio e localidades usam PostgREST sob RLS |
 | Storage do Supabase | container de pé, **nenhum bucket** |
-| NestJS | existe no repo do backend, **nenhuma tela chama** |
+| NestJS | existe no backend; faz a limpeza periódica de pedidos de login e permanece a fronteira para reserva, dinheiro e webhooks |
 
-As telas de operação e de contratação continuam com dado escrito no
-componente. O que deixou de ser mock foi **quem é você e o que você pode**.
+Os desenhos de referência continuam em `src/views/desenho/`. As telas ligadas
+ao banco mostram explicitamente as lacunas de dado quando a fonte não tem a
+informação necessária, em vez de completar com valores fictícios.
 
 ## Autenticação
 
@@ -175,15 +176,17 @@ novo vale na navegação seguinte, sem novo login.
 
 ## O que ainda não existe
 
-- **nenhuma tela lê dado de negócio do banco** — agenda, evento e catálogo
-  continuam mock
+- **perfil editável** — a rota existe, mas a tela ainda é um desenho e está
+  reservada para o trabalho de OAuth
+- **frota administrável** — o banco tem tipos de forno, mas não ativos ou
+  veículos individuais
 - **nenhum bucket** de Storage
 - **login pelo Google** — o gatilho de perfil já cobre o caminho; falta
   habilitar o provedor no GoTrue
 - **rate limit por IP no BFF** — hoje só o do GoTrue, que conta por endpoint
   dele, não pelos nossos
-- **varredura de pedidos vencidos** — `app.limpar_pedidos_de_login()` existe e
-  ninguém chama; hoje eles só somem quando alguém tropeça neles
+- **entrega de produção** — os dois repositórios ainda não foram publicados
+  no remoto
 
 As 36 perguntas de `../cecchin-pizzas-backend/modelagem/docs/07-perguntas.md`
 seguem sem resposta humana, e travam a modelagem — não o acesso.
