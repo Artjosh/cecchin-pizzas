@@ -16,6 +16,7 @@ import {
   MessageCircle,
   Menu,
   MessageSquareShare,
+  Pizza,
   Route,
   X,
   Truck,
@@ -77,11 +78,12 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
       >
         <div className="flex flex-col gap-space-lg">
           <div className="flex items-center gap-space-sm pt-space-xs">
-            <img
-              alt="Cecchin Pizzas Logo"
-              className="h-8 w-auto object-contain"
-              src="https://lh3.googleusercontent.com/aida/AEtjO1XJKfgjCG5hs6_lk1Xf7VXf_zdDIH5N7glhls6Pr5H9fy0dIYbYr422JqulNRSKzPKIpvfVtjWZCJTYEDx0gT3ZJ4hytVWunb_ul7t_-15oZdEFMmSFPKEN9HKiwmsa9OEtAV80R__685pluk6b3TTwkKMXD1HWXKGbC1flmdywhdg_RoNEFL1ohkXfIp_nfEi1Xn_EtLfTrrNwRbZNqRg0uSzN7MpsQw0mNGueLXa3VivNF1QNLxL9vumV"
-            />
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-on-primary"
+              aria-label="Cecchin Pizzas"
+            >
+              <Pizza className="h-4 w-4" aria-hidden="true" />
+            </span>
             <div className="flex flex-col">
               <span className="font-headline-sm text-headline-sm text-primary leading-tight">
                 Cecchin Pizzas

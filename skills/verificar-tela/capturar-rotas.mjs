@@ -49,7 +49,11 @@ const TELAS = [
 
 mkdirSync(SAIDA, { recursive: true });
 
-const sessao = EMAIL ? await cookiesDeSessao(ALVO, EMAIL, FONTE) : [];
+// Playwright exige que o domínio do cookie coincida com o host de ALVO. Não
+// suponha `localhost`: uma instância isolada pode usar 127.0.0.1.
+const sessao = EMAIL
+  ? await cookiesDeSessao(ALVO, EMAIL, FONTE, new URL(ALVO).hostname)
+  : [];
 
 const navegador = await chromium.launch();
 

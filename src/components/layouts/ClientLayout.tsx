@@ -37,11 +37,12 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         <div className="h-20 max-w-7xl mx-auto px-margin md:px-margin-tablet lg:px-margin-desktop flex items-center justify-between gap-space-md">
           {/* Logo */}
           <div className="flex items-center gap-space-md min-w-max">
-            <img
-              alt="Cecchin Pizzas Logo"
-              className="h-8 w-auto object-contain"
-              src="https://lh3.googleusercontent.com/aida/AEtjO1XJKfgjCG5hs6_lk1Xf7VXf_zdDIH5N7glhls6Pr5H9fy0dIYbYr422JqulNRSKzPKIpvfVtjWZCJTYEDx0gT3ZJ4hytVWunb_ul7t_-15oZdEFMmSFPKEN9HKiwmsa9OEtAV80R__685pluk6b3TTwkKMXD1HWXKGbC1flmdywhdg_RoNEFL1ohkXfIp_nfEi1Xn_EtLfTrrNwRbZNqRg0uSzN7MpsQw0mNGueLXa3VivNF1QNLxL9vumV"
-            />
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-on-primary"
+              aria-label="Cecchin Pizzas"
+            >
+              <Pizza className="h-4 w-4" aria-hidden="true" />
+            </span>
             <div className="hidden sm:flex flex-col">
               <span className="flex items-center gap-1 font-headline-sm text-headline-sm text-primary leading-tight">
                 <Pizza className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
