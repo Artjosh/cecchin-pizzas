@@ -28,6 +28,7 @@ const ALVO = process.env.ALVO ?? "http://localhost:3210";
 const ADMIN = process.env.ADMIN ?? "arthur.heleus.thade@gmail.com";
 const SAIDA = process.env.SAIDA ?? resolve(AQUI, "../verificar-tela/capturas");
 const CONTAINER = process.env.CONTAINER_DB ?? "supabase_db_Nicolas";
+const DOMINIO_ALVO = new URL(ALVO).hostname;
 
 const TELAS = [
   { nome: "desktop", width: 1440, height: 900 },
@@ -59,7 +60,7 @@ mkdirSync(SAIDA, { recursive: true });
 
 try {
   // ---------------------------------------------------------------- elo 1
-  const ckStaff = await cookiesDeSessao(ALVO, emailStaff, "real");
+  const ckStaff = await cookiesDeSessao(ALVO, emailStaff, "real", DOMINIO_ALVO);
   sql(`update usuario set papel = 'staff' where email = '${emailStaff}'`);
   const idStaff = sql(`select id from usuario where email = '${emailStaff}'`);
   console.log(`conta ${emailStaff} criada como staff`);
@@ -85,7 +86,7 @@ try {
     `select coalesce(responsavel_id::text, '') from evento where id = '${evento}'`,
   );
 
-  const ckAdmin = await cookiesDeSessao(ALVO, ADMIN, "real");
+  const ckAdmin = await cookiesDeSessao(ALVO, ADMIN, "real", DOMINIO_ALVO);
   const cabecalho = (ck) => ck.map((c) => `${c.name}=${c.value}`).join("; ");
 
   const ligar = await fetch(`${ALVO}/api/operacao/responsavel`, {

@@ -1,14 +1,14 @@
 # Testes
 
-398 asserções, em quatro camadas. Nenhuma usa navegador, e nenhuma manda
+525 verificações, em quatro camadas. Nenhuma usa navegador, e nenhuma manda
 e-mail para alguém de verdade.
 
 | camada | onde | quantas | precisa de quê |
 |---|---|--:|---|
 | typecheck | `tsc --noEmit` | — | nada |
-| unidade | `cecchin-pizzas/testes/unidade` | 120 | nada |
-| integração HTTP | `cecchin-pizzas/testes/integracao` | 142 | Supabase + `npm run dev` |
-| RLS em pgTAP | `cecchin-pizzas-backend/supabase/tests` | 151 | Supabase |
+| unidade | `cecchin-pizzas/testes/unidade` | 125 | nada |
+| integração HTTP | `cecchin-pizzas/testes/integracao` | 186 | Supabase + `npm run dev` |
+| RLS em pgTAP | `cecchin-pizzas-backend/supabase/tests` | 214 | Supabase |
 
 ## Rodar
 

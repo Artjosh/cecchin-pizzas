@@ -168,12 +168,12 @@ Vai para `useEffect`, com um marcador (`--:--`) no primeiro render.
 ## Verificar antes de dizer que está pronto
 
 ```bash
-npm test           # typecheck + 106 testes de unidade. Rápido.
-npm run test:tudo  # o de cima + 75 de integração. Exige Supabase e `npm run dev`.
+npm test           # typecheck + 125 testes de unidade. Rápido.
+npm run test:tudo  # o de cima + 186 testes de integração. Exige Supabase e `npm run dev`.
 ```
 
 Mexeu em acesso, papel, policy ou rota de API: **rode `test:tudo`**, e rode
-também `npm test` no repositório do backend (136 testes de pgTAP). Detalhe em
+também `npm test` no repositório do backend (214 testes de pgTAP). Detalhe em
 `TESTES.md`.
 
 Teste novo de acesso vai em `testes/integracao`, falando HTTP de verdade — sem
