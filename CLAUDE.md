@@ -6,6 +6,16 @@ Next.js da Cloudflare sobre Vite) rodando em Workers.
 Leia `ARQUITETURA.md` antes de propor integração e `VINEXT.md` antes de mexer
 em build, rota ou layout.
 
+## Outro agente pode estar trabalhando aqui
+
+Antes de mexer, leia `../AGENTES.md` — um arquivo só, na pasta que contém os
+dois repositórios. Ele diz quem está fazendo o quê agora e quais arquivos estão
+travados.
+
+Ao começar algo, acrescente sua linha em **Em andamento**. Ao terminar, mova
+para **Concluído**. Edite por acréscimo: reescrever a seção inteira apaga o que
+o outro escreveu no intervalo.
+
 ## A coisa mais importante de saber
 
 **Autenticação e papéis são reais; dado de negócio ainda é mock.** Agenda,
