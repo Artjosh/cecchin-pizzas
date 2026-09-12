@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Save } from "lucide-react";
+import { AlertTriangle, Loader2, Save, Search } from "lucide-react";
+
+import { cn } from "../lib/utils";
 
 export interface LocalidadeEditavel {
   id: string;
@@ -97,6 +99,124 @@ function LinhaLocalidade({ localidade }: { localidade: LocalidadeEditavel }) {
   );
 }
 
-export function EditarLocalidades({ localidades, inicioPico = "17:00", fimPico = "20:00" }: { localidades: LocalidadeEditavel[]; inicioPico?: string; fimPico?: string }) {
-  return <div className="flex flex-col gap-space-md"><JanelaDePico inicio={inicioPico} fim={fimPico} /><p className="font-body-sm text-body-sm text-on-surface-variant">Deixe a taxa ou um tempo em branco quando ainda não houver uma regra confirmada.</p><ul className="flex flex-col gap-space-xs">{localidades.map((localidade) => <LinhaLocalidade key={localidade.id} localidade={localidade} />)}</ul></div>;
+function semAcento(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
+/** Falta alguma regra? É o que decide o filtro de incompletas. */
+function incompleta(l: LocalidadeEditavel): boolean {
+  return l.valor === null || l.minutos_normal === null || l.minutos_pico === null;
+}
+
+export function EditarLocalidades({
+  localidades,
+  inicioPico = "17:00",
+  fimPico = "20:00",
+}: {
+  localidades: LocalidadeEditavel[];
+  inicioPico?: string;
+  fimPico?: string;
+}) {
+  const [busca, setBusca] = useState("");
+  const [soIncompletas, setSoIncompletas] = useState(false);
+
+  /*
+   * **Por que há busca, filtro e teto aqui.** São 582 localidades, e cada uma
+   * monta quatro campos controlados. Sem filtro, quem precisa acertar a taxa de
+   * Gravataí rola uma lista de 582 cartões até achar — e o navegador segura
+   * mais de dois mil campos em memória para mostrar um.
+   *
+   * O teto de 80 não esconde nada: a busca alcança qualquer localidade, e o
+   * aviso embaixo diz quantas ficaram de fora.
+   */
+  const indexadas = useMemo(
+    () =>
+      localidades.map((l) => ({
+        localidade: l,
+        texto: semAcento(
+          [l.cidade, l.bairro, l.uf].filter(Boolean).join(" "),
+        ),
+      })),
+    [localidades],
+  );
+
+  const alvo = semAcento(busca.trim());
+
+  const casam = indexadas.filter(
+    ({ localidade, texto }) =>
+      (!alvo || texto.includes(alvo)) &&
+      (!soIncompletas || incompleta(localidade)),
+  );
+
+  const visiveis = casam.slice(0, 80).map(({ localidade }) => localidade);
+  const escondidas = casam.length - visiveis.length;
+  const faltando = localidades.filter(incompleta).length;
+
+  return (
+    <div className="flex flex-col gap-space-md">
+      <JanelaDePico inicio={inicioPico} fim={fimPico} />
+
+      <div className="flex flex-wrap items-center gap-space-sm">
+        <div className="relative flex-1 min-w-[12rem]">
+          <label htmlFor="busca-localidade" className="sr-only">
+            Buscar cidade ou bairro
+          </label>
+          <Search
+            aria-hidden="true"
+            className="absolute left-3 top-3 w-[18px] h-[18px] text-on-surface-variant"
+          />
+          <input
+            id="busca-localidade"
+            type="search"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar cidade ou bairro"
+            className="w-full h-11 bg-surface-container-highest rounded-lg pl-9 pr-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setSoIncompletas((v) => !v)}
+          aria-pressed={soIncompletas}
+          className={cn(
+            "h-11 px-4 rounded-lg font-label-md text-label-md flex items-center gap-2 transition-colors",
+            soIncompletas
+              ? "bg-primary text-on-primary"
+              : "bg-surface-container text-on-surface hover:bg-surface-container-high",
+          )}
+        >
+          <AlertTriangle className="w-4 h-4" />
+          Só incompletas ({faltando})
+        </button>
+      </div>
+
+      <p className="font-body-sm text-body-sm text-on-surface-variant">
+        Deixe a taxa ou um tempo em branco quando ainda não houver uma regra
+        confirmada.
+      </p>
+
+      <ul className="flex flex-col gap-space-xs">
+        {visiveis.map((localidade) => (
+          <LinhaLocalidade key={localidade.id} localidade={localidade} />
+        ))}
+
+        {visiveis.length === 0 && (
+          <li className="font-body-md text-body-md text-on-surface-variant bg-surface-container-low rounded-xl p-space-md text-center">
+            Nenhuma localidade{soIncompletas ? " incompleta" : ""}
+            {alvo ? " com esse nome" : ""}.
+          </li>
+        )}
+      </ul>
+
+      {escondidas > 0 && (
+        <p className="font-body-sm text-body-sm text-on-surface-variant">
+          Mais {escondidas} fora da lista. Use a busca para chegar nelas.
+        </p>
+      )}
+    </div>
+  );
 }
