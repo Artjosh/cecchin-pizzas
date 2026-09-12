@@ -4,15 +4,21 @@ import Link from "next/link";
 import { redirect, usePathname } from "next/navigation";
 import { cn } from "../../lib/utils";
 import {
+  BookOpen,
   CalendarClock,
+  ClipboardList,
+  HardHat,
+  History,
+  ListChecks,
   Map,
+  MapPinned,
+  MessageCircle,
   MessageSquareShare,
   Route,
-  ListChecks,
-  BookOpen,
   Truck,
-  MessageCircle,
   User,
+  Users,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { MenuDoUsuario } from "../MenuDoUsuario";
@@ -123,6 +129,30 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <span className="font-label-lg text-label-lg">Despacho & Agenda</span>
                 </Link>
                 <Link
+                  href="/operacional/pendencias"
+                  className={cn(
+                    "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
+                    pathname.startsWith("/operacional/pendencias")
+                      ? "bg-primary-container text-on-primary-container"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  )}
+                >
+                  <ClipboardList className="w-[18px] h-[18px]" />
+                  Pendências
+                </Link>
+                <Link
+                  href="/operacional/clientes"
+                  className={cn(
+                    "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
+                    pathname.startsWith("/operacional/clientes")
+                      ? "bg-primary-container text-on-primary-container"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  )}
+                >
+                  <Users className="w-[18px] h-[18px]" />
+                  Clientes
+                </Link>
+                <Link
                   href="/operacional/mapa"
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
@@ -193,6 +223,54 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                 >
                   <BookOpen className="w-5 h-5" />
                   <span className="font-label-lg text-label-lg">Catálogo & Preços</span>
+                </Link>
+                <Link
+                  href="/admin/financeiro"
+                  className={cn(
+                    "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
+                    pathname.startsWith("/admin/financeiro")
+                      ? "bg-primary-container text-on-primary-container"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  )}
+                >
+                  <Wallet className="w-[18px] h-[18px]" />
+                  Financeiro
+                </Link>
+                <Link
+                  href="/admin/localidades"
+                  className={cn(
+                    "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
+                    pathname.startsWith("/admin/localidades")
+                      ? "bg-primary-container text-on-primary-container"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  )}
+                >
+                  <MapPinned className="w-[18px] h-[18px]" />
+                  Localidades
+                </Link>
+                <Link
+                  href="/admin/operacao"
+                  className={cn(
+                    "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
+                    pathname.startsWith("/admin/operacao")
+                      ? "bg-primary-container text-on-primary-container"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  )}
+                >
+                  <HardHat className="w-[18px] h-[18px]" />
+                  Equipe de operação
+                </Link>
+                <Link
+                  href="/admin/auditoria"
+                  className={cn(
+                    "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
+                    pathname.startsWith("/admin/auditoria")
+                      ? "bg-primary-container text-on-primary-container"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  )}
+                >
+                  <History className="w-[18px] h-[18px]" />
+                  Auditoria
                 </Link>
                 <Link
                   href="/admin/frota"

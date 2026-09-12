@@ -1,13 +1,13 @@
 # Testes
 
-347 asserções, em quatro camadas. Nenhuma usa navegador, e nenhuma manda
+398 asserções, em quatro camadas. Nenhuma usa navegador, e nenhuma manda
 e-mail para alguém de verdade.
 
 | camada | onde | quantas | precisa de quê |
 |---|---|--:|---|
 | typecheck | `tsc --noEmit` | — | nada |
 | unidade | `cecchin-pizzas/testes/unidade` | 120 | nada |
-| integração HTTP | `cecchin-pizzas/testes/integracao` | 76 | Supabase + `npm run dev` |
+| integração HTTP | `cecchin-pizzas/testes/integracao` | 142 | Supabase + `npm run dev` |
 | RLS em pgTAP | `cecchin-pizzas-backend/supabase/tests` | 151 | Supabase |
 
 ## Rodar
@@ -109,6 +109,14 @@ Cobre as transições de papel uma a uma, o último admin que não cai, o
 isolamento entre organizações, a fila de staff, `pedido_login`, o gatilho que
 cria o perfil, a imutabilidade da data do evento e o `COALESCE` das colunas
 GENERATED.
+
+### Rota nova precisa de reinício do `vinext dev`
+
+`vinext dev` não reconhece diretório de rota criado depois que ele subiu: a
+rota devolve 404 genérico, sem passar pelo componente. O build reconhece.
+
+Se um teste de tela falha com 404 e a mesma rota passa em `vinext start`, é
+isso — reinicie o dev, não procure erro no componente.
 
 ## Regras que os testes impõem, e que custaram algo
 
