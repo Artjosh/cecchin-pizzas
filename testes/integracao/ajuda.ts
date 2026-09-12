@@ -185,7 +185,7 @@ export async function esperarEmail(
       const html = (det.HTML ?? "") + (det.Text ?? "");
       const codigo =
         html.match(/>\s*(\d{6})\s*</)?.[1] ?? html.match(/\b(\d{6})\b/)?.[1] ?? "";
-      const link = (html.match(/href="([^"]*auth\/v1\/verify[^"]*)"/)?.[1] ?? "")
+      const link = (html.match(/href="([^"]*\/entrar\/confirmar[^"]*)"/)?.[1] ?? "")
         .replace(/&amp;/g, "&");
       return { codigo, link, assunto: msg.Subject };
     }

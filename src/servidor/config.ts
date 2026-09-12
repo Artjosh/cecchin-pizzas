@@ -41,13 +41,17 @@ export const config = {
 
   auth: {
     /** Base pública deste app. Entra no `redirect_to` do magic link. */
-    urlPublica: process.env.APP_URL ?? "http://localhost:3000",
+    urlPublica:
+      process.env.AUTH_REDIRECT_URL ?? process.env.APP_URL ?? "http://localhost:3000",
     /** Vida do pedido de login. O OTP do GoTrue vence junto. */
     pedidoTtlMs: inteiro("AUTH_PEDIDO_TTL_MS", 15 * 60 * 1000),
     /** Espera antes de aceitar um novo pedido para o mesmo e-mail. */
     reenvioMs: inteiro("AUTH_REENVIO_MS", 60 * 1000),
     /** Tentativas de código antes de destruir o pedido. */
     maxTentativasOtp: inteiro("AUTH_MAX_TENTATIVAS_OTP", 5),
+    /** Só exibe o login depois de o provider estar configurado no Supabase. */
+    googleHabilitado: process.env.AUTH_GOOGLE_ENABLED === "true",
+    appleHabilitado: process.env.AUTH_APPLE_ENABLED === "true",
   },
 } as const;
 

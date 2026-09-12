@@ -25,15 +25,12 @@ type Estado = "verificando" | "aprovado" | "recusado";
 export function ConfirmarAcessoView({ selector }: { selector: string }) {
   const [estado, setEstado] = useState<Estado>("verificando");
   const [detalhe, setDetalhe] = useState("");
+  const [segundosParaFechar, setSegundosParaFechar] = useState(5);
 
   useEffect(() => {
     const fragmento = new URLSearchParams(window.location.hash.replace(/^#/, ""));
 
-    const sessao = {
-      access_token: fragmento.get("access_token") ?? "",
-      refresh_token: fragmento.get("refresh_token") ?? "",
-      expires_in: Number(fragmento.get("expires_in") ?? 3600),
-    };
+    const tokenHash = fragmento.get("token_hash") ?? "";
 
     /*
      * Tira a sessão da barra de endereço antes de qualquer outra coisa. Ela já
@@ -50,7 +47,7 @@ export function ConfirmarAcessoView({ selector }: { selector: string }) {
       return;
     }
 
-    if (!selector || !sessao.access_token || !sessao.refresh_token) {
+    if (!selector || !tokenHash) {
       setEstado("recusado");
       setDetalhe("Link incompleto. Peça um novo acesso.");
       return;
@@ -60,10 +57,10 @@ export function ConfirmarAcessoView({ selector }: { selector: string }) {
 
     void (async () => {
       try {
-        const r = await fetch("/api/auth/aprovar", {
+        const r = await fetch("/api/auth/aprovar-hash", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ selector, sessao }),
+          body: JSON.stringify({ selector, tokenHash }),
         });
 
         if (!vivo) return;
@@ -87,6 +84,20 @@ export function ConfirmarAcessoView({ selector }: { selector: string }) {
       vivo = false;
     };
   }, [selector]);
+
+  useEffect(() => {
+    if (estado !== "aprovado") return;
+
+    const intervalo = window.setInterval(() => {
+      setSegundosParaFechar((atual) => Math.max(0, atual - 1));
+    }, 1000);
+    const fechar = window.setTimeout(() => window.close(), 5000);
+
+    return () => {
+      window.clearInterval(intervalo);
+      window.clearTimeout(fechar);
+    };
+  }, [estado]);
 
   return (
     <main className="min-h-[100dvh] flex items-center justify-center bg-surface px-margin py-space-xl">
@@ -116,12 +127,16 @@ export function ConfirmarAcessoView({ selector }: { selector: string }) {
               Pode fechar esta aba. Se você pediu o acesso em outro aparelho, ele
               já entrou sozinho.
             </p>
-            <a
-              href="/"
+            <p className="font-body-sm text-body-sm text-on-surface-variant">
+              Fechando esta aba em {segundosParaFechar}s.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.close()}
               className="h-12 px-6 rounded-lg bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center hover:opacity-90 transition-opacity"
             >
-              Continuar aqui
-            </a>
+              Fechar agora
+            </button>
           </>
         )}
 

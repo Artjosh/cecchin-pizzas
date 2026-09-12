@@ -34,5 +34,10 @@ export default defineConfig(({ command }) => {
       // avisa que __dirname deixará de ser suportado.
       alias: { "@": import.meta.dirname },
     },
+    server: {
+      // O callback local usa `192-168-x-x.sslip.io`, hostname que resolve para
+      // o IP Wi-Fi atual e evita a restrição do GoTrue a IPv4 literal.
+      allowedHosts: [".sslip.io"],
+    },
   };
 });

@@ -124,6 +124,41 @@ export function verificarCodigo(
   );
 }
 
+/** Consome o hash que veio no magic link; a sessão resultante fica no BFF. */
+export function verificarMagicLink(
+  tokenHash: string,
+): Promise<RespostaSupabase<Record<string, unknown>>> {
+  return chamar(
+    "/auth/v1/verify",
+    {
+      method: "POST",
+      body: JSON.stringify({ token_hash: tokenHash, type: "magiclink" }),
+    },
+    config.supabase.anonKey,
+  );
+}
+
+/**
+ * Troca o código de retorno do OAuth por uma sessão no servidor.
+ *
+ * O `code_verifier` nunca chega ao JavaScript da tela: ele fica em cookie
+ * httpOnly por poucos minutos entre a ida ao provedor e este retorno. Assim a
+ * sessão social termina do mesmo jeito que o OTP, nos cookies do BFF.
+ */
+export function trocarCodigoOauth(
+  codigo: string,
+  verificador: string,
+): Promise<RespostaSupabase<Record<string, unknown>>> {
+  return chamar(
+    "/auth/v1/token?grant_type=pkce",
+    {
+      method: "POST",
+      body: JSON.stringify({ auth_code: codigo, code_verifier: verificador }),
+    },
+    config.supabase.anonKey,
+  );
+}
+
 /**
  * Pergunta ao GoTrue de quem é um access token.
  *

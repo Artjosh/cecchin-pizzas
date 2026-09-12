@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
-  Check,
   Loader2,
   Mail,
   Pizza,
@@ -29,17 +28,33 @@ type Etapa = "email" | "aguardando";
 
 const INTERVALO_MS = 3000;
 
-export function EntrarView({ para }: { para: string }) {
+interface ProvedoresSociais {
+  google: boolean;
+  apple: boolean;
+}
+
+export function EntrarView({
+  para,
+  erroInicial,
+  provedoresSociais,
+}: {
+  para: string;
+  erroInicial: string;
+  provedoresSociais: ProvedoresSociais;
+}) {
   const [etapa, setEtapa] = useState<Etapa>("email");
   const [email, setEmail] = useState("");
   const [selector, setSelector] = useState("");
   const [codigo, setCodigo] = useState("");
   const [mensagem, setMensagem] = useState("");
-  const [erro, setErro] = useState("");
+  const [erro, setErro] = useState(erroInicial);
   const [ocupado, setOcupado] = useState(false);
   const [expirado, setExpirado] = useState(false);
+  const [reenvioAte, setReenvioAte] = useState(0);
+  const [agora, setAgora] = useState(() => Date.now());
 
   const entrando = useRef(false);
+  const tentativaOtp = useRef("");
 
   /**
    * Sessão aprovada: o cookie já está gravado. Recarrega pelo servidor em vez
@@ -68,10 +83,13 @@ export function EntrarView({ para }: { para: string }) {
         const corpo = (await r.json()) as {
           selector?: string;
           mensagem?: string;
+          reenviar_em?: string;
         };
 
         if (!r.ok) {
           setErro(corpo.mensagem ?? "Não foi possível pedir o acesso.");
+          const proximo = Date.parse(corpo.reenviar_em ?? "");
+          if (Number.isFinite(proximo)) setReenvioAte(proximo);
           return;
         }
 
@@ -80,6 +98,10 @@ export function EntrarView({ para }: { para: string }) {
         setEtapa("aguardando");
         setExpirado(false);
         setCodigo("");
+        tentativaOtp.current = "";
+        const proximo = Date.parse(corpo.reenviar_em ?? "");
+        setReenvioAte(Number.isFinite(proximo) ? proximo : Date.now() + 60_000);
+        setAgora(Date.now());
       } catch {
         setErro("Falha de rede. Verifique a conexão e tente de novo.");
       } finally {
@@ -128,7 +150,13 @@ export function EntrarView({ para }: { para: string }) {
     };
   }, [etapa, selector, expirado, concluir]);
 
-  const enviarCodigo = async () => {
+  useEffect(() => {
+    if (etapa !== "aguardando" || expirado || reenvioAte <= Date.now()) return;
+    const id = window.setInterval(() => setAgora(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [etapa, expirado, reenvioAte]);
+
+  const enviarCodigo = useCallback(async () => {
     setOcupado(true);
     setErro("");
 
@@ -153,6 +181,30 @@ export function EntrarView({ para }: { para: string }) {
     } finally {
       setOcupado(false);
     }
+  }, [codigo, concluir, selector]);
+
+  /* Colar o OTP ou digitar o sexto dígito já é a confirmação. */
+  useEffect(() => {
+    if (
+      etapa !== "aguardando" ||
+      expirado ||
+      ocupado ||
+      codigo.length !== 6 ||
+      tentativaOtp.current === codigo
+    ) {
+      return;
+    }
+    tentativaOtp.current = codigo;
+    void enviarCodigo();
+  }, [codigo, enviarCodigo, etapa, expirado, ocupado]);
+
+  const segundosParaReenviar = Math.max(0, Math.ceil((reenvioAte - agora) / 1000));
+  const podeReenviar = !ocupado && segundosParaReenviar === 0;
+
+  const iniciarSocial = (provedor: "google" | "apple") => {
+    const consulta = new URLSearchParams({ provedor });
+    if (para) consulta.set("para", para);
+    window.location.assign(`/api/auth/oauth?${consulta.toString()}`);
   };
 
   return (
@@ -223,6 +275,38 @@ export function EntrarView({ para }: { para: string }) {
                   </>
                 )}
               </button>
+
+              {(provedoresSociais.google || provedoresSociais.apple) && (
+                <>
+                  <div className="flex items-center gap-space-sm" aria-hidden="true">
+                    <span className="h-px flex-1 bg-outline-variant/40" />
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">
+                      ou
+                    </span>
+                    <span className="h-px flex-1 bg-outline-variant/40" />
+                  </div>
+                  <div className="grid gap-space-xs">
+                    {provedoresSociais.google && (
+                      <button
+                        type="button"
+                        onClick={() => iniciarSocial("google")}
+                        className="h-12 rounded-lg border border-outline-variant bg-surface text-on-surface font-label-lg text-label-lg hover:bg-surface-container transition-colors"
+                      >
+                        Continuar com Google
+                      </button>
+                    )}
+                    {provedoresSociais.apple && (
+                      <button
+                        type="button"
+                        onClick={() => iniciarSocial("apple")}
+                        className="h-12 rounded-lg border border-outline-variant bg-surface text-on-surface font-label-lg text-label-lg hover:bg-surface-container transition-colors"
+                      >
+                        Continuar com Apple
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </form>
           ) : (
             <div className="flex flex-col gap-space-md">
@@ -261,28 +345,42 @@ export function EntrarView({ para }: { para: string }) {
                       autoComplete="one-time-code"
                       maxLength={6}
                       value={codigo}
-                      onChange={(e) =>
-                        setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))
-                      }
+                      onChange={(e) => {
+                        const proximo = e.target.value.replace(/\D/g, "").slice(0, 6);
+                        if (proximo !== tentativaOtp.current) tentativaOtp.current = "";
+                        setCodigo(proximo);
+                      }}
                       placeholder="000000"
                       className="flex-1 min-w-0 h-12 bg-surface-container-low px-4 rounded-lg font-headline-sm text-headline-sm tracking-[0.4em] text-center text-on-surface focus:outline-none focus:bg-surface-container transition-colors"
                     />
-                    <button
-                      type="button"
-                      onClick={() => void enviarCodigo()}
-                      disabled={ocupado || codigo.length !== 6}
-                      className={cn(
-                        "h-12 px-5 rounded-lg font-label-md text-label-md flex items-center gap-2 shrink-0 transition-all",
-                        ocupado || codigo.length !== 6
-                          ? "bg-surface-container text-on-surface-variant cursor-not-allowed"
-                          : "bg-primary text-on-primary hover:opacity-90 active:scale-95",
-                      )}
-                    >
-                      <Check className="w-4 h-4" />
-                      <span>Entrar</span>
-                    </button>
                   </div>
+                  <span className="font-body-sm text-body-sm text-on-surface-variant">
+                    {ocupado && codigo.length === 6
+                      ? "Confirmando código…"
+                      : "A confirmação acontece automaticamente ao completar o código."}
+                  </span>
                 </div>
+              )}
+
+              {!expirado && (
+                <button
+                  type="button"
+                  disabled={!podeReenviar}
+                  onClick={() => void pedirAcesso(email)}
+                  className={cn(
+                    "h-11 rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 transition-colors",
+                    podeReenviar
+                      ? "bg-surface-container text-on-surface hover:bg-surface-container-high"
+                      : "bg-surface-container-low text-on-surface-variant cursor-not-allowed",
+                  )}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>
+                    {segundosParaReenviar > 0
+                      ? `Reenviar em ${segundosParaReenviar}s`
+                      : "Reenviar acesso"}
+                  </span>
+                </button>
               )}
 
               <button

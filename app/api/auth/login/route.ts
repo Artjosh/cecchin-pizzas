@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     return r.ok
       ? NextResponse.json(r.valor, { status: 200 })
       : NextResponse.json(
-          { mensagem: r.mensagem, codigo: r.falha },
+          { mensagem: r.mensagem, codigo: r.falha, reenviar_em: r.reenviar_em },
           { status: statusDaFalha(r.falha) },
         );
   }

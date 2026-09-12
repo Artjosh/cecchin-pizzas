@@ -33,7 +33,7 @@ informação necessária, em vez de completar com valores fictícios.
       |                             |                           |
       |-- polling (selector) ------>|                           |
       |<-- pendente ----------------|                           |
-      |                             |<-- sessão do magic link --|
+      |                             |<-- hash de uso único -----|
       |-- polling (selector) ------>|                           |
       |<-- ENTROU (cookie) ---------|                           |
 ```
@@ -49,17 +49,18 @@ cada ciclo de polling e **não aprova nada**: só pergunta. É o conceito que o
 GoTrue não tem — ele emite um link e espera o clique voltar no mesmo navegador,
 o que deixaria preso quem pede no computador e abre o e-mail no celular.
 
-**O token do GoTrue** — segredo, existe só para quem abriu o e-mail. É ele que
-aprova, e é validado **contra o GoTrue**, não localmente: validar a assinatura
-aqui aceitaria um token já revogado.
+**O hash do GoTrue** — segredo de uso único, existe só para quem abriu o
+e-mail. A página o envia ao BFF, que o valida **contra o GoTrue** e recebe a
+sessão só no servidor. Validar uma assinatura localmente aceitaria hash já
+revogado; devolver uma sessão ao browser voltaria a expor o token.
 
 **A comparação de e-mail** — o e-mail que o GoTrue devolve é conferido com o do
-pedido. Sem ela, um token válido de outra conta aprovaria este.
+pedido. Sem ela, um hash válido de outra conta aprovaria este.
 
-**O fragmento da URL** — o GoTrue devolve a sessão em `#access_token=…`, e
-fragmento não vai ao servidor. É exatamente por isso que ele é usado: só o
-navegador o vê. A página `/entrar/confirmar` precisa de JavaScript por causa
-disso, e apaga o fragmento da barra antes de qualquer outra coisa.
+**O fragmento da URL** — o GoTrue devolve `#token_hash=…`, e fragmento não vai
+ao servidor. A página `/entrar/confirmar` lê esse hash, apaga o fragmento antes
+de qualquer outra coisa e chama o BFF. Ela nunca recebe `access_token` ou
+`refresh_token`.
 
 **Uso único** — o pedido morre ao virar sessão. O polling seguinte recebe 404, e
 é assim que a aba sabe parar em vez de girar até o timeout.
@@ -77,6 +78,22 @@ vinda do cliente de e-mail, e `strict` não mandaria o cookie nela.
 Sair apaga os cookies **e** revoga no GoTrue — apagar só o cookie deixaria o
 refresh válido por trinta dias.
 
+### Login social
+
+Google e Apple usam a mesma sessão httpOnly do OTP. O BFF inicia PKCE com
+`state` anti-CSRF e guarda `state`, `code_verifier` e destino em cookies
+httpOnly por dez minutos. O callback troca o código no GoTrue, grava os
+cookies da sessão e volta ao destino seguro.
+
+Os botões só aparecem quando `AUTH_GOOGLE_ENABLED` ou `AUTH_APPLE_ENABLED`
+estiverem habilitados; a rota também recusa o provedor desligado. Os client IDs,
+segredos e URLs de callback são configuração do Supabase/Google/Apple, nunca
+do frontend. O Supabase vincula automaticamente identidades que retornem o
+mesmo e-mail **verificado**, mantendo o perfil criado pelo gatilho de
+`auth.users`.[^identidades]
+
+[^identidades]: [Supabase Auth — Identity Linking](https://supabase.com/docs/guides/auth/auth-identity-linking)
+
 ## Papéis
 
 ```
@@ -93,8 +110,8 @@ refresh válido por trinta dias.
 | `admin` | tudo, inclusive promover a gestao e admin |
 
 Toda conta nasce `cliente`. Não há tela de cadastro: o primeiro acesso com um
-e-mail cria a conta, e um gatilho em `auth.users` cria o perfil — assim um
-login pelo Google no futuro também ganha perfil, sem depender deste código.
+e-mail cria a conta, e um gatilho em `auth.users` cria o perfil — por isso o
+mesmo mecanismo atende magic link, OTP, Google e Apple.
 
 **O papel nunca vem do JWT.** Claim é retrato do instante da emissão: rebaixar
 alguém só surtiria efeito quando o token vencesse. Lido do banco a cada

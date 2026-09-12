@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vinext dev",
+    "dev": "node scripts/dev-rede.mjs",
     "build": "vinext build",
     "start": "vinext start",
     "preview": "vinext build && wrangler dev",

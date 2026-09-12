@@ -43,10 +43,16 @@ export type FalhaLogin =
 
 export type Resultado<T> =
   | { ok: true; valor: T }
-  | { ok: false; falha: FalhaLogin; mensagem: string };
+  | { ok: false; falha: FalhaLogin; mensagem: string; reenviar_em?: string };
 
-function falhar<T>(falha: FalhaLogin, mensagem: string): Resultado<T> {
-  return { ok: false, falha, mensagem };
+function falhar<T>(
+  falha: FalhaLogin,
+  mensagem: string,
+  reenviarEm?: string,
+): Resultado<T> {
+  return reenviarEm
+    ? { ok: false, falha, mensagem, reenviar_em: reenviarEm }
+    : { ok: false, falha, mensagem };
 }
 
 /**
@@ -103,6 +109,7 @@ export interface InicioDeLogin {
   email: string;
   email_enviado: boolean;
   mensagem: string;
+  reenviar_em: string;
 }
 
 /** Inicia um pedido e devolve o selector para o polling. */
@@ -138,6 +145,7 @@ export async function iniciarLogin(
         return falhar(
           "reenvio_cedo_demais",
           `Um acesso já foi enviado. Aguarde ${Math.ceil(faltam / 1000)}s.`,
+          new Date(agora + faltam).toISOString(),
         );
       }
     }
@@ -254,6 +262,7 @@ export async function iniciarLogin(
         : enviavel
           ? "Não foi possível enviar o e-mail agora. Tente novamente em instantes."
           : "Este endereço não recebe e-mail. Confira e tente outro.",
+      reenviar_em: new Date(agora + config.auth.reenvioMs).toISOString(),
     },
   };
 }

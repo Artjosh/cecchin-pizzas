@@ -1,4 +1,10 @@
+import { loadEnv } from "vite";
 import { defineConfig } from "vitest/config";
+
+// O BFF lê segredos de `process.env`. O Vite só os expõe automaticamente para
+// o bundle quando têm NEXT_PUBLIC_, o que seria errado para estas chaves.
+// Carregá-los aqui torna a integração igual ao processo iniciado por dev-rede.
+Object.assign(process.env, loadEnv("test", process.cwd(), ""));
 
 /**
  * Dois projetos, porque as duas famílias de teste têm custos diferentes.

@@ -151,7 +151,9 @@ describe("o e-mail", () => {
 
     expect(entregue.assunto).toBe("Seu acesso ao Cecchin Pizzas");
     expect(entregue.codigo).toMatch(/^\d{6}$/);
-    expect(entregue.link).toContain("/auth/v1/verify");
+    expect(entregue.link).toContain("/entrar/confirmar");
+    expect(entregue.link).toContain("#token_hash=");
+    expect(entregue.link).toContain("type=magiclink");
 
     // O selector viaja no `redirect_to`: é o fio que liga o clique no celular
     // ao pedido pollado no computador.
