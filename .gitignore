@@ -16,3 +16,7 @@ worker-configuration.d.ts
 
 # Config e worktrees efemeras de sessao de agente
 .claude/
+
+# Capturas de tela das skills de verificação. São artefato de conferência, não
+# de código: mudam a cada rodada e pesam.
+skills/verificar-tela/capturas/

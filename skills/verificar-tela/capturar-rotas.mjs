@@ -20,11 +20,20 @@
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 
 import { cookiesDeSessao } from "./sessao.mjs";
 
+const AQUI = dirname(fileURLToPath(import.meta.url));
+
 const ALVO = process.env.ALVO ?? "http://localhost:3210";
-const SAIDA = process.env.SAIDA ?? "capturas";
+/*
+ * As capturas ficam DENTRO da skill, não numa pasta de scratch fora do
+ * repositório: quem abrir esta pasta amanhã encontra a ferramenta e a última
+ * conferência juntas. `skills/verificar-tela/capturas/` está no `.gitignore`.
+ */
+const SAIDA = process.env.SAIDA ?? resolve(AQUI, "capturas");
 const EMAIL = process.env.EMAIL ?? "";
 const FONTE = process.env.FONTE ?? "real";
 const INTEIRA = process.env.INTEIRA === "1";

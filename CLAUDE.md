@@ -16,6 +16,24 @@ Ao começar algo, acrescente sua linha em **Em andamento**. Ao terminar, mova
 para **Concluído**. Edite por acréscimo: reescrever a seção inteira apaga o que
 o outro escreveu no intervalo.
 
+## Onde escrever arquivo de trabalho
+
+**Nada de pasta `.claude` neste repositório.** Ferramenta de verificação,
+script de prova e a saída que eles geram vivem em `skills/`, junto da
+instrução que explica para que servem — quem abrir a pasta amanhã encontra as
+duas coisas no mesmo lugar.
+
+| o que | onde |
+|---|---|
+| instrução de uma tarefa repetível | `skills/<nome>/SKILL.md` |
+| script que a executa | `skills/<nome>/*.mjs`, `*.sh` |
+| captura de tela, saída de conferência | `skills/verificar-tela/capturas/` (no `.gitignore`) |
+| quem está fazendo o quê agora | `../AGENTES.md` |
+
+Skills que já existem: `verificar-tela` (captura e olha a interface),
+`provar-cadeia` (prova conta → responsável → evento → Minha rota, e desfaz),
+`ligar-dado` (trocar mock por banco numa tela).
+
 ## A coisa mais importante de saber
 
 **Autenticação, papéis e leituras de negócio são reais.** Agenda, catálogo,

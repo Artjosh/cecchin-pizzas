@@ -11,7 +11,10 @@ import { mkdirSync } from "node:fs";
 
 const BASE = process.env.ALVO ?? "http://localhost:3000";
 const ROTA = process.env.ROTA ?? "/cliente/contratar";
-const SAIDA = process.env.SAIDA ?? "capturas";
+// Dentro da skill, e no `.gitignore`. Ver `capturar-rotas.mjs`.
+const SAIDA =
+  process.env.SAIDA ??
+  new URL("capturas", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 
 const TELAS = [
   { nome: "desktop", width: 1440, height: 900 },
