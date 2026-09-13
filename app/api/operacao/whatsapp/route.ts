@@ -10,7 +10,7 @@ function mensagemDoBanco(erro: string | null): string {
   try { return (JSON.parse(erro ?? "{}") as { message?: string }).message ?? "Não foi possível enviar a mensagem."; } catch { return "Não foi possível enviar a mensagem."; }
 }
 
-/** Enfileira texto livre; o banco exige gestão e uma entrada do contato nas últimas 24h. */
+/** Enfileira texto livre; o worker aplica a regra do provedor ativo. */
 export async function POST(request: NextRequest) {
   const sessao = await sessaoAtual();
   if (!sessao) return NextResponse.json({ mensagem: "Sem sessão." }, { status: 401 });

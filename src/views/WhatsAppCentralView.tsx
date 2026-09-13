@@ -252,20 +252,20 @@ async function CentralDoBanco() {
     <div className="flex flex-col gap-space-lg">
       <CabecalhoDoPainel
         titulo="Central de WhatsApp"
-        descricao="Histórico entregue pelo webhook e fila de contatos da operação."
+        descricao="Histórico recebido pelo provedor conectado e fila de contatos da operação."
         contagem={mensagensR.dados?.length ?? 0}
       />
 
       <LacunaDeDados titulo="A conversa agora tem origem rastreável">
         <p>
-          O NestJS recebe o webhook assinado da Meta, registra cada entrada e
-          cada envio da fila. O status de entrega volta para este histórico.
+          O NestJS registra cada entrada e cada envio da fila pelo provedor
+          conectado. A Central mantém um histórico único quando o provedor é trocado.
         </p>
         <p>
-          Mensagens iniciadas pela empresa obedecem à janela de 24 horas e aos
-          templates aprovados da Meta; convites de escala usam os botões de
-          aceitar ou recusar. A resposta abaixo entra na fila e só sai dentro
-          dessa janela.
+          Na Cloud API, mensagens iniciadas pela empresa obedecem à janela de
+          24 horas e aos templates aprovados da Meta. No WhatsApp Web local,
+          texto livre segue a conversa normal. Convites de escala pedem ACEITAR
+          ou RECUSAR com o código recebido e sempre entram pela mesma fila.
         </p>
       </LacunaDeDados>
 
@@ -274,7 +274,7 @@ async function CentralDoBanco() {
       <section className="flex flex-col gap-space-sm">
         <h2 className="font-headline-sm text-headline-sm text-on-surface">Conversas recentes</h2>
         {!mensagensR.dados?.length ? (
-          <SemLinhas titulo="Nenhuma mensagem recebida ainda" detalhe="Assim que o webhook da Meta estiver configurado, entradas, saídas e entregas aparecem aqui." />
+          <SemLinhas titulo="Nenhuma mensagem recebida ainda" detalhe="Envie uma mensagem para o número vinculado para registrar a primeira entrada e a resposta do bot." />
         ) : (
           <ul className="flex flex-col gap-space-xs">
             {mensagensR.dados.map((mensagem) => (

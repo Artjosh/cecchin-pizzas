@@ -34,10 +34,10 @@ export function ConfiguracaoNotificacoes({ configuracao, pessoas, regras }: {
       <p className="mt-1 font-body-sm text-on-surface-variant">Desligar um canal aqui interrompe a fila inteira, mesmo para quem optou por recebê-lo.</p>
       <div className="mt-space-md flex flex-wrap gap-space-md">
         <Rotulo marcado={email} aoMudar={setEmail} texto="E-mail via Brevo" />
-        <Rotulo marcado={whatsapp} aoMudar={setWhatsapp} texto="WhatsApp Cloud API" />
+        <Rotulo marcado={whatsapp} aoMudar={setWhatsapp} texto="WhatsApp" />
         <button type="button" disabled={pendente} onClick={salvarOrganizacao} className="flex h-10 items-center gap-2 rounded-lg bg-primary px-4 font-label-md text-on-primary disabled:opacity-50">{pendente ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Salvar canais</button>
       </div>
-      {whatsapp && <p className="mt-space-sm font-body-sm text-on-surface-variant">A chave da Meta continua exclusivamente no Nest/VPS. Ativar esta opção sem configurar o servidor deixa as mensagens na fila com erro visível.</p>}
+      {whatsapp && <p className="mt-space-sm font-body-sm text-on-surface-variant">O provedor ativo fica exclusivamente no Nest: WhatsApp Web local ou Cloud API. Se ele não estiver conectado, a fila exibe o erro para a gestão.</p>}
     </section>
     <section className="flex flex-col gap-space-sm">
       <div><h2 className="font-headline-sm text-on-surface">Quem recebe o quê</h2><p className="font-body-sm text-on-surface-variant">Telefone é obrigatório para WhatsApp. Gestão pode ajustar as preferências da equipe.</p></div>
