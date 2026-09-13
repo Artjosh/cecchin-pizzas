@@ -27,7 +27,10 @@ import { renovarSessao } from "./src/servidor/supabase";
  * `src/servidor/auth/guarda.ts`.
  */
 
-const PUBLICAS = ["/entrar", "/api/auth"];
+// A ponte de entrega não usa cookie: ela autentica cada chamada com o segredo
+// interno dentro do próprio handler. Deixá-la passar aqui evita que o proxy
+// transforme a autenticação de serviço em exigência de sessão de navegador.
+const PUBLICAS = ["/entrar", "/api/auth", "/api/interno/notificacoes"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

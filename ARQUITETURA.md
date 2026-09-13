@@ -16,8 +16,8 @@ Estado real em 12/09/2026. O que não está marcado como **existe** não existe.
 | Leitura de dado de negócio | **existe** — agenda, catálogo, equipe, clientes, mapa, checklist, suporte, rastreio e localidades usam PostgREST sob RLS |
 | Storage do Supabase | container de pé, **nenhum bucket** |
 | Escala de equipe | **existe** — convite, aceite pelo painel ou WhatsApp, falta, avaliação e bloqueio progressivo ficam no Postgres |
-| Notificações | **existe** — fila rastreável para e-mail e WhatsApp; a Central responde texto na janela de 24h e usa templates fora dela; canais só entregam após credenciais e templates serem configurados no Nest |
-| NestJS | faz limpeza de pedidos de login, consome a fila de notificações e recebe webhook do WhatsApp; permanece a fronteira para reserva e dinheiro |
+| Notificações | **existe** — fila rastreável para e-mail e WhatsApp; a Central responde texto na janela de 24h e usa templates fora dela; o worker Nest entrega WhatsApp e pede e-mail à rota interna do BFF, que concentra o único cliente Brevo |
+| NestJS | API e worker em contêineres separados: a API recebe webhook do WhatsApp; o worker faz limpeza, fila e retries, e pode ganhar réplicas sem duplicar notificações |
 
 Os desenhos de referência continuam em `src/views/desenho/`. As telas ligadas
 ao banco mostram explicitamente as lacunas de dado quando a fonte não tem a
