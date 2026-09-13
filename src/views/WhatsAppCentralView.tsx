@@ -282,7 +282,7 @@ async function CentralDoBanco() {
               <li key={mensagem.id} className="rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-space-sm">
                   <span className="font-label-lg text-on-surface">{comoTelefone(mensagem.telefone)}</span>
-                  <span className="font-label-sm text-on-surface-variant">{new Date(mensagem.criado_em).toLocaleString("pt-BR")} · {mensagem.direcao === "entrada" ? "recebida" : mensagem.status}</span>
+                  <span className="font-label-sm text-on-surface-variant">{new Date(mensagem.criado_em).toLocaleString("pt-BR")} · {mensagem.direcao === "entrada" ? "recebida" : rotuloStatus(mensagem.status)}</span>
                 </div>
                 <p className="mt-1 font-body-sm text-on-surface-variant">{textoDaMensagem(mensagem)}</p>
               </li>
@@ -357,6 +357,14 @@ async function CentralDoBanco() {
       )}
     </div>
   );
+}
+
+function rotuloStatus(status: string): string {
+  if (status === "enviada") return "enviada · aguardando entrega";
+  if (status === "entregue") return "entregue";
+  if (status === "lida") return "lida";
+  if (status === "falha") return "falhou";
+  return status;
 }
 
 function textoDaMensagem(mensagem: MensagemWhatsApp): string {
