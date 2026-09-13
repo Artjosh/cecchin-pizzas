@@ -38,6 +38,11 @@ export async function PATCH(request: NextRequest) {
     return r.ok ? NextResponse.json({ ok: true }) : erro(r.erro, r.status);
   }
 
+  if (corpo.escopo === "reenviar" && typeof corpo.notificacao === "string") {
+    const r = await chamarFuncao("reenfileirar_notificacao", { p_notificacao: corpo.notificacao }, sessao.accessToken);
+    return r.ok ? NextResponse.json({ ok: true }) : erro(r.erro, r.status);
+  }
+
   const usuario = typeof corpo.usuario === "string" ? corpo.usuario : sessao.usuario.id;
   const r = await chamarFuncao("salvar_preferencia_notificacao", {
     p_usuario: usuario,

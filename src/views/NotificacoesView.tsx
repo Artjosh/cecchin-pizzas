@@ -2,6 +2,7 @@ import { ConfiguracaoNotificacoes, type PreferenciaPessoa, type RegraDisciplina 
 import { CabecalhoDoPainel, LacunaDeDados } from "../components/painel/Painel";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
+import { ReenviarNotificacao } from "../components/ReenviarNotificacao";
 
 interface Configuracao { email_habilitado: boolean; whatsapp_habilitado: boolean; }
 interface Preferencia { usuario_id: string; receber_email: boolean; receber_whatsapp: boolean; avisar_evento_novo: boolean; avisar_escala: boolean; avisar_disciplina: boolean; }
@@ -33,7 +34,7 @@ export async function NotificacoesView() {
       {!filaR.dados?.length ? <p className="mt-2 font-body-sm text-on-surface-variant">A fila ainda não recebeu eventos, escalas ou ocorrências.</p> : <ul className="mt-space-sm flex flex-col gap-2">
         {filaR.dados.map((item) => <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-container-low p-space-sm font-body-sm">
           <span className="text-on-surface"><strong>{item.tipo.replaceAll("_", " ")}</strong> · {item.canal} · {item.destinatario}</span>
-          <span className={item.status === "enviada" ? "text-green-800" : item.status === "falha" ? "text-primary" : "text-on-surface-variant"}>{item.status}{item.tentativas ? ` · tentativa ${item.tentativas}` : ""}{item.ultimo_erro ? ` · ${item.ultimo_erro}` : ""}</span>
+          <span className={item.status === "enviada" ? "text-green-800" : item.status === "falha" ? "text-primary" : "text-on-surface-variant"}>{item.status}{item.tentativas ? ` · tentativa ${item.tentativas}` : ""}{item.ultimo_erro ? ` · ${item.ultimo_erro}` : ""}{item.status === "falha" && <span className="ml-2"><ReenviarNotificacao notificacao={item.id} /></span>}</span>
         </li>)}
       </ul>}
     </section>
