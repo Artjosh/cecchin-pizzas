@@ -161,8 +161,9 @@ function RotaDesenhada() {
  * cronômetro de chegada — coisas que a operação quer e o banco ainda não
  * registra.
  *
- * Daqui para baixo, os eventos que ESTA pessoa responde, por
- * `responsavel.usuario_id`.
+ * Daqui para baixo, os eventos que esta pessoa ACEITOU em `escala_evento`.
+ * O responsável legado continua sendo dono do evento; ele não substitui a
+ * equipe que trabalha nele.
  * ======================================================================== */
 
 interface EventoDaRota {
@@ -187,55 +188,21 @@ async function RotaDoBanco() {
   const sessao = await exigirPapel(["staff"]);
   const hoje = new Date().toISOString().slice(0, 10);
 
-  /*
-   * Primeiro descobre QUAL responsável é esta conta. `responsavel` e `usuario`
-   * são tabelas separadas de propósito (`DECISOES.md` §13): a planilha
-   * registrava o nome de quem respondia pelo evento, que nem sempre era gente
-   * da casa.
-   *
-   * `usuario_id` é o elo. Sem ele preenchido, a pessoa entra no sistema e não
-   * encontra o próprio trabalho — e é melhor dizer isso do que mostrar a
-   * agenda de todo mundo como se fosse a dela.
-   */
-  const souR = await consultar<{ id: string; nome: string }[]>(
-    `responsavel?select=id,nome&usuario_id=eq.${sessao.usuario.id}&limit=1`,
+  const escalasR = await consultar<{ evento_id: string }[]>(
+    `escala_evento?select=evento_id&usuario_id=eq.${sessao.usuario.id}` +
+      "&status=eq.aceito&limit=100",
     sessao.accessToken,
   );
-
-  const eu = souR.dados?.[0];
-
-  if (!eu) {
-    return (
-      <div className="flex flex-col gap-space-lg max-w-3xl mx-auto">
-        <CabecalhoDoPainel
-          titulo="Minha rota"
-          descricao="Os eventos que você responde."
-        />
-        <LacunaDeDados titulo="Sua conta ainda não está ligada a um responsável">
-          <p>
-            A agenda guarda o NOME de quem responde por cada evento, herdado da
-            planilha. Para esta tela saber quais são os seus, alguém de gestão
-            precisa ligar sua conta ao seu cadastro de responsável.
-          </p>
-          <p>
-            Isso se faz em <strong>Equipe de operação</strong>. Enquanto não
-            for feito, mostrar a agenda inteira aqui seria pior do que mostrar
-            nada: você agiria sobre evento que não é seu.
-          </p>
-        </LacunaDeDados>
-      </div>
-    );
-  }
-
+  const ids = escalasR.dados?.map((escala) => escala.evento_id) ?? [];
   const leitura = comoLeitura(
-    await consultar<EventoDaRota[]>(
+    ids.length ? await consultar<EventoDaRota[]>(
       "vw_evento?select=id,data_evento,horario,horario_texto,horario_saida," +
         "cliente_nome,cliente_telefone,endereco,bairro,cidade,inteiros,meios," +
         "modelo_forno_nome,situacao,codigo_legado" +
-        `&responsavel_id=eq.${eu.id}&data_evento=gte.${hoje}` +
+        `&id=in.(${ids.join(",")})&data_evento=gte.${hoje}` +
         "&status=eq.confirmado&order=data_evento.asc&limit=40",
       sessao.accessToken,
-    ),
+    ) : { ok: true, dados: [] as EventoDaRota[], erro: null, status: 200 },
   );
 
   const eventos = leitura.estado === "ok" ? leitura.linhas : [];
@@ -245,7 +212,7 @@ async function RotaDoBanco() {
     <div className="flex flex-col gap-space-lg max-w-4xl mx-auto">
       <CabecalhoDoPainel
         titulo="Minha rota"
-        descricao={`${eu.nome} · eventos de hoje em diante`}
+        descricao={`${sessao.usuario.nome} · eventos aceitos de hoje em diante`}
         contagem={leitura.estado === "ok" ? eventos.length : null}
       />
 

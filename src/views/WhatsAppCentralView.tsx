@@ -10,6 +10,7 @@ import { formatBRL } from "../lib/moeda";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 import { fonteDeDados } from "../servidor/fonte";
+import { EnviarMensagemWhatsapp } from "../components/EnviarMensagemWhatsapp";
 import React from 'react';
 import { MessageCircle, Search, MoreVertical, Phone } from 'lucide-react';
 
@@ -117,20 +118,9 @@ function CentralDesenhada() {
   );
 }
 
-/* ===========================================================================
- * A CENTRAL DE WHATSAPP QUE DÁ PARA TER HOJE
- *
- * **Não existe histórico de mensagem no banco.** Nenhuma tabela guarda conversa,
- * e não há integração com a API do WhatsApp. O desenho acima mostra uma caixa
- * de entrada com respostas — prometer isso seria mentira de tela inteira.
- *
- * O que existe, e resolve o mesmo problema: saber COM QUEM falar agora. Isso
- * `vw_pendencia` responde — cada linha é alguém esperando confirmação, sinal ou
- * retorno. Daqui sai um link direto para a conversa, com o texto já montado.
- *
- * É menos do que o desenho e mais do que nada: a pessoa clica e está falando,
- * em vez de procurar o número na planilha.
- * ======================================================================== */
+/* A central desenhada acima continua como referência do modo mock. No modo
+ * Banco, o histórico vem do webhook assinado e as saídas passam pela fila do
+ * Nest; texto livre só sai durante a janela de atendimento da Meta. */
 
 interface ContatoPendente {
   id: string;
@@ -149,6 +139,16 @@ interface DadosDoContato {
   horario_texto: string | null;
   a_acertar: string | number | null;
   sinal: string | number | null;
+}
+
+interface MensagemWhatsApp {
+  id: string;
+  telefone: string;
+  direcao: "entrada" | "saida";
+  tipo: string;
+  conteudo: Record<string, unknown>;
+  status: string;
+  criado_em: string;
 }
 
 /**
@@ -205,13 +205,20 @@ const NOME_DO_BLOCO: Record<string, string> = {
 };
 
 async function CentralDoBanco() {
-  const sessao = await exigirPapel(["staff"]);
+  const sessao = await exigirPapel(["gestao"]);
 
-  const pendentesR = await consultar<ContatoPendente[]>(
-    "vw_pendencia?select=id,bloco,pendencia,data_evento,codigo_legado" +
-      "&order=ordem.asc,data_evento.asc&limit=40",
-    sessao.accessToken,
-  );
+  const [pendentesR, mensagensR] = await Promise.all([
+    consultar<ContatoPendente[]>(
+      "vw_pendencia?select=id,bloco,pendencia,data_evento,codigo_legado" +
+        "&order=ordem.asc,data_evento.asc&limit=40",
+      sessao.accessToken,
+    ),
+    consultar<MensagemWhatsApp[]>(
+      "mensagem_whatsapp?select=id,telefone,direcao,tipo,conteudo,status,criado_em" +
+        "&order=criado_em.desc&limit=80",
+      sessao.accessToken,
+    ),
+  ]);
 
   const pendentes = pendentesR.dados ?? [];
 
@@ -239,30 +246,49 @@ async function CentralDoBanco() {
         c.evento !== undefined,
     );
 
-  const comNumero = contatos.filter((c) =>
-    linkWhatsApp(c.evento.cliente_telefone),
-  );
+  const telefonesDaCentral = [...new Set((mensagensR.dados ?? []).map((mensagem) => mensagem.telefone))];
 
   return (
     <div className="flex flex-col gap-space-lg">
       <CabecalhoDoPainel
         titulo="Central de WhatsApp"
-        descricao="Com quem falar agora, e o que dizer."
-        contagem={comNumero.length}
+        descricao="Histórico entregue pelo webhook e fila de contatos da operação."
+        contagem={mensagensR.dados?.length ?? 0}
       />
 
-      <LacunaDeDados titulo="Não há histórico de conversa">
+      <LacunaDeDados titulo="A conversa agora tem origem rastreável">
         <p>
-          Nenhuma tabela guarda mensagem, e não existe integração com a API do
-          WhatsApp. Esta tela não é caixa de entrada: é a fila de quem está
-          esperando contato, com a conversa a um clique.
+          O NestJS recebe o webhook assinado da Meta, registra cada entrada e
+          cada envio da fila. O status de entrega volta para este histórico.
         </p>
         <p>
-          Caixa de entrada de verdade exige webhook do WhatsApp, que precisa de
-          fila e retry — trabalho do NestJS, não do BFF. Ver{" "}
-          <code className="font-mono">infra/README.md</code>.
+          Mensagens iniciadas pela empresa obedecem à janela de 24 horas e aos
+          templates aprovados da Meta; convites de escala usam os botões de
+          aceitar ou recusar. A resposta abaixo entra na fila e só sai dentro
+          dessa janela.
         </p>
       </LacunaDeDados>
+
+      <EnviarMensagemWhatsapp telefones={telefonesDaCentral} />
+
+      <section className="flex flex-col gap-space-sm">
+        <h2 className="font-headline-sm text-headline-sm text-on-surface">Conversas recentes</h2>
+        {!mensagensR.dados?.length ? (
+          <SemLinhas titulo="Nenhuma mensagem recebida ainda" detalhe="Assim que o webhook da Meta estiver configurado, entradas, saídas e entregas aparecem aqui." />
+        ) : (
+          <ul className="flex flex-col gap-space-xs">
+            {mensagensR.dados.map((mensagem) => (
+              <li key={mensagem.id} className="rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-space-sm">
+                  <span className="font-label-lg text-on-surface">{comoTelefone(mensagem.telefone)}</span>
+                  <span className="font-label-sm text-on-surface-variant">{new Date(mensagem.criado_em).toLocaleString("pt-BR")} · {mensagem.direcao === "entrada" ? "recebida" : mensagem.status}</span>
+                </div>
+                <p className="mt-1 font-body-sm text-on-surface-variant">{textoDaMensagem(mensagem)}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {contatos.length === 0 ? (
         <SemLinhas
@@ -330,6 +356,21 @@ async function CentralDoBanco() {
       )}
     </div>
   );
+}
+
+function textoDaMensagem(mensagem: MensagemWhatsApp): string {
+  const textoLivre = mensagem.conteudo.texto;
+  if (typeof textoLivre === "string") return textoLivre;
+  const texto = mensagem.conteudo.text;
+  if (typeof texto === "string") return texto;
+  if (texto && typeof texto === "object" && "body" in texto && typeof texto.body === "string") return texto.body;
+  const interativo = mensagem.conteudo.interactive;
+  if (interativo && typeof interativo === "object" && "button_reply" in interativo) {
+    const botao = interativo.button_reply;
+    if (botao && typeof botao === "object" && "title" in botao && typeof botao.title === "string") return botao.title;
+  }
+  if (mensagem.tipo === "texto") return mensagem.direcao === "entrada" ? "Mensagem recebida" : "Mensagem enviada pela operação";
+  return `Mensagem ${mensagem.tipo}`;
 }
 
 export async function WhatsAppCentralView() {

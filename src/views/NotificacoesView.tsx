@@ -1,0 +1,31 @@
+import { ConfiguracaoNotificacoes, type PreferenciaPessoa, type RegraDisciplina } from "../components/ConfiguracaoNotificacoes";
+import { CabecalhoDoPainel, LacunaDeDados } from "../components/painel/Painel";
+import { exigirPapel } from "../servidor/auth/guarda";
+import { consultar } from "../servidor/supabase";
+
+interface Configuracao { email_habilitado: boolean; whatsapp_habilitado: boolean; }
+interface Preferencia { usuario_id: string; receber_email: boolean; receber_whatsapp: boolean; avisar_evento_novo: boolean; avisar_escala: boolean; avisar_disciplina: boolean; }
+interface Pessoa { id: string; nome: string; email: string | null; telefone: string | null; papel: string; }
+
+export async function NotificacoesView() {
+  const sessao = await exigirPapel(["gestao"]);
+  const [configR, prefsR, pessoasR, regrasR] = await Promise.all([
+    consultar<Configuracao[]>("configuracao_notificacao?select=email_habilitado,whatsapp_habilitado&limit=1", sessao.accessToken),
+    consultar<Preferencia[]>("preferencia_notificacao?select=usuario_id,receber_email,receber_whatsapp,avisar_evento_novo,avisar_escala,avisar_disciplina&limit=500", sessao.accessToken),
+    consultar<Pessoa[]>("usuario?select=id,nome,email,telefone,papel&papel=in.(staff,gestao,admin)&ativo=is.true&order=papel.asc,nome.asc&limit=500", sessao.accessToken),
+    consultar<RegraDisciplina[]>("regra_disciplina?select=faltas_a_partir,bloqueio_dias,reuniao_obrigatoria,ativa&order=faltas_a_partir.asc", sessao.accessToken),
+  ]);
+  const porUsuario = new Map((prefsR.dados ?? []).map((p) => [p.usuario_id, p]));
+  const pessoas: PreferenciaPessoa[] = (pessoasR.dados ?? []).map((p) => ({
+    ...p,
+    ...(porUsuario.get(p.id) ?? { receber_email: true, receber_whatsapp: false, avisar_evento_novo: true, avisar_escala: true, avisar_disciplina: true }),
+  }));
+  const configuracao = configR.dados?.[0] ?? { email_habilitado: true, whatsapp_habilitado: false };
+  return <div className="mx-auto flex max-w-5xl flex-col gap-space-lg">
+    <CabecalhoDoPainel titulo="Notificações & regras" descricao="Canais, destinatários e regras de comunicação da operação." />
+    <LacunaDeDados titulo="Entrega é rastreável">
+      <p>O banco cria a fila quando nasce um evento, quando alguém é escalado e quando há falta. O Nest tenta entregar, grava o resultado e o webhook atualiza leituras e respostas do WhatsApp.</p>
+    </LacunaDeDados>
+    <ConfiguracaoNotificacoes configuracao={configuracao} pessoas={pessoas} regras={regrasR.dados ?? []} />
+  </div>;
+}

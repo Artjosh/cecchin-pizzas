@@ -15,7 +15,9 @@ Estado real em 12/09/2026. O que não está marcado como **existe** não existe.
 | Server Components + SSR | **existe** — páginas protegidas e route handlers dinâmicos |
 | Leitura de dado de negócio | **existe** — agenda, catálogo, equipe, clientes, mapa, checklist, suporte, rastreio e localidades usam PostgREST sob RLS |
 | Storage do Supabase | container de pé, **nenhum bucket** |
-| NestJS | existe no backend; faz a limpeza periódica de pedidos de login e permanece a fronteira para reserva, dinheiro e webhooks |
+| Escala de equipe | **existe** — convite, aceite pelo painel ou WhatsApp, falta, avaliação e bloqueio progressivo ficam no Postgres |
+| Notificações | **existe** — fila rastreável para e-mail e WhatsApp; a Central responde texto na janela de 24h e usa templates fora dela; canais só entregam após credenciais e templates serem configurados no Nest |
+| NestJS | faz limpeza de pedidos de login, consome a fila de notificações e recebe webhook do WhatsApp; permanece a fronteira para reserva e dinheiro |
 
 Os desenhos de referência continuam em `src/views/desenho/`. As telas ligadas
 ao banco mostram explicitamente as lacunas de dado quando a fonte não tem a

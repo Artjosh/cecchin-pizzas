@@ -176,6 +176,30 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   Pendências
                 </Link>
                 <Link
+                  href="/operacional/escala"
+                  className={cn(
+                    "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
+                    pathname.startsWith("/operacional/escala")
+                      ? "bg-primary-container text-on-primary-container"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  )}
+                >
+                  <Users className="w-[18px] h-[18px]" />
+                  Escala de equipe
+                </Link>
+                <Link
+                  href="/admin/notificacoes"
+                  className={cn(
+                    "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
+                    pathname.startsWith("/admin/notificacoes")
+                      ? "bg-primary-container text-on-primary-container"
+                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  )}
+                >
+                  <MessageSquareShare className="w-[18px] h-[18px]" />
+                  Notificações & regras
+                </Link>
+                <Link
                   href="/operacional/clientes"
                   className={cn(
                     "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
@@ -228,6 +252,18 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
             >
               <Route className="w-5 h-5" />
               <span className="font-label-lg text-label-lg">Minha Rota</span>
+            </Link>
+            <Link
+              href="/operacional/minha-escala"
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
+                pathname === "/operacional/minha-escala"
+                  ? "bg-primary-container text-on-primary-container font-bold"
+                  : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              )}
+            >
+              <Users className="w-5 h-5" />
+              <span className="font-label-lg text-label-lg">Minha escala</span>
             </Link>
             <Link
               href="/operacional/checklist"
