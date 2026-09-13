@@ -5,6 +5,7 @@ import { igualEmTempoConstante } from "@/src/servidor/auth/oauth";
 import { destinoSeguro } from "@/src/servidor/auth/destino";
 import { gravarSessao } from "@/src/servidor/auth/sessao-atual";
 import { config } from "@/src/servidor/config";
+import { origemDeRetorno } from "@/src/servidor/auth/enderecos";
 import { ehSessaoGoTrue } from "@/src/servidor/sessao";
 import { trocarCodigoOauth } from "@/src/servidor/supabase";
 
@@ -42,7 +43,8 @@ export async function GET(request: NextRequest) {
   }
 
   gravarSessao(jar, sessao.dados);
-  const resposta = NextResponse.redirect(new URL(destino, config.auth.urlPublica));
+  const origem = origemDeRetorno(request.nextUrl.origin, config.auth.urlPublica);
+  const resposta = NextResponse.redirect(new URL(destino, origem));
   for (const nome of [COOKIE_ESTADO, COOKIE_VERIFICADOR, COOKIE_DESTINO]) {
     resposta.cookies.delete({ name: nome, path: "/api/auth/oauth" });
   }

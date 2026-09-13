@@ -9,6 +9,7 @@ import {
   segredoTemporario,
 } from "@/src/servidor/auth/oauth";
 import { destinoSeguro } from "@/src/servidor/auth/destino";
+import { origemDeRetorno } from "@/src/servidor/auth/enderecos";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     destinoSeguro(request.nextUrl.searchParams.get("para")) ?? "/cliente/contratar";
   const estado = segredoTemporario();
   const verificador = segredoTemporario();
-  const retorno = `${config.auth.urlPublica.replace(/\/$/, "")}/api/auth/oauth/retorno`;
+  const retorno = `${origemDeRetorno(request.nextUrl.origin, config.auth.urlPublica)}/api/auth/oauth/retorno`;
   const autorizar = new URL("/auth/v1/authorize", config.supabase.url);
 
   autorizar.searchParams.set("provider", provedor);

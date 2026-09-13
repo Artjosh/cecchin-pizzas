@@ -28,3 +28,58 @@ export function podeReceber(email: string): boolean {
 
   return true;
 }
+
+function ehIpv4Privado(host: string): boolean {
+  const partes = host.split(".").map(Number);
+  if (
+    partes.length !== 4 ||
+    partes.some((parte) => !Number.isInteger(parte) || parte < 0 || parte > 255)
+  ) {
+    return false;
+  }
+
+  return (
+    partes[0] === 10 ||
+    (partes[0] === 172 && partes[1] >= 16 && partes[1] <= 31) ||
+    (partes[0] === 192 && partes[1] === 168)
+  );
+}
+
+/**
+ * Origem que recebeu o pedido de acesso durante o desenvolvimento.
+ *
+ * O processo de desenvolvimento ainda tem uma origem padrão para quando o
+ * browser abre localhost. Para um telefone na mesma rede, porém, a origem do
+ * pedido é a fonte correta: trocar de Wi-Fi não exige editar `.env` nem
+ * reiniciar o Supabase. IPv4 privado vira `sslip.io`, que o GoTrue local aceita
+ * no allow-list e que resolve de volta para o IP da máquina.
+ */
+export function origemDeRetorno(
+  origemDoPedido: string,
+  origemPadrao: string,
+): string {
+  const padrao = origemPadrao.replace(/\/$/, "");
+  if (process.env.NODE_ENV === "production") return padrao;
+
+  try {
+    const url = new URL(origemDoPedido);
+    const host = url.hostname.toLowerCase();
+    const hostLocal =
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host.endsWith(".localhost") ||
+      host.endsWith(".sslip.io") ||
+      ehIpv4Privado(host);
+
+    if (!hostLocal || (url.protocol !== "http:" && url.protocol !== "https:")) {
+      return padrao;
+    }
+
+    if (ehIpv4Privado(host)) {
+      url.hostname = `${host.replaceAll(".", "-")}.sslip.io`;
+    }
+    return url.origin;
+  } catch {
+    return padrao;
+  }
+}

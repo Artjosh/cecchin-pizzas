@@ -3,16 +3,25 @@ import { fileURLToPath } from "node:url";
 import { networkInterfaces } from "node:os";
 
 function ipDaRedeLocal() {
-  const redes = Object.values(networkInterfaces()).flat().filter(Boolean);
-  const ipv4 = redes.find(
-    (rede) =>
-      rede.family === "IPv4" &&
-      !rede.internal &&
-      (rede.address.startsWith("192.168.") ||
-        rede.address.startsWith("10.") ||
-        /^172\.(1[6-9]|2\d|3[0-1])\./.test(rede.address)),
+  const virtual = /(?:vEthernet|WSL|Hyper-V|Virtual|VMware|Docker)/i;
+  const privadas = Object.entries(networkInterfaces()).flatMap(([nome, enderecos]) =>
+    (enderecos ?? []).filter(
+      (rede) =>
+        rede.family === "IPv4" &&
+        !rede.internal &&
+        (rede.address.startsWith("192.168.") ||
+          rede.address.startsWith("10.") ||
+          /^172\.(1[6-9]|2\d|3[0-1])\./.test(rede.address)),
+    ).map((rede) => ({ nome, endereco: rede.address })),
   );
-  return ipv4?.address ?? "127.0.0.1";
+
+  // Adaptadores do WSL e do Hyper-V também usam IP privado, mas o telefone não
+  // os enxerga. A Wi-Fi/Ethernet física é sempre preferida.
+  return (
+    privadas.find(({ nome }) => !virtual.test(nome))?.endereco ??
+    privadas[0]?.endereco ??
+    "127.0.0.1"
+  );
 }
 
 const argumentos = process.argv.slice(2);

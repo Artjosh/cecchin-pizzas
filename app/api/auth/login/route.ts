@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (passo === "iniciar") {
-    const r = await iniciarLogin(corpo.email);
+    const r = await iniciarLogin(corpo.email, request.nextUrl.origin);
     return r.ok
       ? NextResponse.json(r.valor, { status: 200 })
       : NextResponse.json(

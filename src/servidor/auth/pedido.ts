@@ -6,7 +6,7 @@ import {
   verificarCodigo,
 } from "../supabase";
 import { ehSessaoGoTrue, type SessaoGoTrue } from "../sessao";
-import { podeReceber } from "./enderecos";
+import { origemDeRetorno, podeReceber } from "./enderecos";
 
 /**
  * Login sem senha, com confirmação em outro aparelho.
@@ -115,6 +115,7 @@ export interface InicioDeLogin {
 /** Inicia um pedido e devolve o selector para o polling. */
 export async function iniciarLogin(
   emailBruto: unknown,
+  origemDoPedido = config.auth.urlPublica,
 ): Promise<Resultado<InicioDeLogin>> {
   const email =
     typeof emailBruto === "string" ? emailBruto.trim().toLowerCase() : "";
@@ -195,7 +196,7 @@ export async function iniciarLogin(
    * O selector viaja no `redirect_to`: é o fio que liga o clique no celular ao
    * pedido que está sendo pollado no computador.
    */
-  const base = config.auth.urlPublica.replace(/\/$/, "");
+  const base = origemDeRetorno(origemDoPedido, config.auth.urlPublica);
   const retorno = `${base}/entrar/confirmar?selector=${encodeURIComponent(selector)}`;
 
   /*
