@@ -2,8 +2,10 @@
 
 import { FormEvent, useState } from "react";
 import { Send } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export function EnviarMensagemWhatsapp({ telefones }: { telefones: string[] }) {
+  const router = useRouter();
   const [telefone, setTelefone] = useState(telefones[0] ?? "");
   const [texto, setTexto] = useState("");
   const [estado, setEstado] = useState<"parado" | "enviando" | "enviado" | "erro">("parado");
@@ -20,6 +22,7 @@ export function EnviarMensagemWhatsapp({ telefones }: { telefones: string[] }) {
       const dados = (await resposta.json().catch(() => ({}))) as { mensagem?: string };
       if (!resposta.ok) throw new Error(dados.mensagem ?? "Não foi possível enfileirar a mensagem.");
       setTexto(""); setEstado("enviado"); setMensagem("Mensagem colocada na fila de envio.");
+      router.refresh();
     } catch (erro) {
       setEstado("erro"); setMensagem(erro instanceof Error ? erro.message : "Não foi possível enfileirar a mensagem.");
     }

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export function ModoConversaWhatsapp({ telefone, modo }: { telefone: string; modo: "automatico" | "atendimento_humano" }) {
+  const router = useRouter();
   const [atual, setAtual] = useState(modo);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
@@ -17,6 +19,7 @@ export function ModoConversaWhatsapp({ telefone, modo }: { telefone: string; mod
       const dados = (await resposta.json().catch(() => ({}))) as { mensagem?: string };
       if (!resposta.ok) throw new Error(dados.mensagem ?? "Não foi possível atualizar a conversa.");
       setAtual(proximo);
+      router.refresh();
     } catch (causa) {
       setErro(causa instanceof Error ? causa.message : "Não foi possível atualizar a conversa.");
     } finally {
