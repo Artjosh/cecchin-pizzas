@@ -1,6 +1,7 @@
 import {
   ClientEventsView,
   type EventoDoCliente,
+  type SolicitacaoReservaDoCliente,
 } from "@/src/views/ClientEventsView";
 import { exigirSessao } from "@/src/servidor/auth/guarda";
 import { consultar } from "@/src/servidor/supabase";
@@ -27,13 +28,20 @@ export default async function Page() {
     return <ClientEventsView eventos={null} />;
   }
 
-  const r = await consultar<EventoDoCliente[]>(
+  const [r, solicitacoesR] = await Promise.all([
+    consultar<EventoDoCliente[]>(
     "vw_evento?select=id,data_evento,horario,horario_texto,tipo_evento_nome," +
       "endereco,bairro,cidade,status,situacao,total_do_evento,inteiros" +
       `&cliente_usuario_id=eq.${sessao.usuario.id}` +
       "&order=data_evento.desc&limit=50",
-    sessao.accessToken,
-  );
+      sessao.accessToken,
+    ),
+    consultar<SolicitacaoReservaDoCliente[]>(
+      "solicitacao_reserva?select=id,status,data_evento,horario,endereco,valor_estimado,sinal_estimado,criado_em" +
+        `&usuario_id=eq.${sessao.usuario.id}&status=in.(enviada,em_analise)&order=criado_em.desc&limit=20`,
+      sessao.accessToken,
+    ),
+  ]);
 
-  return <ClientEventsView eventos={r.dados ?? []} />;
+  return <ClientEventsView eventos={r.dados ?? []} solicitacoes={solicitacoesR.dados ?? []} />;
 }

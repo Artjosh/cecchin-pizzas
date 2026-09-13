@@ -29,6 +29,17 @@ export interface EventoDoCliente {
   inteiros: number | null;
 }
 
+export interface SolicitacaoReservaDoCliente {
+  id: string;
+  status: string;
+  data_evento: string;
+  horario: string;
+  endereco: string;
+  valor_estimado: string | number;
+  sinal_estimado: string | number;
+  criado_em: string;
+}
+
 /** O desenho. Mantido inteiro: é o estado que o banco ainda não produz. */
 const EXEMPLOS: EventoDoCliente[] = [
   {
@@ -75,9 +86,11 @@ function comoHora(bruto: string | null, texto: string | null): string {
 
 export function ClientEventsView({
   eventos,
+  solicitacoes = [],
 }: {
   /** `null` = desenhar o exemplo. */
   eventos: EventoDoCliente[] | null;
+  solicitacoes?: SolicitacaoReservaDoCliente[];
 }) {
   const doBanco = eventos !== null;
   const lista = eventos ?? EXEMPLOS;
@@ -179,6 +192,22 @@ export function ClientEventsView({
             );
           })}
         </div>
+      )}
+
+      {doBanco && solicitacoes.length > 0 && (
+        <section className="flex flex-col gap-space-sm">
+          <h2 className="font-headline-sm text-on-surface">Solicitações em análise</h2>
+          {solicitacoes.map((solicitacao) => (
+            <article key={solicitacao.id} className="rounded-xl border border-primary/20 bg-primary/5 p-space-md">
+              <div className="flex flex-wrap items-center justify-between gap-space-sm">
+                <span className="font-label-lg text-on-surface">Rodízio Artesanal</span>
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 font-label-sm text-primary">{solicitacao.status.replaceAll("_", " ")}</span>
+              </div>
+              <p className="mt-2 font-body-sm text-on-surface-variant">{comoDia(solicitacao.data_evento)} às {solicitacao.horario.slice(0, 5)} · {solicitacao.endereco}</p>
+              <p className="mt-1 font-body-sm text-on-surface-variant">Estimativa {formatBRL(Number(solicitacao.valor_estimado))} · sinal previsto {formatBRL(Number(solicitacao.sinal_estimado))}</p>
+            </article>
+          ))}
+        </section>
       )}
     </div>
   );
