@@ -25,3 +25,17 @@ export async function POST(request: NextRequest) {
   if (!r.ok) return NextResponse.json({ mensagem: mensagemDoBanco(r.erro) }, { status: r.status === 0 ? 502 : 403 });
   return NextResponse.json({ ok: true, notificacao: r.dados }, { status: 201 });
 }
+
+/** Alterna entre robô e atendimento humano sem expor o banco ao navegador. */
+export async function PATCH(request: NextRequest) {
+  const sessao = await sessaoAtual();
+  if (!sessao) return NextResponse.json({ mensagem: "Sem sessão." }, { status: 401 });
+  let corpo: Record<string, unknown>;
+  try { corpo = (await request.json()) as Record<string, unknown>; } catch { return NextResponse.json({ mensagem: "JSON inválido." }, { status: 400 }); }
+  const telefone = typeof corpo.telefone === "string" ? corpo.telefone : "";
+  const modo = corpo.modo === "automatico" || corpo.modo === "atendimento_humano" ? corpo.modo : null;
+  if (!modo) return NextResponse.json({ mensagem: "Modo inválido." }, { status: 400 });
+  const r = await chamarFuncao("definir_modo_conversa_whatsapp", { p_telefone: telefone, p_modo: modo }, sessao.accessToken);
+  if (!r.ok) return NextResponse.json({ mensagem: mensagemDoBanco(r.erro) }, { status: r.status === 0 ? 502 : 403 });
+  return NextResponse.json({ ok: true });
+}

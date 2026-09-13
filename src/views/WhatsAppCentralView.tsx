@@ -11,6 +11,7 @@ import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 import { fonteDeDados } from "../servidor/fonte";
 import { EnviarMensagemWhatsapp } from "../components/EnviarMensagemWhatsapp";
+import { ModoConversaWhatsapp } from "../components/ModoConversaWhatsapp";
 import React from 'react';
 import { MessageCircle, Search, MoreVertical, Phone } from 'lucide-react';
 
@@ -151,6 +152,11 @@ interface MensagemWhatsApp {
   criado_em: string;
 }
 
+interface ConversaWhatsApp {
+  telefone: string;
+  modo: "automatico" | "atendimento_humano";
+}
+
 /**
  * A mensagem já vem escrita, e muda conforme o motivo.
  *
@@ -207,7 +213,7 @@ const NOME_DO_BLOCO: Record<string, string> = {
 async function CentralDoBanco() {
   const sessao = await exigirPapel(["gestao"]);
 
-  const [pendentesR, mensagensR] = await Promise.all([
+  const [pendentesR, mensagensR, conversasR] = await Promise.all([
     consultar<ContatoPendente[]>(
       "vw_pendencia?select=id,bloco,pendencia,data_evento,codigo_legado" +
         "&order=ordem.asc,data_evento.asc&limit=40",
@@ -216,6 +222,10 @@ async function CentralDoBanco() {
     consultar<MensagemWhatsApp[]>(
       "mensagem_whatsapp?select=id,telefone,direcao,tipo,conteudo,status,criado_em" +
         "&order=criado_em.desc&limit=80",
+      sessao.accessToken,
+    ),
+    consultar<ConversaWhatsApp[]>(
+      "conversa_whatsapp?select=telefone,modo",
       sessao.accessToken,
     ),
   ]);
@@ -247,6 +257,7 @@ async function CentralDoBanco() {
     );
 
   const telefonesDaCentral = [...new Set((mensagensR.dados ?? []).map((mensagem) => mensagem.telefone))];
+  const modoPorTelefone = new Map((conversasR.dados ?? []).map((conversa) => [conversa.telefone, conversa.modo]));
 
   return (
     <div className="flex flex-col gap-space-lg">
@@ -264,9 +275,13 @@ async function CentralDoBanco() {
         <p>
           Na Cloud API, mensagens iniciadas pela empresa obedecem à janela de
           24 horas e aos templates aprovados da Meta. No WhatsApp Web local,
-          texto livre segue a conversa normal e convites pedem ACEITAR ou
-          RECUSAR com o código recebido. Na Cloud API, o mesmo convite usa
-          botões de resposta. Os dois caminhos entram pela mesma fila.
+          texto livre segue a conversa normal e convites usam os botões
+          ACEITAR ou RECUSAR. Na Cloud API, o mesmo convite usa botões de
+          resposta. Os dois caminhos entram pela mesma fila.
+        </p>
+        <p>
+          Ao responder pela Central, o atendimento humano assume a conversa.
+          Use o controle em cada número para devolver a pessoa ao bot.
         </p>
       </LacunaDeDados>
 
@@ -278,11 +293,14 @@ async function CentralDoBanco() {
           <SemLinhas titulo="Nenhuma mensagem recebida ainda" detalhe="Envie uma mensagem para o número vinculado para registrar a primeira entrada e a resposta do bot." />
         ) : (
           <ul className="flex flex-col gap-space-xs">
-            {mensagensR.dados.map((mensagem) => (
+            {mensagensR.dados.map((mensagem, indice) => (
               <li key={mensagem.id} className="rounded-xl bg-surface-container-lowest p-space-md shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-space-sm">
                   <span className="font-label-lg text-on-surface">{comoTelefone(mensagem.telefone)}</span>
-                  <span className="font-label-sm text-on-surface-variant">{new Date(mensagem.criado_em).toLocaleString("pt-BR")} · {mensagem.direcao === "entrada" ? "recebida" : rotuloStatus(mensagem.status)}</span>
+                  <div className="flex items-center gap-2">
+                    {mensagensR.dados.findIndex((outra) => outra.telefone === mensagem.telefone) === indice && <ModoConversaWhatsapp telefone={mensagem.telefone} modo={modoPorTelefone.get(mensagem.telefone) ?? "automatico"} />}
+                    <span className="font-label-sm text-on-surface-variant">{new Date(mensagem.criado_em).toLocaleString("pt-BR")} · {mensagem.direcao === "entrada" ? "recebida" : rotuloStatus(mensagem.status)}</span>
+                  </div>
                 </div>
                 <p className="mt-1 font-body-sm text-on-surface-variant">{textoDaMensagem(mensagem)}</p>
               </li>
