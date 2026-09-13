@@ -18,9 +18,10 @@ export interface EventoParaEscala {
 export interface PessoaParaEscala { id: string; nome: string; telefone: string | null; }
 export interface Escala { id: string; evento_id: string; usuario_id: string; status: string; funcao: string | null; observacao_gestao: string | null; }
 export interface Bloqueio { id: string; usuario_id: string; bloqueado_ate: string; reuniao_obrigatoria: boolean; }
+export interface Desempenho { usuario_id: string; nome: string; eventos_avaliados: number; nota_media: string | number | null; faltas: number; }
 
-export function EscalasOperacionais({ eventos, pessoas, escalas, bloqueios }: {
-  eventos: EventoParaEscala[]; pessoas: PessoaParaEscala[]; escalas: Escala[]; bloqueios: Bloqueio[];
+export function EscalasOperacionais({ eventos, pessoas, escalas, bloqueios, desempenho }: {
+  eventos: EventoParaEscala[]; pessoas: PessoaParaEscala[]; escalas: Escala[]; bloqueios: Bloqueio[]; desempenho: Desempenho[];
 }) {
   const router = useRouter();
   const [emVoo, iniciar] = useTransition();
@@ -74,6 +75,7 @@ export function EscalasOperacionais({ eventos, pessoas, escalas, bloqueios }: {
 
   return <div className="flex flex-col gap-space-md">
     {erro && <p role="alert" className="rounded-xl bg-primary/10 p-space-md font-body-sm text-primary">{erro}</p>}
+    {desempenho.length > 0 && <section className="rounded-xl bg-surface-container-lowest p-space-md shadow-sm"><h2 className="font-label-lg text-on-surface">Desempenho da equipe</h2><ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{desempenho.map((pessoa) => <li key={pessoa.usuario_id} className="rounded-lg bg-surface-container-low p-space-sm font-body-sm text-on-surface"><strong>{pessoa.nome}</strong><span className="ml-2 text-on-surface-variant">{pessoa.nota_media === null ? "sem avaliação" : `nota média ${Number(pessoa.nota_media).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} · {pessoa.eventos_avaliados} evento(s) · {pessoa.faltas} falta(s)</span></li>)}</ul></section>}
     {bloqueios.length > 0 && <section className="rounded-xl border border-primary/20 bg-primary/5 p-space-md"><h2 className="font-label-lg text-on-surface">Bloqueios ativos</h2><ul className="mt-2 flex flex-col gap-2">{bloqueios.map((b) => <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 font-body-sm text-on-surface"><span><strong>{nome.get(b.usuario_id) ?? "Pessoa"}</strong> · até {new Date(b.bloqueado_ate).toLocaleDateString("pt-BR")}{b.reuniao_obrigatoria ? " · reunião obrigatória" : ""}</span><button type="button" disabled={emVoo} onClick={() => encerrarBloqueio(b.id)} className="h-8 rounded-md bg-surface-container-high px-2.5 font-label-sm text-on-surface disabled:opacity-50">Registrar reunião e encerrar</button></li>)}</ul></section>}
     {eventos.map((evento) => {
       const equipe = porEvento.get(evento.id) ?? [];
