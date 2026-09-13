@@ -28,7 +28,7 @@ export default async function Page() {
     return <ClientEventsView eventos={null} />;
   }
 
-  const [r, solicitacoesR] = await Promise.all([
+  const [r, solicitacoesR, perfilR, preferenciasR] = await Promise.all([
     consultar<EventoDoCliente[]>(
     "vw_evento?select=id,data_evento,horario,horario_texto,tipo_evento_nome," +
       "endereco,bairro,cidade,status,situacao,total_do_evento,inteiros" +
@@ -41,7 +41,9 @@ export default async function Page() {
         `&usuario_id=eq.${sessao.usuario.id}&status=in.(enviada,em_analise,aguardando_pagamento)&order=criado_em.desc&limit=20`,
       sessao.accessToken,
     ),
+    consultar<{ telefone: string | null }[]>(`usuario?id=eq.${sessao.usuario.id}&select=telefone&limit=1`, sessao.accessToken),
+    consultar<{ receber_whatsapp: boolean }[]>(`preferencia_notificacao?usuario_id=eq.${sessao.usuario.id}&select=receber_whatsapp&limit=1`, sessao.accessToken),
   ]);
 
-  return <ClientEventsView eventos={r.dados ?? []} solicitacoes={solicitacoesR.dados ?? []} />;
+  return <ClientEventsView eventos={r.dados ?? []} solicitacoes={solicitacoesR.dados ?? []} whatsapp={{ telefone: perfilR.dados?.[0]?.telefone ?? "", habilitado: preferenciasR.dados?.[0]?.receber_whatsapp ?? false }} />;
 }

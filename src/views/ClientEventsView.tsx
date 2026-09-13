@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Calendar, Clock, MapPin } from "lucide-react";
 import { cn } from "../lib/utils";
 import { formatBRL } from "../lib/moeda";
+import { MeuWhatsapp } from "../components/MeuWhatsapp";
 
 /**
  * Meus eventos.
@@ -87,10 +88,12 @@ function comoHora(bruto: string | null, texto: string | null): string {
 export function ClientEventsView({
   eventos,
   solicitacoes = [],
+  whatsapp,
 }: {
   /** `null` = desenhar o exemplo. */
   eventos: EventoDoCliente[] | null;
   solicitacoes?: SolicitacaoReservaDoCliente[];
+  whatsapp?: { telefone: string; habilitado: boolean };
 }) {
   const doBanco = eventos !== null;
   const lista = eventos ?? EXEMPLOS;
@@ -117,6 +120,8 @@ export function ClientEventsView({
           Novo Evento
         </Link>
       </div>
+
+      {doBanco && whatsapp && <MeuWhatsapp telefoneInicial={whatsapp.telefone} habilitadoInicial={whatsapp.habilitado} />}
 
       {lista.length === 0 ? (
         <p className="font-body-md text-body-md text-on-surface-variant bg-surface-container-low rounded-xl p-space-lg text-center">
