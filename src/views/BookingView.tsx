@@ -22,13 +22,28 @@ export function BookingView() {
 function Assistente() {
   const [painelAberto, setPainelAberto] = useState(true);
   const [modoMarcacao, setModoMarcacao] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [resultado, setResultado] = useState("");
   const {
     currentStep,
     address,
     coordenada,
+    tipoLocal, data, hora, occasion, adults, children, toddlers, ovenType, paymentMethod, grandTotal, depositVal,
     escolherLocal,
     escolherSugestao,
   } = useReserva();
+
+  async function solicitarReserva() {
+    setEnviando(true); setResultado("");
+    try {
+      const resposta = await fetch("/api/cliente/reserva", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ endereco: address, latitude: coordenada?.lat ?? null, longitude: coordenada?.lng ?? null, tipoLocal, data, horario: hora, ocasiao: occasion, adultos: adults, criancas: children, criancasCortesia: toddlers, tipoForno: ovenType, formaPagamento: paymentMethod, valorEstimado: grandTotal, sinalEstimado: depositVal }) });
+      const dados = (await resposta.json().catch(() => ({}))) as { mensagem?: string; solicitacao?: string };
+      if (!resposta.ok || !dados.solicitacao) throw new Error(dados.mensagem ?? "Não foi possível enviar a solicitação.");
+      setResultado(`Solicitação ${dados.solicitacao.slice(0, 8).toUpperCase()} enviada. A Central vai confirmar a disponibilidade e encaminhar o pagamento.`);
+      setPainelAberto(false);
+    } catch (causa) { setResultado(causa instanceof Error ? causa.message : "Não foi possível enviar a solicitação."); }
+    finally { setEnviando(false); }
+  }
 
   return (
     <div className="relative h-full w-full bg-surface-container">
@@ -114,14 +129,13 @@ function Assistente() {
         </div>
       )}
 
+      {resultado && <div role="status" className="absolute left-3 right-3 top-28 z-40 mx-auto max-w-xl rounded-xl bg-surface p-space-md font-body-md text-on-surface shadow-xl">{resultado}</div>}
+
       <PainelPassos
         aberto={painelAberto}
         aoAbrir={setPainelAberto}
-        aoConfirmar={() =>
-          alert(
-            "Reserva #CP-2025-0842 gerada com sucesso! Assim que o sinal de 40% for validado, nossa central de operações entrará em contato via WhatsApp para confirmar detalhes de acesso.",
-          )
-        }
+        aoConfirmar={solicitarReserva}
+        confirmando={enviando}
       >
         {currentStep === 1 && <Passo1Local />}
         {currentStep === 2 && <Passo2Convidados />}

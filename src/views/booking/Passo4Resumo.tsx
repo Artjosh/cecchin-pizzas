@@ -123,7 +123,7 @@ export function Passo4Resumo() {
             </svg>
             <span className="mt-2 font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
-              QR Code válido por 30:00 min
+              Pagamento liberado após análise da solicitação
             </span>
           </div>
           <div className="flex flex-col flex-1 gap-space-sm w-full">
@@ -139,34 +139,34 @@ export function Passo4Resumo() {
             </div>
             <div className="flex flex-col gap-1">
               <span className="font-label-sm text-label-sm text-on-surface">
-                Código Pix Copia e Cola:
+                PIX será disponibilizado pela Central:
               </span>
               <div className="flex items-center gap-2">
                 <input
                   className="flex-1 h-10 px-3 bg-surface-container-lowest rounded text-body-sm font-mono text-on-surface-variant select-all"
                   readOnly
                   type="text"
-                  value="00020126580014br.gov.bcb.pix0136cecchinpizzas-reserva-8425204000053039865802BR5925CECCHIN PIZZAS ARTESANAIS6013PORTO ALEGRE"
+                  value="Envie a solicitação para receber o pagamento seguro."
                 />
                 <button
                   type="button"
-                  onClick={handleCopyPix}
-                  className="h-10 px-3 bg-surface-container hover:bg-surface-container-high rounded text-on-surface font-label-sm text-label-sm flex items-center gap-1 transition-all"
+                  disabled
+                  className="h-10 px-3 bg-surface-container rounded text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1 opacity-60"
                 >
                   {copied ? (
                     <Check className="w-4 h-4 text-primary" />
                   ) : (
                     <Copy className="w-4 h-4" />
                   )}
-                  <span>{copied ? "Copiado!" : "Copiar"}</span>
+                  <span>Após análise</span>
                 </button>
               </div>
             </div>
             <div className="bg-surface-container-lowest p-space-sm rounded-lg flex items-center gap-2">
               <BadgeCheck className="text-tertiary w-5 h-5" />
               <span className="font-body-sm text-body-sm text-on-surface-variant">
-                Confirmação automática de recebimento via Webhook do Banco
-                Central.
+                A cobrança só é criada depois da confirmação da Central. Nenhum
+                valor é cobrado ao enviar esta solicitação.
               </span>
             </div>
           </div>

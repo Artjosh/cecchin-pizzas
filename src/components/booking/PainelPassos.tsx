@@ -16,7 +16,8 @@ import { PASSOS, useReserva } from "../../views/booking/contexto";
 interface PainelPassosProps {
   aberto: boolean;
   aoAbrir: (aberto: boolean) => void;
-  aoConfirmar: () => void;
+  aoConfirmar: () => Promise<void>;
+  confirmando?: boolean;
   children: ReactNode;
 }
 
@@ -25,6 +26,7 @@ export function PainelPassos({
   aberto,
   aoAbrir,
   aoConfirmar,
+  confirmando = false,
   children,
 }: PainelPassosProps) {
   const {
@@ -131,8 +133,8 @@ export function PainelPassos({
                   )}
                   <button
                     type="button"
-                    disabled={!podeAvancar}
-                    onClick={ultimo ? aoConfirmar : avancar}
+                    disabled={!podeAvancar || confirmando}
+                    onClick={() => { if (ultimo) void aoConfirmar(); else avancar(); }}
                     className={cn(
                       "flex h-10 items-center gap-1 rounded-lg px-4 font-label-md text-label-md transition-all",
                       podeAvancar
@@ -141,7 +143,7 @@ export function PainelPassos({
                     )}
                   >
                     {ultimo ? <BadgeCheck className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-                    <span>{ultimo ? "Pagar sinal" : "Avançar"}</span>
+                    <span>{ultimo ? (confirmando ? "Enviando…" : "Enviar solicitação") : "Avançar"}</span>
                   </button>
                 </div>
               </div>
