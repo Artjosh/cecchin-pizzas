@@ -264,8 +264,9 @@ async function CentralDoBanco() {
         <p>
           Na Cloud API, mensagens iniciadas pela empresa obedecem à janela de
           24 horas e aos templates aprovados da Meta. No WhatsApp Web local,
-          texto livre segue a conversa normal. Convites de escala pedem ACEITAR
-          ou RECUSAR com o código recebido e sempre entram pela mesma fila.
+          texto livre segue a conversa normal e convites pedem ACEITAR ou
+          RECUSAR com o código recebido. Na Cloud API, o mesmo convite usa
+          botões de resposta. Os dois caminhos entram pela mesma fila.
         </p>
       </LacunaDeDados>
 
