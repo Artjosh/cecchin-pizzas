@@ -34,6 +34,15 @@ export default defineConfig(({ command }) => {
       // avisa que __dirname deixará de ser suportado.
       alias: { "@": import.meta.dirname },
     },
+    /*
+     * MapLibre 6 entrega o renderer e o worker como módulos ESM separados.
+     * O otimizador do Vite 8 tenta pré-empacotar o worker e aponta o navegador
+     * para um arquivo inexistente em `node_modules/.vite/deps`. Deixar esta
+     * dependência fora da pré-otimização preserva o worker original.
+     */
+    optimizeDeps: {
+      exclude: ["maplibre-gl"],
+    },
     server: {
       // O callback local usa `192-168-x-x.sslip.io`, hostname que resolve para
       // o IP Wi-Fi atual e evita a restrição do GoTrue a IPv4 literal.
