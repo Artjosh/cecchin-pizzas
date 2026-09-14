@@ -173,7 +173,8 @@ substituído pelo `MenuDoUsuario`.
 |---|---|---|
 | ler catálogo, agenda, evento | Server Component → **PostgREST** | leitura simples com RLS; intermediário só adiciona salto de rede |
 | arquivo | **Storage**, direto | nenhum bucket criado ainda |
-| criar reserva, mexer em dinheiro | route handler → **NestJS** | transação, fila, retry |
+| enviar solicitação de reserva | route handler → **RPC no Postgres** | estado durável, RLS e notificações idempotentes |
+| cobrar e confirmar pagamento | pendente de integração Infinity Pay | webhook, conciliação e dinheiro não cabem no BFF |
 | webhook | **NestJS** | chega fora de ordem, repete e falha |
 
 `src/servidor/supabase.ts` já tem `consultar()` (como o usuário, sob RLS) e
@@ -199,6 +200,9 @@ novo vale na navegação seguinte, sem novo login.
   reservada para o trabalho de OAuth
 - **frota administrável** — o banco tem tipos de forno, mas não ativos ou
   veículos individuais
+- **pagamento Infinity Pay** — a contratação gera solicitação e a operação
+  informa o andamento; ainda não existe cobrança PIX/cartão, webhook ou
+  conciliação financeira
 - **nenhum bucket** de Storage
 - **login pelo Google** — o gatilho de perfil já cobre o caminho; falta
   habilitar o provedor no GoTrue
