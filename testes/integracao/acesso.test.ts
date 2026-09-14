@@ -82,8 +82,9 @@ describe("pedir acesso", () => {
     const primeiro = await ap.pedir("/api/auth/login?passo=iniciar", { corpo: { email } });
     const segundo = await ap.pedir("/api/auth/login?passo=iniciar", { corpo: { email } });
 
-    expect(segundo.status).toBe(429);
-    expect(segundo.corpo.codigo).toBe("reenvio_cedo_demais");
+    expect(segundo.status).toBe(200);
+    expect(segundo.corpo.selector).toBe(primeiro.corpo.selector);
+    expect(segundo.corpo.reenviar_em).toBeTruthy();
 
     // O ponto: o pedido anterior NÃO foi invalidado. Quem pede de novo cedo
     // demais fica com o que já tem — invalidar e recusar deixaria a pessoa sem

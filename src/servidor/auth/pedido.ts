@@ -36,10 +36,7 @@ export type FalhaLogin =
   | "codigo_invalido"
   | "tentativas_demais"
   | "email_invalido"
-  | "provedor_indisponivel"
-  // Pedido repetido antes do prazo. Distinto de `tentativas_demais`, que destrói
-  // o pedido: aqui o anterior continua VÁLIDO e o e-mail pode estar a caminho.
-  | "reenvio_cedo_demais";
+  | "provedor_indisponivel";
 
 export type Resultado<T> =
   | { ok: true; valor: T }
@@ -135,7 +132,7 @@ export async function iniciarLogin(
   if (config.auth.reenvioMs > 0) {
     const recentes = await consultarComoServico<LinhaPedido[]>(
       `pedido_login?email=eq.${encodeURIComponent(email)}` +
-        `&status=eq.pendente&order=criado_em.desc&limit=1&select=criado_em`,
+        `&status=eq.pendente&order=criado_em.desc&limit=1&select=selector,criado_em`,
     );
 
     const ultimo = recentes.ok ? recentes.dados?.[0] : null;
@@ -143,11 +140,16 @@ export async function iniciarLogin(
       const faltam =
         new Date(ultimo.criado_em).getTime() + config.auth.reenvioMs - agora;
       if (faltam > 0) {
-        return falhar(
-          "reenvio_cedo_demais",
-          `Um acesso já foi enviado. Aguarde ${Math.ceil(faltam / 1000)}s.`,
-          new Date(agora + faltam).toISOString(),
-        );
+        return {
+          ok: true,
+          valor: {
+            selector: ultimo.selector,
+            email,
+            email_enviado: false,
+            mensagem: "Já há um acesso em andamento para este e-mail.",
+            reenviar_em: new Date(agora + faltam).toISOString(),
+          },
+        };
       }
     }
   }
@@ -452,8 +454,6 @@ export function statusDaFalha(falha: FalhaLogin): number {
     case "codigo_invalido":
       return 401;
     case "tentativas_demais":
-      return 429;
-    case "reenvio_cedo_demais":
       return 429;
     case "email_invalido":
       return 400;

@@ -15,7 +15,6 @@ describe("statusDaFalha", () => {
     ["nao_encontrado", 404],
     ["codigo_invalido", 401],
     ["tentativas_demais", 429],
-    ["reenvio_cedo_demais", 429],
     ["email_invalido", 400],
     ["provedor_indisponivel", 503],
   ] as const)("%s vira %i", (falha, status) => {
@@ -28,11 +27,6 @@ describe("statusDaFalha", () => {
     expect(statusDaFalha("provedor_indisponivel")).toBeGreaterThanOrEqual(500);
   });
 
-  it("reenvio cedo demais não é 4xx de credencial", () => {
-    // O pedido anterior continua VÁLIDO: o e-mail pode estar a caminho. Tratar
-    // como erro de credencial faria a tela mandar pedir de novo.
-    expect(statusDaFalha("reenvio_cedo_demais")).toBe(429);
-  });
 
   it("toda falha declarada tem status", () => {
     const todas: FalhaLogin[] = [
@@ -41,7 +35,6 @@ describe("statusDaFalha", () => {
       "tentativas_demais",
       "email_invalido",
       "provedor_indisponivel",
-      "reenvio_cedo_demais",
     ];
     for (const f of todas) {
       expect(typeof statusDaFalha(f)).toBe("number");
