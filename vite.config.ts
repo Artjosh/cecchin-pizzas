@@ -47,6 +47,12 @@ export default defineConfig(({ command }) => {
       // O callback local usa `192-168-x-x.sslip.io`, hostname que resolve para
       // o IP Wi-Fi atual e evita a restrição do GoTrue a IPv4 literal.
       allowedHosts: [".sslip.io"],
+      /*
+       * Os módulos de desenvolvimento mudam quando Vite reconstrói as
+       * dependências. Sem isto, uma aba aberta pode pedir o arquivo da execução
+       * anterior e receber 504, impedindo a hidratação de toda a página.
+       */
+      headers: { "Cache-Control": "no-store, max-age=0" },
     },
   };
 });
