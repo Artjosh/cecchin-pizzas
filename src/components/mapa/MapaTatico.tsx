@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import * as maplibregl from "maplibre-gl";
 import type { Map as MapaMapLibre, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { AlertCircle, MapPin, Navigation, Truck } from "lucide-react";
@@ -9,6 +8,8 @@ import { AlertCircle, MapPin, Navigation, Truck } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { comoHora } from "../../lib/formato";
 import { aplicarVisualOperacional, ESTILO_MAPA_OPERACIONAL, paraLngLat, type Coordenada } from "../maps/mapa-livre";
+
+type BibliotecaMapa = typeof import("maplibre-gl");
 
 export interface EventoNoMapa {
   id: string; cliente_nome: string | null; endereco: string | null; bairro: string | null; cidade: string | null;
@@ -36,20 +37,33 @@ function elementoEvento(numero: number, ativo: boolean) {
 
 function MapaReal({ eventos, base, selecionado, aoSelecionar }: { eventos: EventoNoMapa[]; base: Coordenada; selecionado: string | null; aoSelecionar: (id: string) => void }) {
   const recipiente = useRef<HTMLDivElement>(null);
+  const biblioteca = useRef<BibliotecaMapa | null>(null);
   const mapa = useRef<MapaMapLibre | null>(null);
   const pinos = useRef(new Map<string, Marker>());
   const [pontos, setPontos] = useState(new Map<string, Coordenada>());
   const [buscando, setBuscando] = useState<string | null>(null);
+  const [bibliotecaCarregada, setBibliotecaCarregada] = useState(false);
 
   useEffect(() => {
-    if (!recipiente.current || mapa.current) return;
-    const instancia = new maplibregl.Map({ container: recipiente.current, style: ESTILO_MAPA_OPERACIONAL, center: paraLngLat(base), zoom: 11, attributionControl: true });
+    let ativo = true;
+    void import("maplibre-gl").then((modulo) => {
+      if (!ativo) return;
+      biblioteca.current = modulo;
+      setBibliotecaCarregada(true);
+    });
+    return () => { ativo = false; };
+  }, []);
+
+  useEffect(() => {
+    const modulo = biblioteca.current;
+    if (!recipiente.current || mapa.current || !modulo) return;
+    const instancia = new modulo.Map({ container: recipiente.current, style: ESTILO_MAPA_OPERACIONAL, center: paraLngLat(base), zoom: 11, attributionControl: true });
     mapa.current = instancia;
-    instancia.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+    instancia.addControl(new modulo.NavigationControl({ showCompass: false }), "bottom-right");
     instancia.on("load", () => aplicarVisualOperacional(instancia));
-    new maplibregl.Marker({ element: elementoBase() }).setLngLat(paraLngLat(base)).setPopup(new maplibregl.Popup({ offset: 20 }).setText("Base operacional")).addTo(instancia);
+    new modulo.Marker({ element: elementoBase() }).setLngLat(paraLngLat(base)).setPopup(new modulo.Popup({ offset: 20 }).setText("Base operacional")).addTo(instancia);
     return () => { pinos.current.forEach((pino) => pino.remove()); instancia.remove(); mapa.current = null; };
-  }, [base]);
+  }, [base, bibliotecaCarregada]);
 
   useEffect(() => {
     if (!selecionado || pontos.has(selecionado) || buscando || !mapa.current) return;
@@ -69,13 +83,13 @@ function MapaReal({ eventos, base, selecionado, aoSelecionar }: { eventos: Event
   }, [buscando, eventos, pontos, selecionado]);
 
   useEffect(() => {
-    const instancia = mapa.current; if (!instancia) return;
+    const instancia = mapa.current; const modulo = biblioteca.current; if (!instancia || !modulo) return;
     for (const [id, ponto] of pontos) {
       const evento = eventos.find((item) => item.id === id); const indice = eventos.findIndex((item) => item.id === id);
       if (!evento || indice < 0) continue;
       const anterior = pinos.current.get(id);
       anterior?.remove();
-      const marcador = new maplibregl.Marker({ element: elementoEvento(indice + 1, id === selecionado) }).setLngLat(paraLngLat(ponto)).setPopup(new maplibregl.Popup({ offset: 20 }).setText(`${evento.cliente_nome ?? "Evento"} · ${enderecoDoEvento(evento)}`)).addTo(instancia);
+      const marcador = new modulo.Marker({ element: elementoEvento(indice + 1, id === selecionado) }).setLngLat(paraLngLat(ponto)).setPopup(new modulo.Popup({ offset: 20 }).setText(`${evento.cliente_nome ?? "Evento"} · ${enderecoDoEvento(evento)}`)).addTo(instancia);
       marcador.getElement().addEventListener("click", () => aoSelecionar(id));
       pinos.current.set(id, marcador);
     }

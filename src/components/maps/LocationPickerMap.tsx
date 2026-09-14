@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource, Map as MapaMapLibre, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { LocateFixed, Route, Search, Timer } from "lucide-react";
@@ -25,6 +24,7 @@ interface LocationPickerMapProps {
 
 interface LocalEncontrado extends Coordenada { endereco: string }
 interface RotaEncontrada { distanciaMetros: number; duracaoSegundos: number; geometria: { coordinates: [number, number][] } }
+type BibliotecaMapa = typeof import("maplibre-gl");
 const QG = QG_CECCHIN.coordenada;
 
 function estimativa(destino: Coordenada) {
@@ -88,6 +88,7 @@ function BuscaDeEndereco({ address, addressAction, aoEscolher }: { address?: str
 
 export function LocationPickerMap({ onLocationSelect, className, address, controles = true, addressAction, addressBelow, selectedLocation, markingMode = false, onMarkingModeChange, children }: LocationPickerMapProps) {
   const recipiente = useRef<HTMLDivElement>(null);
+  const biblioteca = useRef<BibliotecaMapa | null>(null);
   const mapa = useRef<MapaMapLibre | null>(null);
   const pino = useRef<Marker | null>(null);
   const gps = useRef<Marker | null>(null);
@@ -95,6 +96,7 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
   const escolherAtual = useRef<(local: Coordenada, endereco?: string) => Promise<void>>(async () => {});
   const marcacaoAtual = useRef(markingMode);
   const [pronto, setPronto] = useState(false);
+  const [bibliotecaCarregada, setBibliotecaCarregada] = useState(false);
   const [informacaoRota, setInformacaoRota] = useState<{ distance: string; duration: string; estimated: boolean } | null>(null);
   const [mensagem, setMensagem] = useState<string | null>(null);
 
@@ -112,17 +114,30 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
   useEffect(() => { marcacaoAtual.current = markingMode; }, [markingMode]);
 
   useEffect(() => {
-    if (!recipiente.current || mapa.current) return;
-    const instancia = new maplibregl.Map({ container: recipiente.current, style: ESTILO_MAPA_OPERACIONAL, center: paraLngLat(QG), zoom: 12, attributionControl: true });
+    let ativo = true;
+    void import("maplibre-gl").then((modulo) => {
+      if (!ativo) return;
+      biblioteca.current = modulo;
+      setBibliotecaCarregada(true);
+    }).catch(() => {
+      if (ativo) setMensagem("Não foi possível carregar o mapa.");
+    });
+    return () => { ativo = false; };
+  }, []);
+
+  useEffect(() => {
+    const modulo = biblioteca.current;
+    if (!recipiente.current || mapa.current || !modulo) return;
+    const instancia = new modulo.Map({ container: recipiente.current, style: ESTILO_MAPA_OPERACIONAL, center: paraLngLat(QG), zoom: 12, attributionControl: true });
     mapa.current = instancia;
-    instancia.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
-    const marcador = new maplibregl.Marker({ element: criarPino(), draggable: true, anchor: "bottom" }).setLngLat(paraLngLat(QG)).addTo(instancia);
+    instancia.addControl(new modulo.NavigationControl({ showCompass: false }), "bottom-right");
+    const marcador = new modulo.Marker({ element: criarPino(), draggable: true, anchor: "bottom" }).setLngLat(paraLngLat(QG)).addTo(instancia);
     pino.current = marcador;
     marcador.on("dragend", () => { void escolherAtual.current(deLngLat(marcador.getLngLat())); });
     instancia.on("load", () => { aplicarVisualOperacional(instancia); configurarRota(instancia); setPronto(true); });
     instancia.on("click", (evento) => { if (marcacaoAtual.current) void escolherAtual.current(deLngLat(evento.lngLat)); });
     return () => { marcador.remove(); gps.current?.remove(); instancia.remove(); mapa.current = null; pino.current = null; gps.current = null; };
-  }, []);
+  }, [bibliotecaCarregada]);
 
   useEffect(() => {
     if (!mapa.current || !pino.current) return;
@@ -137,7 +152,8 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
   }, [selectedLocation]);
 
   useEffect(() => {
-    if (!selectedLocation || !pronto || !mapa.current) return;
+    const modulo = biblioteca.current;
+    if (!selectedLocation || !pronto || !mapa.current || !modulo) return;
     let cancelado = false; const instancia = mapa.current; const reta = estimativa(selectedLocation);
     setInformacaoRota({ ...reta, estimated: true }); desenharRota(instancia, [paraLngLat(QG), paraLngLat(selectedLocation)]);
     void (async () => {
@@ -147,7 +163,7 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
         if (!resposta.ok || cancelado) return;
         desenharRota(instancia, rota.geometria.coordinates);
         setInformacaoRota({ distance: `${(rota.distanciaMetros / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km`, duration: `${Math.max(1, Math.round(rota.duracaoSegundos / 60))} min`, estimated: false });
-        const limites = rota.geometria.coordinates.reduce((todos, ponto) => todos.extend(ponto), new maplibregl.LngLatBounds(paraLngLat(QG), paraLngLat(QG)));
+        const limites = rota.geometria.coordinates.reduce((todos, ponto) => todos.extend(ponto), new modulo.LngLatBounds(paraLngLat(QG), paraLngLat(QG)));
         instancia.fitBounds(limites, { padding: 76, maxZoom: 15, duration: 650 });
       } catch { /* A reta e a estimativa continuam visíveis. */ }
     })();
@@ -155,11 +171,13 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
   }, [pronto, selectedLocation]);
 
   function centralizar() {
+    const modulo = biblioteca.current;
+    if (!modulo || !mapa.current) { setMensagem("Carregando mapa…"); return; }
     if (!navigator.geolocation) { setMensagem("Localização do dispositivo indisponível"); return; }
     setMensagem("Buscando sua localização…");
     navigator.geolocation.getCurrentPosition(({ coords }) => {
       const local = { lat: coords.latitude, lng: coords.longitude };
-      if (!gps.current && mapa.current) { const e = document.createElement("div"); e.className = "h-4 w-4 rounded-full border-2 border-surface bg-tertiary shadow-md"; gps.current = new maplibregl.Marker({ element: e }).setLngLat(paraLngLat(local)).addTo(mapa.current); } else gps.current?.setLngLat(paraLngLat(local));
+      if (!gps.current && mapa.current) { const e = document.createElement("div"); e.className = "h-4 w-4 rounded-full border-2 border-surface bg-tertiary shadow-md"; gps.current = new modulo.Marker({ element: e }).setLngLat(paraLngLat(local)).addTo(mapa.current); } else gps.current?.setLngLat(paraLngLat(local));
       mapa.current?.flyTo({ center: paraLngLat(local), zoom: 14, essential: true }); setMensagem("Mapa centralizado na sua localização");
     }, () => setMensagem("Permita a localização para centralizar o mapa"), { enableHighAccuracy: true, maximumAge: 300000, timeout: 8000 });
   }
