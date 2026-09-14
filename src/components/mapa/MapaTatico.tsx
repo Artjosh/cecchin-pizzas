@@ -1,9 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Map as MapaMapLibre, Marker } from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
-import urlDoWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { AlertCircle, MapPin, Navigation, Truck } from "lucide-react";
 
 import { cn } from "../../lib/utils";
@@ -11,6 +8,18 @@ import { comoHora } from "../../lib/formato";
 import { aplicarVisualOperacional, ESTILO_MAPA_OPERACIONAL, paraLngLat, type Coordenada } from "../maps/mapa-livre";
 
 type BibliotecaMapa = typeof import("maplibre-gl");
+type MapaMapLibre = any;
+type Marker = any;
+
+async function carregarBibliotecaMapa(): Promise<BibliotecaMapa> {
+  if (typeof window === "undefined") throw new Error("Mapa disponível apenas no navegador.");
+  const [modulo] = await Promise.all([
+    import("maplibre-gl"),
+    import("maplibre-gl/dist/maplibre-gl.css"),
+  ]);
+  modulo.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+  return modulo;
+}
 
 export interface EventoNoMapa {
   id: string; cliente_nome: string | null; endereco: string | null; bairro: string | null; cidade: string | null;
@@ -47,12 +56,11 @@ function MapaReal({ eventos, base, selecionado, aoSelecionar }: { eventos: Event
 
   useEffect(() => {
     let ativo = true;
-    void import("maplibre-gl").then((modulo) => {
+    void carregarBibliotecaMapa().then((modulo) => {
       if (!ativo) return;
-      modulo.setWorkerUrl(urlDoWorker);
       biblioteca.current = modulo;
       setBibliotecaCarregada(true);
-    });
+    }).catch(() => { /* O mapa tático fica vazio sem quebrar a rota. */ });
     return () => { ativo = false; };
   }, []);
 

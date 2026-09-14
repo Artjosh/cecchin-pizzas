@@ -20,3 +20,6 @@ worker-configuration.d.ts
 # Capturas de tela das skills de verificação. São artefato de conferência, não
 # de código: mudam a cada rodada e pesam.
 skills/verificar-tela/capturas/
+
+# Gerado no predev/prebuild a partir da versão instalada de MapLibre.
+public/maplibre/

@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copiar-worker-maplibre.mjs",
     "dev": "node scripts/dev-rede.mjs",
+    "prebuild": "node scripts/copiar-worker-maplibre.mjs",
     "build": "vinext build",
     "start": "vinext start",
     "preview": "vinext build && wrangler dev",

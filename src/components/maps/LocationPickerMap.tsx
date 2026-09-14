@@ -1,9 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { GeoJSONSource, Map as MapaMapLibre, Marker } from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
-import urlDoWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { LocateFixed, Route, Search, Timer } from "lucide-react";
 
 import { cn } from "../../lib/utils";
@@ -26,6 +23,9 @@ interface LocationPickerMapProps {
 interface LocalEncontrado extends Coordenada { endereco: string }
 interface RotaEncontrada { distanciaMetros: number; duracaoSegundos: number; geometria: { coordinates: [number, number][] } }
 type BibliotecaMapa = typeof import("maplibre-gl");
+type MapaMapLibre = any;
+type Marker = any;
+type GeoJSONSource = { setData: (dados: GeoJSON.Feature<GeoJSON.LineString>) => void };
 const QG = QG_CECCHIN.coordenada;
 
 function estimativa(destino: Coordenada) {
@@ -54,6 +54,16 @@ function configurarRota(mapa: MapaMapLibre) {
 function desenharRota(mapa: MapaMapLibre, coordinates: [number, number][]) {
   const fonte = mapa.getSource("rota-qg") as GeoJSONSource | undefined;
   fonte?.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } });
+}
+
+async function carregarBibliotecaMapa(): Promise<BibliotecaMapa> {
+  if (typeof window === "undefined") throw new Error("Mapa disponível apenas no navegador.");
+  const [modulo] = await Promise.all([
+    import("maplibre-gl"),
+    import("maplibre-gl/dist/maplibre-gl.css"),
+  ]);
+  modulo.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+  return modulo;
 }
 
 function BuscaDeEndereco({ address, addressAction, aoEscolher }: { address?: string; addressAction?: React.ReactNode; aoEscolher: (local: LocalEncontrado) => void }) {
@@ -116,9 +126,8 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
 
   useEffect(() => {
     let ativo = true;
-    void import("maplibre-gl").then((modulo) => {
+    void carregarBibliotecaMapa().then((modulo) => {
       if (!ativo) return;
-      modulo.setWorkerUrl(urlDoWorker);
       biblioteca.current = modulo;
       setBibliotecaCarregada(true);
     }).catch(() => {

@@ -1,4 +1,10 @@
-import type { Map as MapaMapLibre } from "maplibre-gl";
+type MapaMapLibre = {
+  getStyle: () => { layers?: Array<{ id: string; type?: string }> };
+  isStyleLoaded: () => boolean;
+  once: (evento: string, ouvinte: () => void) => void;
+  setLayoutProperty: (camada: string, propriedade: string, valor: string) => void;
+  setPaintProperty: (camada: string, propriedade: string, valor: string | number) => void;
+};
 
 export interface Coordenada {
   lat: number;
