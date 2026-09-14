@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Map as MapaMapLibre, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import urlDoWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { AlertCircle, MapPin, Navigation, Truck } from "lucide-react";
 
 import { cn } from "../../lib/utils";
@@ -48,6 +49,7 @@ function MapaReal({ eventos, base, selecionado, aoSelecionar }: { eventos: Event
     let ativo = true;
     void import("maplibre-gl").then((modulo) => {
       if (!ativo) return;
+      modulo.setWorkerUrl(urlDoWorker);
       biblioteca.current = modulo;
       setBibliotecaCarregada(true);
     });

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GeoJSONSource, Map as MapaMapLibre, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import urlDoWorker from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { LocateFixed, Route, Search, Timer } from "lucide-react";
 
 import { cn } from "../../lib/utils";
@@ -117,6 +118,7 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
     let ativo = true;
     void import("maplibre-gl").then((modulo) => {
       if (!ativo) return;
+      modulo.setWorkerUrl(urlDoWorker);
       biblioteca.current = modulo;
       setBibliotecaCarregada(true);
     }).catch(() => {

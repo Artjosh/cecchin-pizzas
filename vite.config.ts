@@ -43,6 +43,12 @@ export default defineConfig(({ command }) => {
     optimizeDeps: {
       exclude: ["maplibre-gl"],
     },
+    // MapLibre 6 traz um worker ESM. O SSR precisa processar o pacote pelo
+    // Vite para o worker usar a URL emitida pelo bundler, nunca o módulo
+    // principal dentro do contexto sem `window`.
+    ssr: {
+      noExternal: ["maplibre-gl"],
+    },
     server: {
       // O callback local usa `192-168-x-x.sslip.io`, hostname que resolve para
       // o IP Wi-Fi atual e evita a restrição do GoTrue a IPv4 literal.
