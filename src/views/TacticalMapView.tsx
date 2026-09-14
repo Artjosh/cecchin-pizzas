@@ -29,7 +29,6 @@ async function MapaDoBanco() {
     <MapaTatico
       eventos={r.dados ?? []}
       base={QG_CECCHIN.coordenada}
-      chaveAusente={!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
     />
   );
 }

@@ -82,8 +82,14 @@ for (const tela of TELAS) {
 
   for (const rota of ROTAS) {
     const apelido = rota.replace(/^\//, "").replace(/\//g, "-") || "raiz";
-    await pag.goto(ALVO + rota, { waitUntil: "networkidle" });
-    await pag.waitForTimeout(400);
+    /*
+     * Mapa vetorial mantém downloads de tiles enquanto a câmera se ajusta.
+     * `networkidle` nunca chega nessa situação, embora o DOM já esteja pronto
+     * para inspeção. Uma pequena espera de pintura preserva a captura e não
+     * bloqueia a ferramenta em mapas.
+     */
+    await pag.goto(ALVO + rota, { waitUntil: "domcontentloaded" });
+    await pag.waitForTimeout(900);
 
     /*
      * `fullPage` fica de fora por padrão. A verificação que importa é a do que

@@ -53,7 +53,7 @@ export function MapaDesenhado() {
         
         <div className="text-center z-10 space-y-4">
           <Map className="w-16 h-16 text-stone-300 mx-auto" />
-          <p className="text-on-surface-variant font-medium">Integração com Google Maps a ser ativada.</p>
+          <p className="text-on-surface-variant font-medium">Mapa operacional disponível quando a fonte Banco estiver selecionada.</p>
         </div>
 
         {/* Mock Markers */}

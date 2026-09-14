@@ -11,7 +11,7 @@ Estado real em 12/09/2026. O que não está marcado como **existe** não existe.
 | Proxy de sessão | **existe** — `proxy.ts` |
 | Guarda de papel no servidor | **existe** — nos layouts, sobre RLS |
 | Quatro papéis e a promoção entre eles | **existe** — decidido no Postgres |
-| Google Maps | **existe** — geocoding e autocomplete reais |
+| Mapa operacional | **existe** — MapLibre com base vetorial escura, rota e localização via BFF |
 | Server Components + SSR | **existe** — páginas protegidas e route handlers dinâmicos |
 | Leitura de dado de negócio | **existe** — agenda, catálogo, equipe, clientes, mapa, checklist, suporte, rastreio e localidades usam PostgREST sob RLS |
 | Storage do Supabase | container de pé, **nenhum bucket** |

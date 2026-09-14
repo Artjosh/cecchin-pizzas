@@ -1,285 +1,102 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  APIProvider,
-  AdvancedMarker,
-  Map as MapaGoogle,
-  useMap,
-  useMapsLibrary,
-} from "@vis.gl/react-google-maps";
+import { useEffect, useRef, useState } from "react";
+import * as maplibregl from "maplibre-gl";
+import type { Map as MapaMapLibre, Marker } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { AlertCircle, MapPin, Navigation, Truck } from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import { comoHora } from "../../lib/formato";
-
-/**
- * O mapa do dia, com os eventos onde eles realmente ficam.
- *
- * **O que este mapa NÃO mostra: posição de van.** Não existe rastreamento —
- * nenhuma tabela guarda coordenada de veículo, e o desenho anterior prometia
- * "visão em tempo real das equipes" sobre um fundo pontilhado. Prometer
- * posição que não existe é pior do que não ter o mapa.
- *
- * O que ele mostra é verdadeiro: onde é cada evento de hoje, a que horas a
- * equipe sai da base e a que horas o serviço começa.
- *
- * **Por que a geocodificação acontece aqui, no cliente.** Nem `evento` nem
- * `localidade` guardam latitude e longitude — só texto de endereço. Converter
- * no servidor a cada render gastaria cota do Google em toda navegação; aqui
- * acontece uma vez por carga, e só para os eventos do dia, que são poucos.
- *
- * O dia em que `evento` ganhar coordenada, isto vira leitura direta e a
- * geocodificação sai.
- */
+import { aplicarVisualOperacional, ESTILO_MAPA_OPERACIONAL, paraLngLat, type Coordenada } from "../maps/mapa-livre";
 
 export interface EventoNoMapa {
-  id: string;
-  cliente_nome: string | null;
-  endereco: string | null;
-  bairro: string | null;
-  cidade: string | null;
-  horario: string | null;
-  horario_texto: string | null;
-  horario_saida: string | null;
-  inteiros: number | null;
-  meios: number | null;
-  responsavel_nome: string | null;
+  id: string; cliente_nome: string | null; endereco: string | null; bairro: string | null; cidade: string | null;
+  horario: string | null; horario_texto: string | null; horario_saida: string | null; inteiros: number | null; meios: number | null; responsavel_nome: string | null;
 }
 
-interface Coordenada {
-  lat: number;
-  lng: number;
+function enderecoDoEvento(evento: EventoNoMapa) {
+  return [evento.endereco, evento.bairro, evento.cidade].filter(Boolean).join(", ");
 }
 
-export function MapaTatico({
-  eventos,
-  base,
-  chaveAusente,
-}: {
-  eventos: EventoNoMapa[];
-  base: Coordenada;
-  chaveAusente: boolean;
-}) {
-  const [selecionado, setSelecionado] = useState<string | null>(
-    eventos[0]?.id ?? null,
-  );
-
-  return (
-    <div className="h-full flex flex-col gap-space-md">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
-        <div>
-          <h1 className="font-headline-md text-headline-md text-on-surface tracking-tight">
-            Mapa tático
-          </h1>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-            {eventos.length === 0
-              ? "Nenhum evento hoje."
-              : `${eventos.length} evento${eventos.length > 1 ? "s" : ""} hoje, do mais cedo ao mais tarde.`}
-          </p>
-        </div>
-      </header>
-
-      <div className="flex items-start gap-space-sm bg-surface-container-low rounded-xl p-space-md">
-        <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-        <p className="font-body-sm text-body-sm text-on-surface-variant">
-          <strong className="text-on-surface">Não há rastreamento de van.</strong>{" "}
-          Nenhuma tabela guarda posição de veículo, então o mapa mostra onde é
-          cada evento — não onde a equipe está agora. Ver{" "}
-          <code className="font-mono">AGENTES.md</code>, lacunas de modelagem.
-        </p>
-      </div>
-
-      <div className="flex-1 min-h-[26rem] grid grid-cols-1 lg:grid-cols-3 gap-space-md">
-        <div className="lg:col-span-2 rounded-xl overflow-hidden bg-surface-container relative min-h-[20rem]">
-          {chaveAusente ? (
-            <div className="h-full flex flex-col items-center justify-center text-center gap-space-sm p-space-lg">
-              <MapPin className="w-10 h-10 text-on-surface-variant" />
-              <span className="font-label-lg text-label-lg text-on-surface">
-                Mapa indisponível
-              </span>
-              <p className="font-body-sm text-body-sm text-on-surface-variant max-w-sm">
-                Falta <code className="font-mono">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code>.
-                A lista ao lado continua funcionando.
-              </p>
-            </div>
-          ) : (
-            <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""}>
-              <MapaComPinos
-                eventos={eventos}
-                base={base}
-                selecionado={selecionado}
-                aoSelecionar={setSelecionado}
-              />
-            </APIProvider>
-          )}
-        </div>
-
-        <ul className="flex flex-col gap-space-sm overflow-y-auto max-h-[34rem]">
-          {eventos.length === 0 && (
-            <li className="bg-surface-container-low rounded-xl p-space-md font-body-md text-body-md text-on-surface-variant">
-              A agenda de hoje está vazia.
-            </li>
-          )}
-          {eventos.map((e, i) => (
-            <li key={e.id}>
-              <button
-                type="button"
-                onClick={() => setSelecionado(e.id)}
-                aria-pressed={selecionado === e.id}
-                className={cn(
-                  "w-full text-left rounded-xl p-space-md flex flex-col gap-1 transition-colors",
-                  selecionado === e.id
-                    ? "bg-primary-container text-on-primary-container"
-                    : "bg-surface-container-lowest hover:bg-surface-container",
-                )}
-              >
-                <span className="flex items-center justify-between gap-space-sm">
-                  <span className="font-label-md text-label-md truncate">
-                    {i + 1}. {e.cliente_nome ?? "sem cliente"}
-                  </span>
-                  <span className="font-label-md text-label-md shrink-0">
-                    {comoHora(e.horario, e.horario_texto)}
-                  </span>
-                </span>
-                <span className="font-body-sm text-body-sm opacity-80 truncate">
-                  {e.endereco ??
-                    [e.bairro, e.cidade].filter(Boolean).join(" · ") ??
-                    "sem endereço"}
-                </span>
-                <span className="font-body-sm text-body-sm opacity-70 flex items-center gap-space-sm flex-wrap">
-                  <span className="flex items-center gap-1">
-                    <Truck className="w-3.5 h-3.5" />
-                    sai {comoHora(e.horario_saida, null)}
-                  </span>
-                  <span>{(e.inteiros ?? 0) + Math.ceil((e.meios ?? 0) / 2)}p</span>
-                  {e.responsavel_nome && <span>{e.responsavel_nome}</span>}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
+function elementoBase() {
+  const el = document.createElement("div");
+  el.className = "flex h-8 w-8 items-center justify-center rounded-full bg-inverse-surface text-inverse-on-surface shadow-lg";
+  el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" class="h-4 w-4 fill-current"><path d="m3.5 12 18-9-9 18-2-7-7-2Z"/></svg>';
+  return el;
 }
 
-function MapaComPinos({
-  eventos,
-  base,
-  selecionado,
-  aoSelecionar,
-}: {
-  eventos: EventoNoMapa[];
-  base: Coordenada;
-  selecionado: string | null;
-  aoSelecionar: (id: string) => void;
-}) {
-  const pontos = useGeocodificacao(eventos);
-  const mapa = useMap();
-
-  // Centraliza no evento escolhido, quando já houver coordenada para ele.
-  useEffect(() => {
-    if (!mapa || !selecionado) return;
-    const p = pontos.get(selecionado);
-    if (p) mapa.panTo(p);
-  }, [mapa, selecionado, pontos]);
-
-  return (
-    <MapaGoogle
-      style={{ width: "100%", height: "100%" }}
-      defaultZoom={11}
-      defaultCenter={base}
-      mapId="DEMO_MAP_ID"
-      disableDefaultUI
-      gestureHandling="greedy"
-    >
-      <AdvancedMarker position={base} title="Base operacional">
-        <span className="w-8 h-8 -mt-4 rounded-full bg-inverse-surface text-inverse-on-surface flex items-center justify-center shadow-lg">
-          <Navigation className="w-4 h-4" />
-        </span>
-      </AdvancedMarker>
-
-      {eventos.map((e, i) => {
-        const p = pontos.get(e.id);
-        if (!p) return null;
-
-        return (
-          <AdvancedMarker
-            key={e.id}
-            position={p}
-            onClick={() => aoSelecionar(e.id)}
-            title={e.cliente_nome ?? undefined}
-          >
-            <span
-              className={cn(
-                "w-8 h-8 -mt-4 rounded-full flex items-center justify-center font-label-md text-label-md shadow-lg transition-transform",
-                selecionado === e.id
-                  ? "bg-primary text-on-primary scale-125"
-                  : "bg-surface text-on-surface",
-              )}
-            >
-              {i + 1}
-            </span>
-          </AdvancedMarker>
-        );
-      })}
-    </MapaGoogle>
-  );
+function elementoEvento(numero: number, ativo: boolean) {
+  const el = document.createElement("button");
+  el.type = "button"; el.setAttribute("aria-label", `Evento ${numero}`);
+  el.className = `flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm shadow-lg transition-transform ${ativo ? "scale-125 bg-primary text-on-primary" : "bg-surface text-on-surface"}`;
+  el.textContent = String(numero);
+  return el;
 }
 
-/**
- * Converte endereço em coordenada, uma vez por evento.
- *
- * Serializado de propósito: o geocoder do Google responde `OVER_QUERY_LIMIT` a
- * rajadas, e um dia com muitos eventos dispararia todos de uma vez. Um por vez
- * é lento e chega inteiro — e são poucos, porque é só o dia de hoje.
- */
-function useGeocodificacao(eventos: EventoNoMapa[]): Map<string, Coordenada> {
-  const biblioteca = useMapsLibrary("geocoding");
-  const [pontos, setPontos] = useState<Map<string, Coordenada>>(new Map());
-
-  const enderecos = useMemo(
-    () =>
-      eventos
-        .map((e) => ({
-          id: e.id,
-          texto: [e.endereco, e.bairro, e.cidade, "RS, Brasil"]
-            .filter(Boolean)
-            .join(", "),
-        }))
-        .filter((e) => e.texto.length > 14),
-    [eventos],
-  );
+function MapaReal({ eventos, base, selecionado, aoSelecionar }: { eventos: EventoNoMapa[]; base: Coordenada; selecionado: string | null; aoSelecionar: (id: string) => void }) {
+  const recipiente = useRef<HTMLDivElement>(null);
+  const mapa = useRef<MapaMapLibre | null>(null);
+  const pinos = useRef(new Map<string, Marker>());
+  const [pontos, setPontos] = useState(new Map<string, Coordenada>());
+  const [buscando, setBuscando] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!biblioteca || enderecos.length === 0) return;
+    if (!recipiente.current || mapa.current) return;
+    const instancia = new maplibregl.Map({ container: recipiente.current, style: ESTILO_MAPA_OPERACIONAL, center: paraLngLat(base), zoom: 11, attributionControl: true });
+    mapa.current = instancia;
+    instancia.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+    instancia.on("load", () => aplicarVisualOperacional(instancia));
+    new maplibregl.Marker({ element: elementoBase() }).setLngLat(paraLngLat(base)).setPopup(new maplibregl.Popup({ offset: 20 }).setText("Base operacional")).addTo(instancia);
+    return () => { pinos.current.forEach((pino) => pino.remove()); instancia.remove(); mapa.current = null; };
+  }, [base]);
 
-    let vivo = true;
-    const geocoder = new biblioteca.Geocoder();
-
+  useEffect(() => {
+    if (!selecionado || pontos.has(selecionado) || buscando || !mapa.current) return;
+    const evento = eventos.find((item) => item.id === selecionado);
+    const endereco = evento && enderecoDoEvento(evento);
+    if (!endereco) return;
+    let vivo = true; setBuscando(selecionado);
     void (async () => {
-      for (const { id, texto } of enderecos) {
-        if (!vivo) return;
-        try {
-          const r = await geocoder.geocode({ address: texto });
-          const local = r.results[0]?.geometry.location;
-          if (local && vivo) {
-            setPontos((antes) =>
-              new Map(antes).set(id, { lat: local.lat(), lng: local.lng() }),
-            );
-          }
-        } catch {
-          // Endereço que o Google não reconhece simplesmente não ganha pino.
-          // A linha continua na lista ao lado, que é o que a operação usa.
-        }
-      }
+      try {
+        const resposta = await fetch(`/api/mapa/buscar?q=${encodeURIComponent(endereco)}`);
+        const dado = await resposta.json() as { locais?: Array<Coordenada> };
+        const ponto = dado.locais?.[0];
+        if (vivo && ponto) setPontos((antes) => new Map(antes).set(selecionado, ponto));
+      } finally { if (vivo) setBuscando(null); }
     })();
+    return () => { vivo = false; };
+  }, [buscando, eventos, pontos, selecionado]);
 
-    return () => {
-      vivo = false;
-    };
-  }, [biblioteca, enderecos]);
+  useEffect(() => {
+    const instancia = mapa.current; if (!instancia) return;
+    for (const [id, ponto] of pontos) {
+      const evento = eventos.find((item) => item.id === id); const indice = eventos.findIndex((item) => item.id === id);
+      if (!evento || indice < 0) continue;
+      const anterior = pinos.current.get(id);
+      anterior?.remove();
+      const marcador = new maplibregl.Marker({ element: elementoEvento(indice + 1, id === selecionado) }).setLngLat(paraLngLat(ponto)).setPopup(new maplibregl.Popup({ offset: 20 }).setText(`${evento.cliente_nome ?? "Evento"} · ${enderecoDoEvento(evento)}`)).addTo(instancia);
+      marcador.getElement().addEventListener("click", () => aoSelecionar(id));
+      pinos.current.set(id, marcador);
+    }
+    const selecionadoPonto = selecionado ? pontos.get(selecionado) : null;
+    if (selecionadoPonto) instancia.flyTo({ center: paraLngLat(selecionadoPonto), zoom: 15, essential: true });
+  }, [aoSelecionar, eventos, pontos, selecionado]);
 
-  return pontos;
+  return <div ref={recipiente} className="h-full w-full" />;
+}
+
+export function MapaTatico({ eventos, base }: { eventos: EventoNoMapa[]; base: Coordenada }) {
+  const [selecionado, setSelecionado] = useState<string | null>(eventos[0]?.id ?? null);
+  return <div className="flex h-full flex-col gap-space-md">
+    <header><h1 className="font-headline-md text-headline-md tracking-tight text-on-surface">Mapa tático</h1><p className="mt-1 font-body-md text-body-md text-on-surface-variant">{eventos.length === 0 ? "Nenhum evento hoje." : `${eventos.length} evento${eventos.length > 1 ? "s" : ""} hoje, do mais cedo ao mais tarde.`}</p></header>
+    <div className="flex items-start gap-space-sm rounded-xl bg-surface-container-low p-space-md"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><p className="font-body-sm text-body-sm text-on-surface-variant"><strong className="text-on-surface">Não há rastreamento de van.</strong> Selecione um evento para posicioná-lo no mapa; o endereço é pesquisado sob demanda, sem varrer a agenda inteira.</p></div>
+    <div className="grid min-h-[26rem] flex-1 grid-cols-1 gap-space-md lg:grid-cols-3">
+      <div className="relative min-h-[20rem] overflow-hidden rounded-xl bg-surface-container lg:col-span-2"><MapaReal eventos={eventos} base={base} selecionado={selecionado} aoSelecionar={setSelecionado} /></div>
+      <ul className="flex max-h-[34rem] flex-col gap-space-sm overflow-y-auto">
+        {eventos.length === 0 && <li className="rounded-xl bg-surface-container-low p-space-md font-body-md text-body-md text-on-surface-variant">A agenda de hoje está vazia.</li>}
+        {eventos.map((evento, indice) => <li key={evento.id}><button type="button" onClick={() => setSelecionado(evento.id)} aria-pressed={selecionado === evento.id} className={cn("w-full rounded-xl p-space-md text-left transition-colors", selecionado === evento.id ? "bg-primary-container text-on-primary-container" : "bg-surface-container-lowest hover:bg-surface-container")}><span className="flex items-center justify-between gap-space-sm"><span className="truncate font-label-md text-label-md">{indice + 1}. {evento.cliente_nome ?? "sem cliente"}</span><span className="shrink-0 font-label-md text-label-md">{comoHora(evento.horario, evento.horario_texto)}</span></span><span className="block truncate font-body-sm text-body-sm opacity-80">{enderecoDoEvento(evento) || "sem endereço"}</span><span className="mt-1 flex flex-wrap gap-space-sm font-body-sm text-body-sm opacity-70"><span className="flex items-center gap-1"><Truck className="h-3.5 w-3.5" />sai {comoHora(evento.horario_saida, null)}</span><span>{(evento.inteiros ?? 0) + Math.ceil((evento.meios ?? 0) / 2)}p</span>{evento.responsavel_nome && <span>{evento.responsavel_nome}</span>}</span></button></li>)}
+      </ul>
+    </div>
+  </div>;
 }

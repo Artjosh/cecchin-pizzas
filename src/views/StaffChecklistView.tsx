@@ -1,16 +1,13 @@
-import Link from "next/link";
 import {
   CabecalhoDoPainel,
-  LacunaDeDados,
   SemLinhas,
 } from "../components/painel/Painel";
 import { comoData, comoHora } from "../lib/formato";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 import { fonteDeDados } from "../servidor/fonte";
-import React, { useState } from 'react';
-
 import { ChecklistDesenhado } from "./desenho/ChecklistDesenhado";
+import { ChecklistDoBanco } from "./banco/ChecklistDoBanco";
 
 /* ===========================================================================
  * O CHECKLIST DO PRÓXIMO EVENTO
@@ -121,80 +118,11 @@ async function ChecklistDoBanco() {
   }
 
   const itens = montarItens(evento);
-  const grupos = [...new Set(itens.map((i) => i.grupo))];
-
   return (
-    <div className="flex flex-col gap-space-lg max-w-3xl mx-auto">
-      <CabecalhoDoPainel
-        titulo="Checklist de embarque"
-        descricao={`${evento.cliente_nome ?? "Evento"} · ${comoData(evento.data_evento)}`}
-        contagem={itens.length}
-        acoes={
-          <Link
-            href={`/operacional/eventos/${evento.id}`}
-            className="h-10 px-4 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md flex items-center hover:bg-surface-container-high transition-colors"
-          >
-            Abrir evento
-          </Link>
-        }
-      />
-
-      <LacunaDeDados titulo="Marcar aqui não guarda nada">
-        <p>
-          Não existe tabela de checklist: nada registra o que foi conferido, por
-          quem e quando. A lista abaixo é montada a partir do evento, e é
-          verdadeira — mas a marcação vive só nesta aba.
-        </p>
-        <p>
-          Persistir isso é decisão de modelagem, com uma pergunta junto: o
-          checklist é do evento ou do embarque? Um evento com duas viagens tem
-          dois. Ver <code className="font-mono">AGENTES.md</code>.
-        </p>
-      </LacunaDeDados>
-
-      {evento.observacao && (
-        <div className="bg-surface-container-low rounded-xl p-space-md">
-          <span className="font-label-md text-label-md text-on-surface">
-            Observação do evento
-          </span>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-            {evento.observacao}
-          </p>
-        </div>
-      )}
-
-      {grupos.map((grupo) => (
-        <section key={grupo} className="flex flex-col gap-space-sm">
-          <h2 className="font-headline-sm text-headline-sm text-on-surface">
-            {grupo}
-          </h2>
-          <ul className="bg-surface-container-lowest rounded-xl shadow-sm divide-y divide-outline-variant/30">
-            {itens
-              .filter((i) => i.grupo === grupo)
-              .map((item) => (
-                <li key={item.o_que}>
-                  <label className="flex items-start gap-space-sm p-space-md cursor-pointer hover:bg-surface-container-low/50 transition-colors">
-                    <input
-                      type="checkbox"
-                      className="mt-1 w-5 h-5 accent-primary rounded shrink-0"
-                    />
-                    <span className="flex flex-col min-w-0">
-                      <span className="font-body-md text-body-md text-on-surface">
-                        {item.o_que}
-                      </span>
-                      {item.detalhe && (
-                        <span className="font-body-sm text-body-sm text-on-surface-variant">
-                          {item.detalhe}
-                        </span>
-                      )}
-                    </span>
-                  </label>
-                </li>
-              ))}
-          </ul>
-        </section>
-      ))}
-    </div>
+    <ChecklistDoBanco
+      evento={`${evento.cliente_nome ?? "Evento"} · ${comoData(evento.data_evento)}`}
+      itens={itens}
+    />
   );
 }
 

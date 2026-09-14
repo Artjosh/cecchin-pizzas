@@ -18,6 +18,7 @@
 
 const SUPABASE = process.env.SUPABASE_URL ?? "http://127.0.0.1:54321";
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ANON = process.env.SUPABASE_ANON_KEY;
 
 /**
  * Entra e devolve os cookies no formato que `context.addCookies()` espera.
@@ -31,23 +32,7 @@ export async function cookiesDeSessao(
   fonte = "real",
   dominio = "localhost",
 ) {
-  if (!SERVICE) {
-    throw new Error(
-      "falta SUPABASE_SERVICE_ROLE_KEY no ambiente: `set -a; . ./.env; set +a`",
-    );
-  }
-
-  const inicio = await fetch(`${alvo}/api/auth/login?passo=iniciar`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
-
-  if (!inicio.ok) {
-    throw new Error(`pedido de acesso recusado: HTTP ${inicio.status}`);
-  }
-
-  const { selector } = await inicio.json();
+  if (!SERVICE || !ANON) throw new Error("faltam as chaves locais do Supabase no ambiente.");
 
   const gerado = await fetch(`${SUPABASE}/auth/v1/admin/generate_link`, {
     method: "POST",
@@ -62,24 +47,25 @@ export async function cookiesDeSessao(
   const { email_otp: codigo } = await gerado.json();
   if (!codigo) throw new Error(`generate_link não devolveu código para ${email}`);
 
-  const fim = await fetch(`${alvo}/api/auth/login?passo=codigo`, {
+  /*
+   * Não chama `/api/auth/login?passo=iniciar`: essa rota entrega e-mail de
+   * verdade. `generate_link` não entrega nada; validar o OTP no GoTrue local
+   * produz a mesma sessão httpOnly que o BFF receberia depois do código.
+   */
+  const fim = await fetch(`${SUPABASE}/auth/v1/verify`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ selector, codigo }),
+    headers: { apikey: ANON, "content-type": "application/json" },
+    body: JSON.stringify({ email, token: codigo, type: "email" }),
   });
 
   if (!fim.ok) throw new Error(`login recusado: HTTP ${fim.status}`);
 
-  const cookies = fim.headers.getSetCookie().map((bruto) => {
-    const [par] = bruto.split(";");
-    const i = par.indexOf("=");
-    return {
-      name: par.slice(0, i).trim(),
-      value: par.slice(i + 1).trim(),
-      domain: dominio,
-      path: "/",
-    };
-  });
+  const sessao = await fim.json();
+  if (!sessao.access_token || !sessao.refresh_token) throw new Error("GoTrue não devolveu uma sessão de teste.");
+  const cookies = [
+    { name: "cecchin_acesso", value: sessao.access_token, domain: dominio, path: "/" },
+    { name: "cecchin_renovacao", value: sessao.refresh_token, domain: dominio, path: "/" },
+  ];
 
   if (fonte) {
     cookies.push({ name: "cecchin_fonte", value: fonte, domain: dominio, path: "/" });
