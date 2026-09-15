@@ -1,0 +1,19 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import jsQR from "jsqr";
+export function LeitorQr({ aoLer, aoFechar }: { aoLer:(codigo:string)=>Promise<void>; aoFechar:()=>void }) {
+ const video=useRef<HTMLVideoElement>(null), stream=useRef<MediaStream|null>(null), dialog=useRef<HTMLDialogElement>(null);
+ const [erro,setErro]=useState("");const [ocupado,setOcupado]=useState(false);const lendo=useRef(false);
+ useEffect(()=>{dialog.current?.showModal();return()=>{stream.current?.getTracks().forEach(t=>t.stop());};},[]);
+ async function receber(codigo:string){if(lendo.current)return;lendo.current=true;setOcupado(true);setErro("");try{await aoLer(codigo);}catch(e){setErro(e instanceof Error?e.message:"QR não aceito");}finally{lendo.current=false;setOcupado(false);}}
+ function decodificar(fonte:CanvasImageSource,largura:number,altura:number){const canvas=document.createElement("canvas");const escala=Math.min(1,1200/Math.max(largura,altura));canvas.width=Math.round(largura*escala);canvas.height=Math.round(altura*escala);const ctx=canvas.getContext("2d",{willReadFrequently:true});if(!ctx)return null;ctx.drawImage(fonte,0,0,canvas.width,canvas.height);const dados=ctx.getImageData(0,0,canvas.width,canvas.height);return jsQR(dados.data,dados.width,dados.height)?.data??null;}
+ useEffect(()=>{const timer=setInterval(()=>{const v=video.current;if(v && v.readyState>=2 && !lendo.current){const codigo=decodificar(v,v.videoWidth,v.videoHeight);if(codigo){stream.current?.getTracks().forEach(t=>t.stop());v.srcObject=null;void receber(codigo);}}},400);return()=>clearInterval(timer);},[aoLer]);
+ async function camera(){setErro("");if(!navigator.mediaDevices?.getUserMedia){setErro("A câmera ao vivo exige HTTPS. Use Fotografar / escolher QR abaixo nesta conexão.");return;}try{stream.current?.getTracks().forEach(t=>t.stop());const media=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});if(!video.current){media.getTracks().forEach(t=>t.stop());return;}stream.current=media;video.current.srcObject=media;await video.current.play();}catch{setErro("Não foi possível abrir a câmera. Autorize o acesso ou escolha uma foto do QR.");}}
+ async function foto(arquivo?:File){if(!arquivo)return;setErro("");try{const bitmap=await createImageBitmap(arquivo);const codigo=decodificar(bitmap,bitmap.width,bitmap.height);bitmap.close();if(!codigo)throw new Error("QR não encontrado. Fotografe o código inteiro, com boa iluminação.");await receber(codigo);}catch(e){setErro(e instanceof Error?e.message:"Não foi possível ler a imagem");}}
+ return <dialog ref={dialog} aria-labelledby="leitor-titulo" onCancel={e=>{e.preventDefault();if(!ocupado)aoFechar();}} className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-md rounded-2xl bg-surface-container-lowest p-5 text-on-surface shadow-xl backdrop:bg-black/50">
+  <h2 id="leitor-titulo" className="text-xl font-bold">Ler QR para liberar saída</h2><p className="my-3 text-sm">Leia o QR impresso do evento no totem da base.</p>
+  <video ref={video} muted playsInline className="aspect-square w-full rounded-xl bg-black object-cover" />
+  {erro&&<p role="alert" className="mt-3 text-sm text-error">{erro}</p>}{ocupado&&<p role="status">Validando liberação...</p>}
+  <div className="mt-4 flex flex-wrap gap-2"><button disabled={ocupado} onClick={camera} className="rounded-lg bg-primary px-4 py-2 text-on-primary">Abrir câmera</button><label className="cursor-pointer rounded-lg bg-surface-container px-4 py-2">Fotografar / escolher QR<input type="file" accept="image/*" capture="environment" disabled={ocupado} className="sr-only" onChange={e=>{void foto(e.target.files?.[0]);e.target.value="";}} /></label><button disabled={ocupado} onClick={aoFechar} className="rounded-lg px-4 py-2">Cancelar</button></div>
+ </dialog>;
+}

@@ -1,0 +1,6 @@
+import { NextResponse,type NextRequest } from "next/server";
+import { sessaoAtual } from "@/src/servidor/auth/sessao-atual";
+import { chamarFuncao } from "@/src/servidor/supabase";
+export const dynamic="force-dynamic";
+export async function GET(request:NextRequest){const s=await sessaoAtual();if(!s)return NextResponse.json({mensagem:"Sem sessão"},{status:401});const r=await chamarFuncao("dados_avaliacao_cliente",{p_evento:request.nextUrl.searchParams.get("evento")},s.accessToken);return NextResponse.json(r.ok?r.dados:{mensagem:"Evento não disponível"},{status:r.ok?200:403,headers:{"Cache-Control":"private, no-store"}});}
+export async function POST(request:NextRequest){const s=await sessaoAtual();if(!s)return NextResponse.json({mensagem:"Sem sessão"},{status:401});let d;try{d=await request.json();}catch{return NextResponse.json({mensagem:"Dados inválidos"},{status:400});}const r=await chamarFuncao("finalizar_avaliar_evento",{p_evento:d.evento,p_nota:d.nota,p_notas:d.notas,p_comentario:d.comentario??null},s.accessToken);let mensagem="Não foi possível finalizar";if(!r.ok){try{mensagem=JSON.parse(r.erro??"{}").message??mensagem;}catch{}}return NextResponse.json(r.ok?{ok:true}:{mensagem},{status:r.ok?200:403});}

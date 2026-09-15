@@ -101,3 +101,41 @@
 
 @utility font-label-sm { font-family: "Plus Jakarta Sans"; font-weight: 700; }
 @utility text-label-sm { font-size: 10px; line-height: 14px; letter-spacing: 0.04em; }
+/* Os mesmos tokens atualizam pain?is, navega??o e controles junto do mapa. */
+:root { color-scheme: light; }
+:root[data-tema="escuro"] {
+  color-scheme: dark;
+  --color-background: #17191d;
+  --color-on-background: #f1f2f3;
+  --color-surface: #17191d;
+  --color-surface-dim: #111316;
+  --color-surface-bright: #363a41;
+  --color-surface-container-lowest: #121416;
+  --color-surface-container-low: #1e2125;
+  --color-surface-container: #25282d;
+  --color-surface-container-high: #2e3238;
+  --color-surface-container-highest: #383c43;
+  --color-on-surface: #f1f2f3;
+  --color-on-surface-variant: #bbc0c7;
+  --color-inverse-surface: #e4e6e9;
+  --color-inverse-on-surface: #202328;
+  --color-primary: #ffb4a5;
+  --color-on-primary: #571000;
+  --color-primary-container: #7b1b09;
+  --color-on-primary-container: #ffdad3;
+  --color-secondary: #c5c6ca;
+  --color-on-secondary: #2e3034;
+  --color-secondary-container: #404348;
+  --color-on-secondary-container: #e3e4e8;
+  --color-tertiary: #ffb77a;
+  --color-on-tertiary: #482600;
+  --color-tertiary-container: #663700;
+  --color-on-tertiary-container: #ffdcc2;
+  --color-outline-variant: #484c53;
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-success-container: #183e25;
+  --color-on-success-container: #bdecc9;
+}

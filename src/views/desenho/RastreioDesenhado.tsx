@@ -1,4 +1,6 @@
 "use client";
+import { TituloNoHeader } from "@/src/components/layouts/TituloNoHeader";
+
 
 /*
  * O DESENHO do rastreio.
@@ -12,6 +14,7 @@
  */
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { cn } from "../../lib/utils";
 import {
   RefreshCw,
@@ -147,10 +150,10 @@ export function RastreioDesenhado() {
                   Deslocamento Rota Ipiranga / 24 de Outubro
                 </span>
               </div>
-              <h1 className="font-headline-lg text-headline-lg text-on-surface font-extrabold tracking-tight">
+              <TituloNoHeader className="font-headline-lg text-headline-lg text-on-surface font-extrabold tracking-tight">
                 Chegada prevista em{" "}
                 <span className="text-primary font-black">{eta} minutos</span>
-              </h1>
+              </TituloNoHeader>
               <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
                 Estimativa de toque no portão às{" "}
                 <span className="font-semibold text-on-surface">{etaClock ?? "--:--"}</span>
@@ -596,20 +599,20 @@ export function RastreioDesenhado() {
                 </div>
               </div>
               <div className="pt-4 border-t border-surface-container-high/40 flex flex-col sm:flex-row gap-2">
-                <a
-                  href="tel:+5551999999999"
+                <Link
+                  href="/cliente/suporte"
                   className="flex-1 py-2.5 px-3 rounded-lg bg-inverse-surface hover:bg-black text-inverse-on-surface font-label-md text-label-md flex items-center justify-center gap-2 shadow transition-all active:scale-[0.98]"
                 >
                   <Phone className="w-[18px] h-[18px]" />
-                  Ligar para Mateus
-                </a>
-                <button
-                  type="button"
+                  Contatos de atendimento
+                </Link>
+                <Link
+                  href="/cliente/suporte"
                   className="flex-1 py-2.5 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-2 transition-colors"
                 >
                   <MessageSquare className="w-[18px] h-[18px] text-tertiary" />
-                  Chat com a Equipe
-                </button>
+                  Falar com a Central
+                </Link>
               </div>
             </section>
 

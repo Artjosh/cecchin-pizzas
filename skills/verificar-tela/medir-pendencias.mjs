@@ -1,0 +1,6 @@
+﻿import { chromium } from './.runtime/node_modules/playwright/index.mjs';
+import { cookiesDeSessao } from './sessao.mjs';
+import { execFileSync } from 'node:child_process';
+const email=execFileSync('docker',['exec','supabase_db_Nicolas','psql','-U','postgres','-d','postgres','-Atc',"select email from usuario where papel='admin' limit 1"]).toString().trim();
+const browser=await chromium.launch({executablePath:'C:/Users/josh/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe',headless:true});
+try{const context=await browser.newContext();await context.addCookies(await cookiesDeSessao('http://localhost:3000',email));const page=await context.newPage();await page.goto('http://localhost:3000/operacional/whatsapp');await page.waitForTimeout(1200);await page.goto('http://localhost:3000/operacional/pendencias');await page.waitForTimeout(1000);await page.screenshot({path:'skills/verificar-tela/capturas/pendencias-paginada.png',mask:[page.locator('header').first(),page.locator('tbody')]});console.log(JSON.stringify(await page.evaluate(async()=>{const inicio=performance.now();const r=await fetch('/operacional/pendencias?_rsc',{headers:{RSC:'1'}});const body=await r.text();return {status:r.status,bytes:new TextEncoder().encode(body).length,linhas:body.split('\n').length,ms:Math.round(performance.now()-inicio)};})));}finally{await browser.close();}

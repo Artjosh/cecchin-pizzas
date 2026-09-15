@@ -33,6 +33,7 @@ function base(): string {
 }
 
 export interface RespostaSupabase<T> {
+  total?: number;
   ok: boolean;
   status: number;
   dados: T | null;
@@ -67,7 +68,9 @@ async function chamar<T>(
       };
     }
 
-    return { ok: true, status: resposta.status, dados: corpo, erro: null };
+    const contagem = resposta.headers.get("content-range")?.split("/")[1];
+    const total = contagem && /^\d+$/.test(contagem) ? Number(contagem) : undefined;
+    return { ok: true, status: resposta.status, dados: corpo, erro: null, total };
   } catch (erro) {
     // Timeout, DNS, TLS, indisponibilidade. Nunca lança: quem chama precisa
     // distinguir "o provedor está fora" de "o usuário errou", e exceção

@@ -1,6 +1,7 @@
+import { podeAcessar } from "../servidor/auth/sessao-atual";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, MessageCircle } from "lucide-react";
+import { ArrowRight, MessageCircle } from "lucide-react";
 
 import {
   CabecalhoDoPainel,
@@ -10,7 +11,7 @@ import {
   SemLinhas,
   Tabela,
 } from "../components/painel/Painel";
-import { comoData, comoTelefone, linkWhatsApp } from "../lib/formato";
+import { comoData, comoTelefone, linkWhatsApp, linkCentralWhatsApp } from "../lib/formato";
 import { formatBRL } from "../lib/moeda";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
@@ -67,17 +68,11 @@ export async function ClienteView({ id }: { id: string }) {
   if (!cliente) notFound();
 
   const eventos = eventosR.dados ?? [];
-  const zap = linkWhatsApp(cliente.telefone);
+  const zap = podeAcessar(sessao.usuario.papel, ["gestao"]) ? linkCentralWhatsApp(cliente.telefone) : linkWhatsApp(cliente.telefone);
 
   return (
     <div className="flex flex-col gap-space-lg">
-      <Link
-        href="/operacional/clientes"
-        className="inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface-variant hover:text-on-surface w-fit"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Voltar aos clientes
-      </Link>
+
 
       <CabecalhoDoPainel
         titulo={cliente.nome ?? "Cliente sem nome"}
@@ -86,7 +81,7 @@ export async function ClienteView({ id }: { id: string }) {
           zap && (
             <a
               href={zap}
-              target="_blank"
+              target={zap?.startsWith("/") ? undefined : "_blank"}
               rel="noopener noreferrer"
               className="h-10 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md flex items-center gap-2 hover:opacity-90 transition-opacity"
             >

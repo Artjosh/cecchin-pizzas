@@ -186,6 +186,7 @@ export function ClientEventsView({
                   )}
                 </div>
 
+                {doBanco && evento.status === "confirmado" && <Link prefetch={false} href={`/cliente/avaliar-evento?evento=${evento.id}`} className="rounded-lg bg-surface-container px-4 py-2 text-sm font-semibold">Finalizar / avaliar</Link>}
                 <Link
                   href="/cliente/rastreio"
                   className="flex items-center gap-2 font-label-md text-label-md text-primary hover:opacity-80 px-4 py-2 bg-primary/10 rounded-lg transition-opacity shrink-0"

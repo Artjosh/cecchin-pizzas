@@ -1,3 +1,4 @@
+import { TituloNoHeader } from "@/src/components/layouts/TituloNoHeader";
 import { AlertTriangle, Edit2, Flame, Plus, Trash2, Utensils } from "lucide-react";
 
 import {
@@ -166,9 +167,9 @@ function Moldura({
     <div className="flex flex-col gap-space-lg">
       <div className="flex flex-wrap justify-between items-center gap-space-md">
         <div>
-          <h1 className="font-headline-md text-headline-md text-on-surface tracking-tight">
+          <TituloNoHeader className="font-headline-md text-headline-md text-on-surface tracking-tight">
             Catálogo e Preços
-          </h1>
+          </TituloNoHeader>
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">
             {subtitulo}
           </p>

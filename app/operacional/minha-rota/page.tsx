@@ -12,6 +12,7 @@ export const metadata = { title: "Minha rota · Cecchin Pizzas" };
  */
 export const dynamic = "force-dynamic";
 
-export default function Page() {
-  return <FieldRouteView />;
+export default async function Page({searchParams}:{searchParams:Promise<{evento?:string}>}) {
+  const {evento}=await searchParams;
+  return <FieldRouteView eventoSelecionado={evento} />;
 }

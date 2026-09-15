@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LocateFixed, Route, Search, Timer } from "lucide-react";
+import { LocateFixed, Minus, Plus, Route, Search, Timer } from "lucide-react";
+import estilos from "./LocationPickerMap.module.css";
 
 import { cn } from "../../lib/utils";
 import { QG_CECCHIN } from "../../lib/operacao";
@@ -40,6 +41,16 @@ function criarPino() {
   elemento.className = "cursor-grab text-primary drop-shadow-lg active:cursor-grabbing";
   elemento.setAttribute("aria-label", "Local do evento");
   elemento.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" class="h-9 w-9 fill-current"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/></svg>';
+  return elemento;
+}
+
+function criarIconeQG() {
+  const elemento = document.createElement("div");
+  elemento.className = "flex flex-col items-center gap-1";
+  elemento.setAttribute("role", "img");
+  elemento.setAttribute("aria-label", "QG Cecchin — base operacional");
+  elemento.title = "QG Cecchin — base operacional";
+  elemento.innerHTML = '<span class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-on-primary shadow-lg ring-2 ring-surface"><svg viewBox="0 0 24 24" aria-hidden="true" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 21v-8h6v8M9 9h6"/></svg></span><span class="rounded-md bg-surface px-2 py-1 font-label-sm text-label-sm text-on-surface shadow-md">QG Cecchin</span>';
   return elemento;
 }
 
@@ -139,15 +150,16 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
   useEffect(() => {
     const modulo = biblioteca.current;
     if (!recipiente.current || mapa.current || !modulo) return;
-    const instancia = new modulo.Map({ container: recipiente.current, style: ESTILO_MAPA_OPERACIONAL, center: paraLngLat(QG), zoom: 12, attributionControl: true });
+    const instancia = new modulo.Map({ container: recipiente.current, style: ESTILO_MAPA_OPERACIONAL, center: paraLngLat(QG), zoom: 12, attributionControl: false });
     mapa.current = instancia;
-    instancia.addControl(new modulo.NavigationControl({ showCompass: false }), "bottom-right");
-    const marcador = new modulo.Marker({ element: criarPino(), draggable: true, anchor: "bottom" }).setLngLat(paraLngLat(QG)).addTo(instancia);
+    // A base não acompanha o destino: cada local tem seu próprio marcador.
+    const marcadorQG = new modulo.Marker({ element: criarIconeQG(), anchor: "bottom" }).setLngLat(paraLngLat(QG)).addTo(instancia);
+    const marcador = new modulo.Marker({ element: criarPino(), draggable: true, anchor: "bottom" }).setLngLat(paraLngLat(QG));
     pino.current = marcador;
     marcador.on("dragend", () => { void escolherAtual.current(deLngLat(marcador.getLngLat())); });
     instancia.on("load", () => { aplicarVisualOperacional(instancia); configurarRota(instancia); setPronto(true); });
     instancia.on("click", (evento) => { if (marcacaoAtual.current) void escolherAtual.current(deLngLat(evento.lngLat)); });
-    return () => { marcador.remove(); gps.current?.remove(); instancia.remove(); mapa.current = null; pino.current = null; gps.current = null; };
+    return () => { marcadorQG.remove(); marcador.remove(); gps.current?.remove(); instancia.remove(); mapa.current = null; pino.current = null; gps.current = null; };
   }, [bibliotecaCarregada]);
 
   useEffect(() => {
@@ -158,9 +170,9 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
 
   useEffect(() => {
     if (!selectedLocation || !mapa.current) return;
-    pino.current?.setLngLat(paraLngLat(selectedLocation));
+    pino.current?.setLngLat(paraLngLat(selectedLocation)).addTo(mapa.current);
     mapa.current.flyTo({ center: paraLngLat(selectedLocation), zoom: 15, essential: true });
-  }, [selectedLocation]);
+  }, [selectedLocation, bibliotecaCarregada]);
 
   useEffect(() => {
     const modulo = biblioteca.current;
@@ -193,12 +205,21 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
     }, () => setMensagem("Permita a localização para centralizar o mapa"), { enableHighAccuracy: true, maximumAge: 300000, timeout: 8000 });
   }
 
-  return <div className={cn("relative h-full w-full isolate overflow-hidden", className)}>
-    <div ref={recipiente} className="absolute inset-0" />
+  return <div className={cn("relative h-full w-full isolate overflow-hidden", estilos.mapa, className)}>
+    {/* O CSS do MapLibre define position: relative fora das layers do Tailwind.
+        inset-0 sozinho perde a altura; dimensione o recipiente explicitamente. */}
+    <div ref={recipiente} className="h-full w-full" />
     {controles && <div className="absolute left-1/2 top-3 z-20 w-[min(92%,38rem)] -translate-x-1/2"><BuscaDeEndereco address={address} addressAction={addressAction} aoEscolher={(local) => void escolher(local, local.endereco)} />{addressBelow && <div className="mt-1.5">{addressBelow}</div>}{informacaoRota && <div className="mt-1.5 flex items-center gap-2 rounded-lg bg-surface/95 px-2.5 py-1.5 shadow-sm backdrop-blur-md"><Route className="h-4 w-4 shrink-0 text-primary" /><span className="min-w-0 flex-1 truncate font-label-sm text-label-sm text-on-surface">{informacaoRota.estimated ? "Trajeto estimado" : "Rota do QG"} · {informacaoRota.distance}</span><span className="flex shrink-0 items-center gap-1 font-label-sm text-label-sm text-on-surface-variant"><Timer className="h-3.5 w-3.5" />{informacaoRota.duration}</span></div>}</div>}
-    {controles && <button type="button" aria-label="Centralizar na minha localização" title="Centralizar na minha localização" onClick={centralizar} className="absolute bottom-16 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-xl bg-surface/95 text-primary shadow-md backdrop-blur-md hover:bg-surface-container"><LocateFixed className="h-5 w-5" /></button>}
-    {mensagem && <div className="absolute bottom-16 left-1/2 z-20 -translate-x-1/2 rounded-full bg-on-surface px-3 py-1.5 font-label-sm text-label-sm text-surface shadow-md">{mensagem}</div>}
+    {controles && <div role="group" aria-label="Controles do mapa" className="absolute bottom-36 right-3 z-20 flex flex-col gap-3 sm:bottom-24">
+      <div className="overflow-hidden rounded-2xl bg-surface/95 text-on-surface shadow-lg backdrop-blur-md">
+        <button type="button" aria-label="Aproximar mapa" title="Aproximar mapa" disabled={!pronto} onClick={() => mapa.current?.zoomIn()} className="flex h-11 w-11 items-center justify-center hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-40"><Plus className="h-5 w-5" /></button>
+        <div className="mx-2 border-t border-outline-variant/30" />
+        <button type="button" aria-label="Afastar mapa" title="Afastar mapa" disabled={!pronto} onClick={() => mapa.current?.zoomOut()} className="flex h-11 w-11 items-center justify-center hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-40"><Minus className="h-5 w-5" /></button>
+      </div>
+      <button type="button" aria-label="Centralizar na minha localização" title="Centralizar na minha localização" onClick={centralizar} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface/95 text-on-surface shadow-lg backdrop-blur-md hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-primary"><LocateFixed className="h-5 w-5" /></button>
+    </div>}
+    {mensagem && <div role="status" className="absolute bottom-36 left-3 right-16 z-20 mx-auto w-fit max-w-sm rounded-xl bg-on-surface px-3 py-2 text-center font-label-sm text-label-sm text-surface shadow-md sm:bottom-24">{mensagem}</div>}
     {children}
-    {controles && <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-surface/95 px-space-sm py-1 font-label-sm text-label-sm text-on-surface shadow-md backdrop-blur-md">{markingMode ? "Clique no mapa para marcar o ponto" : "Arraste o pino para ajustar"}</div>}
+    {controles && markingMode && <div className="pointer-events-none absolute bottom-28 left-3 right-16 z-20 mx-auto w-fit rounded-full bg-surface/95 px-space-sm py-1 font-label-sm text-label-sm text-on-surface shadow-md backdrop-blur-md sm:bottom-20">Clique no mapa para marcar o ponto</div>}
   </div>;
 }

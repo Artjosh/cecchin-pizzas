@@ -1,3 +1,5 @@
+import { Paginacao } from "../components/painel/Paginacao";
+import { podeAcessar } from "../servidor/auth/sessao-atual";
 import Link from "next/link";
 import { ArrowRight, MessageCircle, Search } from "lucide-react";
 
@@ -9,7 +11,7 @@ import {
   SemLinhas,
   Tabela,
 } from "../components/painel/Painel";
-import { comoData, comoTelefone, linkWhatsApp } from "../lib/formato";
+import { comoData, comoTelefone, linkWhatsApp, linkCentralWhatsApp } from "../lib/formato";
 import { formatBRL } from "../lib/moeda";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
@@ -63,18 +65,17 @@ export async function ClientesView({
       )}*)`
     : "";
 
-  const leitura = comoLeitura(
-    await consultar<ClienteResumo[]>(
+  const resultado = await consultar<ClienteResumo[]>(
       "vw_cliente_resumo?select=id,nome,telefone,eventos,primeiro_evento," +
         "ultimo_evento,pessoas_atendidas,total_gasto" +
         filtro +
-        `&order=ultimo_evento.desc.nullslast&limit=${POR_PAGINA}&offset=${de}`,
+        `&order=ultimo_evento.desc.nullslast,id.asc&limit=${POR_PAGINA}&offset=${de}`,
       sessao.accessToken,
-    ),
-  );
+      { headers: { Prefer: "count=exact" } },
+    );
+  const leitura = comoLeitura(resultado);
 
   const linhas = leitura.estado === "ok" ? leitura.linhas : [];
-  const temProxima = linhas.length === POR_PAGINA;
 
   return (
     <div className="flex flex-col gap-space-lg">
@@ -133,7 +134,7 @@ export async function ClientesView({
             colunas={["Cliente", "Telefone", "Eventos", "Pessoas", "Gasto", "Último", ""]}
           >
             {linhas.map((c) => {
-              const zap = linkWhatsApp(c.telefone);
+              const zap = podeAcessar(sessao.usuario.papel, ["gestao"]) ? linkCentralWhatsApp(c.telefone) : linkWhatsApp(c.telefone);
               return (
                 <Linha key={c.id}>
                   <Celula destaque>{c.nome ?? "sem nome"}</Celula>
@@ -141,7 +142,7 @@ export async function ClientesView({
                     {zap ? (
                       <a
                         href={zap}
-                        target="_blank"
+                        target={zap?.startsWith("/") ? undefined : "_blank"}
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-primary hover:opacity-80"
                       >
@@ -178,66 +179,11 @@ export async function ClientesView({
             })}
           </Tabela>
 
-          <Paginacao busca={busca} pagina={pagina} temProxima={temProxima} />
+
         </>
       )}
+      {leitura.estado !== "erro" && <Paginacao pagina={pagina} total={resultado.total ?? 0} porPagina={POR_PAGINA} />}
     </div>
   );
 }
 
-/**
- * Paginação por `offset`.
- *
- * Não há contagem total de propósito: `count=exact` sobre 10.462 linhas
- * agregadas custa uma varredura a cada página, e ninguém precisa saber que há
- * 210 páginas. "Tem mais" é a única informação que muda o que a pessoa faz.
- */
-function Paginacao({
-  busca,
-  pagina,
-  temProxima,
-}: {
-  busca: string;
-  pagina: number;
-  temProxima: boolean;
-}) {
-  const url = (n: number) => {
-    const p = new URLSearchParams();
-    if (busca) p.set("busca", busca);
-    if (n > 1) p.set("pagina", String(n));
-    const q = p.toString();
-    return `/operacional/clientes${q ? "?" + q : ""}`;
-  };
-
-  if (pagina === 1 && !temProxima) return null;
-
-  return (
-    <nav className="flex items-center justify-between gap-space-md">
-      {pagina > 1 ? (
-        <Link
-          href={url(pagina - 1)}
-          className="h-10 px-4 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md flex items-center hover:bg-surface-container-high transition-colors"
-        >
-          Anteriores
-        </Link>
-      ) : (
-        <span />
-      )}
-
-      <span className="font-body-sm text-body-sm text-on-surface-variant">
-        Página {pagina}
-      </span>
-
-      {temProxima ? (
-        <Link
-          href={url(pagina + 1)}
-          className="h-10 px-4 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md flex items-center hover:bg-surface-container-high transition-colors"
-        >
-          Próximos
-        </Link>
-      ) : (
-        <span />
-      )}
-    </nav>
-  );
-}

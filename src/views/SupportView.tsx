@@ -1,3 +1,4 @@
+import { TituloNoHeader } from "@/src/components/layouts/TituloNoHeader";
 import Link from "next/link";
 import {
   ChevronRight,
@@ -10,6 +11,7 @@ import {
 
 import { comoData, comoHora, linkWhatsApp } from "../lib/formato";
 import { CONTATO } from "../lib/operacao";
+import { telefoneDoAtendimento } from "../servidor/whatsapp";
 import { exigirSessao } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 
@@ -86,7 +88,7 @@ export async function SupportView() {
   );
 
   const evento = r.dados?.[0];
-  const zap = linkWhatsApp(CONTATO.whatsapp);
+  const zap = linkWhatsApp(await telefoneDoAtendimento());
 
   const assunto = evento
     ? `Evento ${evento.codigo_legado ?? ""} de ${comoData(evento.data_evento)}`
@@ -95,9 +97,9 @@ export async function SupportView() {
   return (
     <div className="max-w-4xl mx-auto px-margin md:px-margin-tablet py-space-xl flex flex-col gap-space-xl">
       <header className="text-center flex flex-col gap-space-xs">
-        <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
+        <TituloNoHeader className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
           Como podemos ajudar?
-        </h1>
+        </TituloNoHeader>
         <p className="font-body-md text-body-md text-on-surface-variant max-w-lg mx-auto">
           Fale com quem organiza o seu evento. Respondemos das 9h às 22h.
         </p>

@@ -4,6 +4,8 @@ import { useEffect, type ReactNode } from "react";
 
 import { AuthProvider, type Usuario } from "../contexts/AuthContext";
 import { SeletorDeFonte } from "./SeletorDeFonte";
+import { ProvedorTema } from "../contexts/TemaContext";
+import { ProvedorSomAtendimento } from "./whatsapp/SomAtendimento";
 
 /**
  * A fronteira de cliente do layout raiz.
@@ -47,10 +49,10 @@ export function Provedores({
   }, []);
 
   return (
-    <AuthProvider usuario={usuario}>
-      {children}
+    <ProvedorTema><AuthProvider usuario={usuario}>
+      <ProvedorSomAtendimento>{children}</ProvedorSomAtendimento>
       {/* Enquanto mock e banco convivem. Some junto com o último mock. */}
       <SeletorDeFonte />
-    </AuthProvider>
+    </AuthProvider></ProvedorTema>
   );
 }

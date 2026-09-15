@@ -6,6 +6,7 @@ import { cn } from "../../lib/utils";
 import { MapPin, MessageCircle, Pizza, User } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { MenuDoUsuario } from "../MenuDoUsuario";
+import { SeletorDeTema } from "../SeletorDeTema";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -130,6 +131,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 <MessageCircle className="w-4 h-4 text-tertiary" />
                 <span className="font-label-md text-label-md">Suporte</span>
               </Link>
+              <SeletorDeTema />
               <MenuDoUsuario />
             </div>
           </div>

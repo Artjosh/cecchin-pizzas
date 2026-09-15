@@ -1,3 +1,4 @@
+import { TituloNoHeader } from "@/src/components/layouts/TituloNoHeader";
 import React from 'react';
 import { Truck, PenTool as Tool, AlertTriangle, Plus } from 'lucide-react';
 import { exigirPapel } from "../servidor/auth/guarda";
@@ -16,7 +17,7 @@ function FrotaDesenhada() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-on-surface tracking-tight">Frotas e Fornos</h1>
+          <TituloNoHeader className="text-2xl font-bold text-on-surface tracking-tight">Frotas e Fornos</TituloNoHeader>
           <p className="text-on-surface-variant mt-1">Controle de ativos físicos e manutenções.</p>
         </div>
         <button className="bg-inverse-surface text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-inverse-surface transition-colors">
@@ -93,9 +94,9 @@ async function FrotaDoBanco() {
     <div className="flex flex-col gap-space-lg">
       <div className="flex flex-wrap justify-between items-center gap-space-md">
         <div>
-          <h1 className="font-headline-md text-headline-md text-on-surface tracking-tight">
+          <TituloNoHeader className="font-headline-md text-headline-md text-on-surface tracking-tight">
             Frotas e Fornos
-          </h1>
+          </TituloNoHeader>
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">
             Controle de ativos físicos e manutenções.
           </p>

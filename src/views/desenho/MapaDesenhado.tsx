@@ -1,4 +1,6 @@
 "use client";
+import { TituloNoHeader } from "@/src/components/layouts/TituloNoHeader";
+
 
 /*
  * O DESENHO de o mapa tático.
@@ -28,7 +30,7 @@ export function MapaDesenhado() {
     <div className="h-full flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-on-surface tracking-tight">Mapa Tático</h1>
+          <TituloNoHeader className="text-2xl font-bold text-on-surface tracking-tight">Mapa Tático</TituloNoHeader>
           <p className="text-on-surface-variant mt-1">Visão em tempo real das equipes e fornos no campo.</p>
         </div>
         <div className="flex items-center gap-3 bg-surface-container-lowest p-2 border border-outline-variant/50 rounded-lg">

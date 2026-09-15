@@ -1,5 +1,6 @@
+import { TituloNoHeader } from "@/src/components/layouts/TituloNoHeader";
 import Link from "next/link";
-import { EmbarkChecklist } from "../components/EmbarkChecklist";
+import { RotaComChecklist } from "../components/embarque/RotaComChecklist";
 import {
   CabecalhoDoPainel,
   Celula,
@@ -18,31 +19,29 @@ import {
   MapPin,
   MessageCircle,
   Navigation,
-  Thermometer,
   Utensils,
-  Play,
 } from "lucide-react";
 
 /** O desenho. Mantido inteiro: tem checklist e temperatura que o banco não registra. */
 function RotaDesenhada() {
   return (
-    <div className="flex flex-col w-full h-full gap-space-lg max-w-4xl mx-auto">
+    <RotaComChecklist demo evento={{id:"demo",titulo:"Aniversário Marina",pessoas:35,forno:"Forno a Gás Pro #03",destino:"R. Pe. Chagas, 380 - Moinhos de Vento",horario:"17:40"}}><div className="flex flex-col w-full h-full gap-space-lg max-w-4xl mx-auto">
       <div className="bg-surface-container-lowest rounded-xl shadow-md p-6 border-l-4 border-primary">
         <div className="flex items-start justify-between">
           <div className="flex flex-col">
             <span className="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">
               Próximo Evento • Hoje
             </span>
-            <h1 className="font-headline-md text-headline-md text-on-surface font-extrabold mt-1">
+            <TituloNoHeader className="font-headline-md text-headline-md text-on-surface font-extrabold mt-1">
               Aniversário Marina
-            </h1>
+            </TituloNoHeader>
             <p className="font-body-md text-body-md text-on-surface-variant flex items-center gap-2 mt-2">
               <MapPin className="w-[18px] h-[18px] text-tertiary" />
               R. Pe. Chagas, 380 - Moinhos de Vento
             </p>
           </div>
           <span className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg font-headline-sm text-headline-sm font-bold">
-            35p
+            35 pessoas
           </span>
         </div>
 
@@ -82,19 +81,19 @@ function RotaDesenhada() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 mt-6">
-          <button type="button" className="flex-1 bg-primary hover:opacity-90 text-on-primary font-label-lg text-label-lg py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-opacity border border-transparent">
+          <a href="https://www.google.com/maps/dir/?api=1&destination=Rua+Padre+Chagas+380+Porto+Alegre&travelmode=driving&dir_action=navigate" target="_blank" rel="noopener noreferrer" className="flex-1 bg-primary hover:opacity-90 text-on-primary font-label-lg text-label-lg py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-opacity border border-transparent">
             <Navigation className="w-5 h-5 fill-current" />
             Iniciar Rota GPS
-          </button>
-          <button type="button" className="flex-1 bg-surface-container hover:bg-surface-container-high text-on-surface font-label-lg text-label-lg py-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-outline-variant/30">
+          </a>
+          <a href="/api/operacao/whatsapp?contato=1" className="flex-1 bg-surface-container hover:bg-surface-container-high text-on-surface font-label-lg text-label-lg py-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-outline-variant/30">
             <MessageCircle className="w-5 h-5 text-tertiary" />
             Avisar Base
-          </button>
+          </a>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-space-lg">
-        <EmbarkChecklist />
+      <div className="grid grid-cols-1 gap-space-lg">
+        
 
         {/* Detalhes do Serviço */}
         <div className="bg-surface-container-lowest rounded-xl shadow-md p-6 flex flex-col">
@@ -135,22 +134,10 @@ function RotaDesenhada() {
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-outline-variant/30">
-            <button type="button" className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md py-3 rounded-lg flex items-center justify-between px-4 transition-colors">
-              <div className="flex items-center gap-2">
-                <Thermometer className="w-5 h-5 text-tertiary" />
-                <span>Painel de Cocção (Durante Evento)</span>
-              </div>
-              <ChevronRight className="w-5 h-5" />
-            </button>
-            <button type="button" className="w-full mt-2 bg-tertiary/10 hover:bg-tertiary/20 text-tertiary font-label-md text-label-md py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
-              <Play className="w-5 h-5 fill-current" />
-              <span>Iniciar Cronômetro de Montagem</span>
-            </button>
-          </div>
+
         </div>
       </div>
-    </div>
+    </div></RotaComChecklist>
   );
 }
 
@@ -184,9 +171,9 @@ interface EventoDaRota {
   codigo_legado: string | null;
 }
 
-async function RotaDoBanco() {
+async function RotaDoBanco({eventoSelecionado}:{eventoSelecionado?:string}) {
   const sessao = await exigirPapel(["staff"]);
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 
   const escalasR = await consultar<{ evento_id: string }[]>(
     `escala_evento?select=evento_id&usuario_id=eq.${sessao.usuario.id}` +
@@ -206,16 +193,18 @@ async function RotaDoBanco() {
   );
 
   const eventos = leitura.estado === "ok" ? leitura.linhas : [];
-  const proximo = eventos[0];
+  const proximo = eventos.find(e=>e.id===eventoSelecionado) ?? eventos[0];
+  const embarque = proximo ? { id: proximo.id, titulo: `${proximo.cliente_nome ?? "Evento"} · ${comoData(proximo.data_evento)}`, pessoas: proximo.inteiros===null && proximo.meios===null ? null : (proximo.inteiros ?? 0) + (proximo.meios ?? 0), forno: proximo.modelo_forno_nome, destino: [proximo.endereco,proximo.bairro,proximo.cidade].filter(Boolean).join(", "), horario: comoHora(proximo.horario_saida,null) } : null;
 
   return (
-    <div className="flex flex-col gap-space-lg max-w-4xl mx-auto">
+    <RotaComChecklist evento={embarque} gestao={["gestao","admin"].includes(sessao.usuario.papel)}><div className="flex flex-col gap-space-lg max-w-4xl mx-auto">
       <CabecalhoDoPainel
         titulo="Minha rota"
         descricao={`${sessao.usuario.nome} · eventos aceitos de hoje em diante`}
         contagem={leitura.estado === "ok" ? eventos.length : null}
       />
 
+      {!escalasR.ok && <FalhaDeLeitura motivo="Não foi possível carregar sua escala." />}
       {leitura.estado === "erro" && <FalhaDeLeitura motivo={leitura.motivo} />}
 
       {leitura.estado === "vazio" && (
@@ -243,7 +232,7 @@ async function RotaDoBanco() {
               </span>
             </div>
             <span className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg font-headline-sm text-headline-sm shrink-0">
-              {(proximo.inteiros ?? 0) + Math.ceil((proximo.meios ?? 0) / 2)}p
+              {embarque?.pessoas === null ? "Pessoas não informadas" : `${embarque?.pessoas} pessoas`}
             </span>
           </div>
 
@@ -274,7 +263,7 @@ async function RotaDoBanco() {
             )}
             {proximo.endereco && (
               <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                href={`https://www.google.com/maps/dir/?api=1&travelmode=driving&dir_action=navigate&destination=${encodeURIComponent(
                   [proximo.endereco, proximo.bairro, proximo.cidade]
                     .filter(Boolean)
                     .join(", "),
@@ -284,7 +273,7 @@ async function RotaDoBanco() {
                 className="h-11 px-4 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container-high transition-colors"
               >
                 <Navigation className="w-4 h-4 text-tertiary" />
-                Traçar rota
+                Iniciar rota GPS
               </a>
             )}
             <Link
@@ -304,7 +293,7 @@ async function RotaDoBanco() {
             Depois deste
           </h2>
           <Tabela colunas={["Data", "Cliente", "Onde", "Serviço", ""]}>
-            {eventos.slice(1).map((e) => (
+            {eventos.filter(e=>e.id!==proximo?.id).map((e) => (
               <Linha key={e.id}>
                 <Celula className="whitespace-nowrap">
                   {comoData(e.data_evento)}
@@ -318,7 +307,7 @@ async function RotaDoBanco() {
                 </Celula>
                 <Celula className="text-right">
                   <Link
-                    href={`/operacional/eventos/${e.id}`}
+                    href={`/operacional/minha-rota?evento=${e.id}`}
                     className="font-label-md text-label-md text-primary hover:opacity-80"
                   >
                     Abrir
@@ -329,7 +318,7 @@ async function RotaDoBanco() {
           </Tabela>
         </section>
       )}
-    </div>
+    </div></RotaComChecklist>
   );
 }
 
@@ -346,9 +335,9 @@ function Marco({ rotulo, valor }: { rotulo: string; valor: string }) {
   );
 }
 
-export async function FieldRouteView() {
+export async function FieldRouteView({eventoSelecionado}:{eventoSelecionado?:string}={}) {
   return (await fonteDeDados()) === "real" ? (
-    <RotaDoBanco />
+    <RotaDoBanco eventoSelecionado={eventoSelecionado} />
   ) : (
     <RotaDesenhada />
   );

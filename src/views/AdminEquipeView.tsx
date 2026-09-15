@@ -1,4 +1,6 @@
 "use client";
+import { TituloNoHeader } from "@/src/components/layouts/TituloNoHeader";
+
 
 import { useState } from "react";
 import {
@@ -123,9 +125,9 @@ export function AdminEquipeView({
   return (
     <div className="max-w-5xl mx-auto px-margin md:px-margin-tablet py-space-lg flex flex-col gap-space-xl">
       <header className="flex flex-col gap-space-xs">
-        <h1 className="font-headline-md text-headline-md text-on-surface">
+        <TituloNoHeader className="font-headline-md text-headline-md text-on-surface">
           Equipe e acessos
-        </h1>
+        </TituloNoHeader>
         <p className="font-body-md text-body-md text-on-surface-variant">
           Quem pediu para entrar na equipe, e quem já está nela.
         </p>

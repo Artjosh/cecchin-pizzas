@@ -1,7 +1,9 @@
+import { AtencaoEvento } from "../components/AtencaoEvento";
+import { QrEvento } from "../components/embarque/QrEvento";
+import { podeAcessar } from "../servidor/auth/sessao-atual";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeft,
   Calendar,
   ChefHat,
   Clock,
@@ -14,12 +16,11 @@ import {
 import {
   CabecalhoDoPainel,
   Etiqueta,
-  LacunaDeDados,
 } from "../components/painel/Painel";
-import { comoData, comoHora, comoTelefone, linkWhatsApp } from "../lib/formato";
+import { comoData, comoHora, comoTelefone, linkWhatsApp, linkCentralWhatsApp } from "../lib/formato";
 import { formatBRL } from "../lib/moeda";
 import { exigirPapel } from "../servidor/auth/guarda";
-import { consultar } from "../servidor/supabase";
+import { consultar, chamarFuncao } from "../servidor/supabase";
 
 /**
  * Um evento inteiro, numa tela.
@@ -101,18 +102,14 @@ export async function EventoView({ id }: { id: string }) {
    */
   if (!evento) notFound();
 
-  const pessoas = (evento.inteiros ?? 0) + Math.ceil((evento.meios ?? 0) / 2);
-  const zap = linkWhatsApp(evento.cliente_telefone);
+  const permissaoAtencao = await chamarFuncao<boolean>("pode_marcar_atencao", {}, sessao.accessToken);
+  const pessoas = evento.inteiros === null && evento.meios === null ? null : (evento.inteiros ?? 0) + (evento.meios ?? 0);
+  const saidaR = podeAcessar(sessao.usuario.papel,["gestao"]) ? await consultar<Array<{liberado_em:string}>>(`evento_saida?select=liberado_em&evento_id=eq.${id}`,sessao.accessToken) : null;
+  const zap = podeAcessar(sessao.usuario.papel, ["gestao"]) ? linkCentralWhatsApp(evento.cliente_telefone) : linkWhatsApp(evento.cliente_telefone);
 
   return (
     <div className="flex flex-col gap-space-lg">
-      <Link
-        href="/operacional/despacho"
-        className="inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface-variant hover:text-on-surface w-fit"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Voltar à agenda
-      </Link>
+
 
       <CabecalhoDoPainel
         titulo={evento.cliente_nome ?? "Evento sem cliente"}
@@ -129,7 +126,7 @@ export async function EventoView({ id }: { id: string }) {
           zap && (
             <a
               href={zap}
-              target="_blank"
+              target={zap?.startsWith("/") ? undefined : "_blank"}
               rel="noopener noreferrer"
               className="h-10 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md flex items-center gap-2 hover:opacity-90 transition-opacity"
             >
@@ -141,6 +138,7 @@ export async function EventoView({ id }: { id: string }) {
       />
 
       <div className="flex items-center gap-space-xs flex-wrap">
+        <AtencaoEvento key={`${evento.id}-${evento.atencao}`} evento={evento.id} marcada={!!evento.atencao} permitido={permissaoAtencao.dados === true} />
         <Etiqueta tom={evento.atencao ? "atencao" : "neutro"}>
           {evento.situacao ?? "sem situação"}
         </Etiqueta>
@@ -206,7 +204,7 @@ export async function EventoView({ id }: { id: string }) {
             rotulo="Responsável"
             valor={evento.responsavel_nome ?? "não alocado"}
           />
-          <Campo rotulo="Convidados" valor={`${pessoas} pessoas`} />
+          <Campo rotulo="Convidados" valor={pessoas === null ? "Quantidade não informada" : `${pessoas} pessoas`} />
         </Bloco>
 
         <Bloco titulo="O que" icone={<ChefHat className="w-5 h-5" />}>
@@ -269,6 +267,7 @@ export async function EventoView({ id }: { id: string }) {
           </Bloco>
         </div>
 
+        <div className="min-w-0 self-start">
         <Bloco titulo="Anotações" icone={<User className="w-5 h-5" />}>
           <Campo rotulo="Observação" valor={evento.observacao ?? "—"} />
           <Campo
@@ -280,27 +279,22 @@ export async function EventoView({ id }: { id: string }) {
           )}
           <Campo rotulo="Feedback" valor={evento.feedback ?? "—"} />
         </Bloco>
+        </div>
+        <div className="flex min-w-0 flex-col gap-2 lg:col-span-2">
+          {evento.status === "confirmado" && podeAcessar(sessao.usuario.papel, ["gestao"]) && (
+            <QrEvento evento={evento.id} titulo={`${evento.cliente_nome ?? "Evento"} · ${comoData(evento.data_evento)}`} />
+          )}
+          {evento.numero_do_dia && (
+            <section className="flex flex-1 flex-col justify-center gap-1 rounded-xl bg-surface-container-low px-4 py-3 text-xs leading-snug">
+              <h3 className="font-bold text-on-surface">Rastro da planilha · Nº do dia: {evento.numero_do_dia}</h3>
+              <p className="text-on-surface-variant">Referência da equipe na agenda original, mantida para conferência.</p>
+            </section>
+          )}
+        </div>
       </div>
 
-      {evento.numero_do_dia && (
-        <LacunaDeDados titulo="Rastro da planilha">
-          <p>
-            Este evento tem <code className="font-mono">Nº do dia</code> ={" "}
-            <strong>{evento.numero_do_dia}</strong>. Na planilha, o decimal
-            codificava qual equipe atendia — <code className="font-mono">1</code>{" "}
-            e <code className="font-mono">1.2</code> eram a mesma; vírgula em vez
-            de ponto significava equipe diferente.
-          </p>
-          <p>
-            No banco a relação é nativa (<code className="font-mono">
-              responsavel_id
-            </code>{" "}
-            e <code className="font-mono">data_evento</code>), então o campo ficou
-            como texto e nada o lê. Está aqui só para conferência contra a
-            planilha.
-          </p>
-        </LacunaDeDados>
-      )}
+      {saidaR?.dados?.[0] && <p className="rounded-xl bg-primary/10 p-4 font-semibold">Saída da equipe liberada em {new Date(saidaR.dados[0].liberado_em).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"})}.</p>}
+
     </div>
   );
 }

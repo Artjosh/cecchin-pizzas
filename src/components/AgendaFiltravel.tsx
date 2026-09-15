@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   ChevronRight,
@@ -11,9 +11,10 @@ import {
   Search,
 } from "lucide-react";
 
+import { QrEvento } from "./embarque/QrEvento";
 import { cn } from "../lib/utils";
 import { formatBRL } from "../lib/moeda";
-import { comoData, comoDiaMes, comoHora, linkWhatsApp } from "../lib/formato";
+import { comoData, comoDiaMes, comoHora, linkWhatsApp, linkCentralWhatsApp } from "../lib/formato";
 
 /**
  * A agenda do despacho, filtrável de verdade.
@@ -152,9 +153,27 @@ export function AgendaFiltravel({
   responsaveis?: ResponsavelDisponivel[];
   podeAlocar?: boolean;
 }) {
-  const [aba, setAba] = useState("todos");
-  const [busca, setBusca] = useState("");
-  const [soComTelefone, setSoComTelefone] = useState(false);
+  const parametros=useSearchParams();
+  const [aba, setAba] = useState(parametros.get("aba")??"todos");
+  const [busca, setBusca] = useState(parametros.get("busca")??"");
+  const [soComTelefone, setSoComTelefone] = useState(parametros.get("telefone")==="1");
+  const [filtrosAbertos,setFiltrosAbertos]=useState(false);
+  const [responsavelFiltro,setResponsavelFiltro]=useState(parametros.get("responsavel")??"");
+  const [cidadeFiltro,setCidadeFiltro]=useState(parametros.get("cidade")??"");
+  const [fornoFiltro,setFornoFiltro]=useState(parametros.get("forno")??"");
+  const [inicioFiltro,setInicioFiltro]=useState(parametros.get("de")??"");
+  const [fimFiltro,setFimFiltro]=useState(parametros.get("ate")??"");
+  const [atencaoFiltro,setAtencaoFiltro]=useState(parametros.get("atencao")==="1");
+  const quantidadeFiltros=[soComTelefone,responsavelFiltro,cidadeFiltro,fornoFiltro,inicioFiltro,fimFiltro,atencaoFiltro].filter(Boolean).length;
+  useEffect(()=>{
+    const url=new URL(window.location.href);
+    for(const [chave,valor] of Object.entries({aba:aba==="todos"?"":aba,busca,telefone:soComTelefone?"1":"",responsavel:responsavelFiltro,cidade:cidadeFiltro,forno:fornoFiltro,de:inicioFiltro,ate:fimFiltro,atencao:atencaoFiltro?"1":""})){
+      if(valor)url.searchParams.set(chave,valor);else url.searchParams.delete(chave);
+    }
+    window.history.replaceState(window.history.state,"",url.pathname+url.search);
+  },[aba,busca,soComTelefone,responsavelFiltro,cidadeFiltro,fornoFiltro,inicioFiltro,fimFiltro,atencaoFiltro]);
+  function limparFiltros(){setSoComTelefone(false);setResponsavelFiltro("");setCidadeFiltro("");setFornoFiltro("");setInicioFiltro("");setFimFiltro("");setAtencaoFiltro(false);}
+
 
   const abas = useMemo(() => montarAbas(eventos, hoje), [eventos, hoje]);
 
@@ -169,7 +188,13 @@ export function AgendaFiltravel({
 
   const cabeNoResto = (evento: EventoDaAgenda, texto: string) =>
     (!alvo || texto.includes(alvo)) &&
-    (!soComTelefone || !!evento.cliente_telefone);
+    (!soComTelefone || !!evento.cliente_telefone) &&
+    (!responsavelFiltro || (responsavelFiltro==="com"?!!evento.responsavel_id:!evento.responsavel_id)) &&
+    (!cidadeFiltro || evento.cidade===cidadeFiltro) &&
+    (!fornoFiltro || evento.modelo_forno_nome===fornoFiltro) &&
+    (!inicioFiltro || evento.data_evento>=inicioFiltro) &&
+    (!fimFiltro || evento.data_evento<=fimFiltro) &&
+    (!atencaoFiltro || evento.atencao===true);
 
   const visiveis = indexados
     .filter(
@@ -237,21 +262,33 @@ export function AgendaFiltravel({
           </div>
           <button
             type="button"
-            aria-pressed={soComTelefone}
-            aria-label="Mostrar somente eventos com telefone do cliente"
-            title="Somente com telefone"
-            onClick={() => setSoComTelefone((v) => !v)}
+            aria-expanded={filtrosAbertos}
+            aria-controls="filtros-agenda"
+            aria-label="Filtros da agenda"
+            onClick={() => setFiltrosAbertos((v) => !v)}
             className={cn(
-              "w-9 h-9 flex items-center justify-center rounded-lg transition-colors",
-              soComTelefone
+              "h-9 px-3 flex shrink-0 items-center justify-center gap-2 rounded-lg transition-colors",
+              quantidadeFiltros>0
                 ? "bg-primary text-on-primary"
                 : "bg-surface-container-highest hover:bg-surface-container-high text-on-surface",
             )}
           >
-            <Filter className="w-[18px] h-[18px]" />
+            <Filter className="w-[18px] h-[18px]" /><span className="text-sm">Filtros{quantidadeFiltros?` (${quantidadeFiltros})`:""}</span>
           </button>
         </div>
       </div>
+
+      {filtrosAbertos&&<section id="filtros-agenda" aria-label="Filtros da agenda" className="rounded-xl bg-surface-container-low p-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 [&_input]:bg-surface-container [&_select]:bg-surface-container [&_select]:text-on-surface [&_option]:bg-surface-container [&_option]:text-on-surface">
+          <label className="text-sm">Responsável<select aria-label="Responsável" value={responsavelFiltro} onChange={e=>setResponsavelFiltro(e.target.value)} className="mt-1 block w-full rounded-lg p-2"><option value="">Todos</option><option value="sem">Sem responsável</option><option value="com">Com responsável</option></select></label>
+          <label className="text-sm">Cidade<select aria-label="Cidade" value={cidadeFiltro} onChange={e=>setCidadeFiltro(e.target.value)} className="mt-1 block w-full rounded-lg p-2"><option value="">Todas</option>{[...new Set(eventos.map(e=>e.cidade).filter((v):v is string=>!!v))].sort().map(c=><option key={c}>{c}</option>)}</select></label>
+          <label className="text-sm">Forno<select aria-label="Forno" value={fornoFiltro} onChange={e=>setFornoFiltro(e.target.value)} className="mt-1 block w-full rounded-lg p-2"><option value="">Todos</option>{[...new Set(eventos.map(e=>e.modelo_forno_nome).filter((v):v is string=>!!v))].sort().map(f=><option key={f}>{f}</option>)}</select></label>
+          <label className="text-sm">Data inicial<input type="date" value={inicioFiltro} onChange={e=>setInicioFiltro(e.target.value)} className="mt-1 block w-full rounded-lg p-2"/></label>
+          <label className="text-sm">Data final<input type="date" value={fimFiltro} onChange={e=>setFimFiltro(e.target.value)} className="mt-1 block w-full rounded-lg p-2"/></label>
+          <div className="flex flex-col justify-center gap-2 text-sm"><label className="flex items-center gap-2"><input type="checkbox" checked={soComTelefone} onChange={e=>setSoComTelefone(e.target.checked)}/>Somente com telefone</label><label className="flex items-center gap-2"><input type="checkbox" checked={atencaoFiltro} onChange={e=>setAtencaoFiltro(e.target.checked)}/>Somente com atenção</label></div>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-2 text-sm"><span>{visiveis.length} eventos encontrados</span><button type="button" onClick={limparFiltros} className="rounded-lg bg-surface-container px-3 py-2">Limpar filtros</button></div>
+      </section>}
 
       {visiveis.length === 0 ? (
         <p className="font-body-md text-body-md text-on-surface-variant bg-surface-container-low rounded-xl p-space-md">
@@ -260,19 +297,25 @@ export function AgendaFiltravel({
           {soComTelefone ? " com telefone cadastrado" : ""}.
         </p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-space-md">
-          {visiveis.map((evento) => (
-            <CartaoEvento
-              key={evento.id}
-              evento={evento}
-              responsaveis={responsaveis}
-              podeAlocar={podeAlocar}
-            />
-          ))}
-        </div>
+        <ColunasEventos eventos={visiveis} responsaveis={responsaveis} podeAlocar={podeAlocar} />
       )}
     </div>
   );
+}
+
+function ColunasEventos({eventos,responsaveis,podeAlocar}:{eventos:EventoDaAgenda[];responsaveis:ResponsavelDisponivel[];podeAlocar:boolean}) {
+  const [quantidade,setQuantidade]=useState(1);
+  useEffect(()=>{
+    const tablet=window.matchMedia("(min-width: 768px)"),desktop=window.matchMedia("(min-width: 1280px)");
+    const atualizar=()=>setQuantidade(desktop.matches?3:tablet.matches?2:1);
+    atualizar();tablet.addEventListener("change",atualizar);desktop.addEventListener("change",atualizar);
+    return()=>{tablet.removeEventListener("change",atualizar);desktop.removeEventListener("change",atualizar);};
+  },[]);
+  return <div className="grid items-start gap-space-md" style={{gridTemplateColumns:`repeat(${quantidade}, minmax(0, 1fr))`}}>
+    {Array.from({length:quantidade},(_,coluna)=><div key={coluna} className="flex min-w-0 flex-col gap-space-md" data-coluna-eventos={coluna}>
+      {eventos.filter((_,i)=>i%quantidade===coluna).map(evento=><CartaoEvento key={evento.id} evento={evento} responsaveis={responsaveis} podeAlocar={podeAlocar}/>)}
+    </div>)}
+  </div>;
 }
 
 /**
@@ -330,12 +373,12 @@ function CartaoEvento({
   const pessoas = (evento.inteiros ?? 0) + Math.ceil((evento.meios ?? 0) / 2);
   const local =
     [evento.bairro, evento.cidade].filter(Boolean).join(" · ") || "Sem endereço";
-  const zap = linkWhatsApp(evento.cliente_telefone);
+  const zap = podeAlocar ? linkCentralWhatsApp(evento.cliente_telefone) : linkWhatsApp(evento.cliente_telefone);
 
   return (
     <div
       className={cn(
-        "bg-surface-container-lowest rounded-xl shadow-sm border-t-4 overflow-hidden flex flex-col hover:shadow-lg transition-shadow",
+        "relative bg-surface-container-lowest rounded-xl shadow-sm border-t-4 overflow-hidden flex flex-col hover:shadow-lg transition-shadow",
         corDaSituacao(evento.situacao),
       )}
     >
@@ -354,7 +397,7 @@ function CartaoEvento({
       </div>
 
       <div className="p-4 flex-1 flex flex-col gap-3">
-        <div className="flex flex-col min-w-0">
+        <div className={cn("flex flex-col min-w-0",podeAlocar&&"pr-24")}>
           <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold truncate">
             {evento.cliente_nome ?? "Sem cliente"}
             {pessoas > 0 ? ` • ${pessoas}p` : ""}
@@ -366,7 +409,7 @@ function CartaoEvento({
           </span>
         </div>
 
-        <div className="flex items-start gap-2">
+        <div className={cn("flex items-start gap-2",podeAlocar&&"pr-24")}>
           <MapPin className="w-5 h-5 text-tertiary shrink-0 mt-0.5" />
           <div className="flex flex-col min-w-0">
             <span className="font-body-md text-body-md text-on-surface font-medium leading-tight truncate">
@@ -404,11 +447,11 @@ function CartaoEvento({
                   value={evento.responsavel_id ?? ""}
                   disabled={alocando || pendente}
                   onChange={(e) => void alocar(e.target.value)}
-                  className="font-label-md text-label-md text-on-surface bg-transparent -ml-1 px-1 py-0.5 rounded max-w-[11rem] truncate focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                  className="font-label-md text-label-md text-on-surface bg-surface-container-high border border-on-surface/20 px-2 py-1.5 rounded max-w-[11rem] truncate focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                 >
-                  <option value="">não alocado</option>
+                  <option className="bg-surface-container-high text-on-surface" value="">não alocado</option>
                   {responsaveis.map((r) => (
-                    <option key={r.id} value={r.id}>
+                    <option className="bg-surface-container-high text-on-surface" key={r.id} value={r.id}>
                       {r.nome}
                     </option>
                   ))}
@@ -452,7 +495,10 @@ function CartaoEvento({
         )}
       </div>
 
+      {podeAlocar && <div className="px-3 pb-3"><a href={`/admin/montar-equipe?evento=${evento.id}`} className="mb-2 block rounded-lg bg-primary px-3 py-2 text-center text-sm text-on-primary">Montar equipe</a><QrEvento compacto evento={evento.id} titulo={`${evento.cliente_nome ?? "Evento"} · ${comoData(evento.data_evento)}`} /></div>}
+
       <div className="p-3 bg-surface-container-highest border-t border-outline-variant/20 flex gap-2">
+        <a href={`/operacional/eventos/${evento.id}`} className="flex-1 rounded-lg bg-primary px-3 py-1.5 text-center font-label-md text-label-md text-on-primary hover:opacity-90">Abrir evento</a>
         <button
           type="button"
           aria-expanded={aberto}
@@ -467,7 +513,7 @@ function CartaoEvento({
         {zap ? (
           <a
             href={zap}
-            target="_blank"
+            target={zap.startsWith("/") ? undefined : "_blank"}
             rel="noopener noreferrer"
             aria-label={`Falar no WhatsApp com ${evento.cliente_nome ?? "o cliente"}`}
             className="w-10 flex items-center justify-center rounded-lg bg-primary text-on-primary hover:opacity-90 transition-opacity"

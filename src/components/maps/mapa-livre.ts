@@ -1,6 +1,6 @@
 type MapaMapLibre = {
   getStyle: () => { layers?: Array<{ id: string; type?: string }> };
-  isStyleLoaded: () => boolean;
+  isStyleLoaded: () => boolean | void;
   once: (evento: string, ouvinte: () => void) => void;
   setLayoutProperty: (camada: string, propriedade: string, valor: string) => void;
   setPaintProperty: (camada: string, propriedade: string, valor: string | number) => void;
@@ -26,24 +26,37 @@ export function deLngLat(ponto: { lat: number; lng: number }): Coordenada {
   return { lat: ponto.lat, lng: ponto.lng };
 }
 
-/** Deixa a base escura com vias claras e só os rótulos necessários. */
+/** Paletas inspiradas nas refer?ncias: ruas brancas no claro e carv?o no grafite. */
 export function aplicarVisualOperacional(mapa: MapaMapLibre): void {
   const aplicar = () => {
+    const escuro = document.documentElement.dataset.tema === "escuro";
+    const cores = escuro
+      ? { fundo: "#3d424b", agua: "#303641", terreno: "#393f48", rua: "#252b33", texto: "#e0e2e5", halo: "#292e36" }
+      : { fundo: "#dfe3e5", agua: "#b9cbd3", terreno: "#d9dfe0", rua: "#ffffff", texto: "#46616a", halo: "#f5f6f6" };
     for (const camada of mapa.getStyle().layers ?? []) {
       const id = camada.id.toLowerCase();
       try {
-        if (/(poi|transit|aeroway|building|housenumber|address|landuse|boundary)/.test(id)) {
+        if (/(poi|transit|aeroway|building|housenumber|address|landuse|boundary|railway|oneway)/.test(id)) {
           mapa.setLayoutProperty(camada.id, "visibility", "none");
           continue;
         }
 
-        if (camada.type === "line" && /(road|transport|street|motorway|path)/.test(id)) {
-          mapa.setPaintProperty(camada.id, "line-color", "#e5e7eb");
+        if (camada.type === "background") {
+          mapa.setPaintProperty(camada.id, "background-color", cores.fundo);
         }
 
-        if (camada.type === "symbol" && /(road|transport)/.test(id)) {
-          mapa.setPaintProperty(camada.id, "text-color", "#f3f4f6");
-          mapa.setPaintProperty(camada.id, "text-halo-color", "#121214");
+        if (camada.type === "fill") {
+          mapa.setPaintProperty(camada.id, "fill-color", id === "water" ? cores.agua : cores.terreno);
+        }
+
+        if (camada.type === "line") {
+          const via = /(road|highway|street|motorway|path|railway)/.test(id);
+          mapa.setPaintProperty(camada.id, "line-color", via ? cores.rua : cores.agua);
+        }
+
+        if (camada.type === "symbol") {
+          mapa.setPaintProperty(camada.id, "text-color", cores.texto);
+          mapa.setPaintProperty(camada.id, "text-halo-color", cores.halo);
           mapa.setPaintProperty(camada.id, "text-halo-width", 1);
         }
       } catch {
@@ -55,4 +68,7 @@ export function aplicarVisualOperacional(mapa: MapaMapLibre): void {
 
   if (mapa.isStyleLoaded()) aplicar();
   else mapa.once("style.load", aplicar);
+  const observador = new MutationObserver(aplicar);
+  observador.observe(document.documentElement, { attributes: true, attributeFilter: ["data-tema"] });
+  mapa.once("remove", () => observador.disconnect());
 }

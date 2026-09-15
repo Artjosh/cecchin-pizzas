@@ -1,5 +1,6 @@
+import { Paginacao } from "../components/painel/Paginacao";
 import Link from "next/link";
-import { ArrowRight, ClipboardList } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import {
   CabecalhoDoPainel,
@@ -53,36 +54,34 @@ function tomDoBloco(bloco: string): "neutro" | "atencao" | "bom" {
 
 export async function PendenciasView({
   bloco,
+  pagina = 0,
 }: {
   /** Filtro vindo da query. `null` mostra tudo. */
   bloco: string | null;
+  pagina?: number;
 }) {
   const sessao = await exigirPapel(["staff"]);
 
   const filtro = bloco ? `&bloco=eq.${encodeURIComponent(bloco)}` : "";
 
-  const leitura = comoLeitura(
-    await consultar<Pendencia[]>(
+  const resultado = await consultar<Pendencia[]>(
       "vw_pendencia?select=bloco,ordem,id,data_evento,codigo_legado,pendencia,faltando" +
         filtro +
-        "&order=ordem.asc,data_evento.asc&limit=300",
+        `&order=ordem.asc,data_evento.asc,id.asc,bloco.asc&limit=51&offset=${pagina * 50}`,
       sessao.accessToken,
-    ),
-  );
+      { headers: { Prefer: "count=exact" } },
+    );
+  const leitura = comoLeitura(resultado);
 
-  const linhas = leitura.estado === "ok" ? leitura.linhas : [];
+  const recebidas = leitura.estado === "ok" ? leitura.linhas : [];
+  const linhas = recebidas.slice(0, 50);
 
-  const porBloco = new Map<string, number>();
-  for (const p of linhas) {
-    porBloco.set(p.bloco, (porBloco.get(p.bloco) ?? 0) + 1);
-  }
 
   return (
-    <div className="flex flex-col gap-space-lg">
+    <div className="flex flex-col gap-space-lg pb-20">
       <CabecalhoDoPainel
         titulo="Pendências"
         descricao="O que ainda falta resolver, pela mesma regra que a planilha usa desde 2018."
-        contagem={leitura.estado === "ok" ? linhas.length : null}
       />
 
       <nav className="flex items-center gap-space-xs flex-wrap">
@@ -91,7 +90,6 @@ export async function PendenciasView({
           <Filtro
             key={chave}
             rotulo={nome}
-            quantidade={porBloco.get(chave)}
             para={`/operacional/pendencias?bloco=${chave}`}
             ativo={bloco === chave}
           />
@@ -112,7 +110,11 @@ export async function PendenciasView({
       )}
 
       {leitura.estado === "ok" && (
-        <Tabela colunas={["Bloco", "Evento", "Data", "O que falta", ""]}>
+        <Tabela
+          colunas={["Bloco", "Evento", "Data", "O que falta", ""]}
+          className="table-fixed min-w-[1104px] [&_td]:align-middle [&_tbody_tr:hover]:bg-primary/15 [&_tbody_tr:focus-within]:bg-primary/15"
+          larguras={["15%", "13.5%", "17.8%", "41%", "12.7%"]}
+        >
           {linhas.map((p) => (
             <Linha key={`${p.bloco}-${p.id}`}>
               <Celula>
@@ -127,24 +129,26 @@ export async function PendenciasView({
                 {comoData(p.data_evento)}
               </Celula>
               <Celula>
-                <span className="flex flex-col gap-1">
-                  <span className="text-on-surface">{p.pendencia}</span>
-                  {p.faltando && p.faltando.length > 0 && (
-                    <span className="flex flex-wrap gap-1">
-                      {p.faltando.map((f) => (
-                        <span
-                          key={f}
-                          className="px-1.5 py-0.5 rounded bg-surface-container font-label-sm text-label-sm"
-                        >
-                          {f}
-                        </span>
-                      ))}
-                    </span>
-                  )}
-                </span>
+                <div className="max-w-full overflow-x-auto" tabIndex={p.faltando?.length ? 0 : undefined} aria-label={p.faltando?.length ? "Detalhes da pendência" : undefined}>
+                  <span className="flex w-max min-w-full items-center whitespace-nowrap">
+                    {!p.faltando?.length && <span title={p.pendencia} className="min-w-0 truncate text-on-surface">{p.pendencia}</span>}
+                    {p.faltando && p.faltando.length > 0 && (
+                      <span className="flex w-max min-w-44 items-center justify-center gap-1">
+                        {p.faltando.map((f) => (
+                          <span
+                            key={f}
+                            className="shrink-0 px-1.5 py-0.5 rounded bg-surface-container font-label-sm text-label-sm"
+                          >
+                            {f}
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </span>
+                </div>
               </Celula>
               <Celula className="text-right">
-                <Link
+                <Link prefetch={false}
                   href={`/operacional/eventos/${p.id}`}
                   className="inline-flex items-center gap-1 font-label-md text-label-md text-primary hover:opacity-80"
                 >
@@ -157,12 +161,8 @@ export async function PendenciasView({
         </Tabela>
       )}
 
-      {leitura.estado === "ok" && linhas.length === 300 && (
-        <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-space-xs">
-          <ClipboardList className="w-4 h-4" />
-          Mostrando as 300 primeiras. Filtre por bloco para ver o resto.
-        </p>
-      )}
+      {leitura.estado !== "erro" && <Paginacao pagina={pagina + 1} total={resultado.total ?? 0} porPagina={50} baseZero />}
+
     </div>
   );
 }
@@ -179,7 +179,7 @@ function Filtro({
   quantidade?: number;
 }) {
   return (
-    <Link
+    <Link prefetch={false}
       href={para}
       aria-current={ativo ? "page" : undefined}
       className={

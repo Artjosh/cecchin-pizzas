@@ -1,4 +1,6 @@
 "use client";
+import { TituloNoHeader } from "@/src/components/layouts/TituloNoHeader";
+
 
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, MapPin, Navigation, Truck } from "lucide-react";
@@ -113,7 +115,7 @@ function MapaReal({ eventos, base, selecionado, aoSelecionar }: { eventos: Event
 export function MapaTatico({ eventos, base }: { eventos: EventoNoMapa[]; base: Coordenada }) {
   const [selecionado, setSelecionado] = useState<string | null>(eventos[0]?.id ?? null);
   return <div className="flex h-full flex-col gap-space-md">
-    <header><h1 className="font-headline-md text-headline-md tracking-tight text-on-surface">Mapa tático</h1><p className="mt-1 font-body-md text-body-md text-on-surface-variant">{eventos.length === 0 ? "Nenhum evento hoje." : `${eventos.length} evento${eventos.length > 1 ? "s" : ""} hoje, do mais cedo ao mais tarde.`}</p></header>
+    <header><TituloNoHeader className="font-headline-md text-headline-md tracking-tight text-on-surface">Mapa tático</TituloNoHeader><p className="mt-1 font-body-md text-body-md text-on-surface-variant">{eventos.length === 0 ? "Nenhum evento hoje." : `${eventos.length} evento${eventos.length > 1 ? "s" : ""} hoje, do mais cedo ao mais tarde.`}</p></header>
     <div className="flex items-start gap-space-sm rounded-xl bg-surface-container-low p-space-md"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><p className="font-body-sm text-body-sm text-on-surface-variant"><strong className="text-on-surface">Não há rastreamento de van.</strong> Selecione um evento para posicioná-lo no mapa; o endereço é pesquisado sob demanda, sem varrer a agenda inteira.</p></div>
     <div className="grid min-h-[26rem] flex-1 grid-cols-1 gap-space-md lg:grid-cols-3">
       <div className="relative min-h-[20rem] overflow-hidden rounded-xl bg-surface-container lg:col-span-2"><MapaReal eventos={eventos} base={base} selecionado={selecionado} aoSelecionar={setSelecionado} /></div>

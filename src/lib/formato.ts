@@ -68,8 +68,19 @@ export function comoTelefone(bruto: string | null | undefined): string {
 
 /** Link de WhatsApp, ou `null` quando não há número utilizável. */
 export function linkWhatsApp(bruto: string | null | undefined): string | null {
+  const telefone = telefoneWhatsApp(bruto);
+  return telefone ? `https://wa.me/${telefone}` : null;
+}
+
+/** Cadastros nacionais usam DDD; números internacionais já trazem o país. */
+export function telefoneWhatsApp(bruto: string | null | undefined): string | null {
   if (!bruto) return null;
-  const d = bruto.replace(/\D/g, "");
-  if (d.length < 10) return null;
-  return `https://wa.me/55${d}`;
+  const digitos = bruto.replace(/\D/g, "");
+  if (digitos.length < 10 || digitos.length > 15) return null;
+  return !bruto.trim().startsWith("+") && digitos.length <= 11 ? `55${digitos}` : digitos;
+}
+
+export function linkCentralWhatsApp(bruto: string | null | undefined): string | null {
+  const telefone = telefoneWhatsApp(bruto);
+  return telefone ? `/operacional/whatsapp?telefone=${telefone}` : null;
 }

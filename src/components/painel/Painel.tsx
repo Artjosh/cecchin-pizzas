@@ -1,3 +1,4 @@
+import { TituloNoHeader } from "../layouts/TituloNoHeader";
 import type { ReactNode } from "react";
 import { AlertTriangle, Inbox } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -25,15 +26,15 @@ export function CabecalhoDoPainel({
   return (
     <header className="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
       <div className="flex flex-col max-w-2xl min-w-0">
-        <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight flex items-center gap-space-sm flex-wrap">
+        <TituloNoHeader className="font-headline-lg text-headline-lg text-on-surface tracking-tight flex items-center gap-space-sm flex-wrap">
           {titulo}
           {contagem !== null && contagem !== undefined && (
             <span className="px-2.5 py-0.5 rounded-full bg-primary text-on-primary font-label-md text-label-md">
               {contagem.toLocaleString("pt-BR")}
             </span>
           )}
-        </h1>
-        <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+        </TituloNoHeader>
+        <p className="font-body-sm text-body-sm text-on-surface-variant">
           {descricao}
         </p>
       </div>
@@ -130,14 +131,19 @@ export function LacunaDeDados({
 export function Tabela({
   colunas,
   children,
+  className,
+  larguras,
 }: {
   colunas: string[];
   children: ReactNode;
+  className?: string;
+  larguras?: string[];
 }) {
   return (
     <div className="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className={cn("w-full text-left border-collapse", className)}>
+          {larguras && <colgroup>{larguras.map((largura, i) => <col key={i} style={{ width: largura }} />)}</colgroup>}
           <thead className="bg-surface-container-low">
             <tr>
               {colunas.map((c, i) => (

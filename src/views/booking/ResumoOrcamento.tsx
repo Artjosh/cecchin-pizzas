@@ -158,7 +158,7 @@ export function ResumoOrcamento() {
         </div>
       </div>
       <a
-        href="https://wa.me/5551999999999"
+        href="/api/operacao/whatsapp?contato=1"
         target="_blank"
         rel="noopener noreferrer"
         className="w-full py-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-2 transition-all"

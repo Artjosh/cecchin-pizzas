@@ -1,3 +1,5 @@
+import { TituloNoHeader } from "@/src/components/layouts/TituloNoHeader";
+import Link from "next/link";
 import {
   AgendaFiltravel,
   type EventoDaAgenda,
@@ -30,14 +32,10 @@ function DespachoDesenhado() {
     <div className="flex flex-col w-full h-full gap-space-lg">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
         <div className="flex flex-col max-w-xl">
-          <div className="flex items-center gap-space-xs text-primary font-label-md text-label-md uppercase tracking-wider mb-space-xs">
-            <CalendarClock className="w-4 h-4" />
-            Visão Geral Diária
-          </div>
-          <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
+          <TituloNoHeader className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
             Agenda e Despacho de Eventos
-          </h1>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+          </TituloNoHeader>
+          <p className="font-body-sm text-body-sm text-on-surface-variant">
             Controle central de rotas, logística de vans, insumos de massa e
             alocação técnica da equipe de campo.
           </p>
@@ -124,10 +122,10 @@ function DespachoDesenhado() {
             </div>
           </div>
           <div className="p-3 bg-surface-container-highest border-t border-outline-variant/20 flex gap-2">
-            <button type="button" className="flex-1 bg-primary text-on-primary font-label-md text-label-md py-1.5 rounded-lg flex items-center justify-center gap-1.5 hover:opacity-90">
+            <Link href="/operacional/whatsapp" className="flex-1 bg-primary text-on-primary font-label-md text-label-md py-1.5 rounded-lg flex items-center justify-center gap-1.5 hover:opacity-90">
               <MessageCircle className="w-4 h-4" />
-              Monitorar Cliente
-            </button>
+              Abrir Central
+            </Link>
             <button type="button" className="w-10 flex items-center justify-center rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors border border-outline-variant/50">
               <Car className="w-[18px] h-[18px]" />
             </button>
@@ -255,9 +253,9 @@ function DespachoDesenhado() {
             <button type="button" className="flex-1 bg-surface-container hover:bg-surface-container-high border border-outline-variant/50 text-on-surface font-label-md text-label-md py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
               Detalhes
             </button>
-            <button type="button" className="w-10 flex items-center justify-center rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors border border-outline-variant/50">
+            <Link href="/operacional/whatsapp" aria-label="Abrir Central WhatsApp" className="w-10 flex items-center justify-center rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors border border-outline-variant/50">
                <MessageCircle className="w-[18px] h-[18px]" />
-            </button>
+            </Link>
           </div>
         </div>
       </div>
@@ -336,14 +334,10 @@ async function DespachoDoBanco() {
     <div className="flex flex-col w-full h-full gap-space-lg">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
         <div className="flex flex-col max-w-xl">
-          <div className="flex items-center gap-space-xs text-primary font-label-md text-label-md uppercase tracking-wider mb-space-xs">
-            <CalendarClock className="w-4 h-4" />
-            Agenda do banco
-          </div>
-          <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
+          <TituloNoHeader className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
             Agenda e Despacho de Eventos
-          </h1>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+          </TituloNoHeader>
+          <p className="font-body-sm text-body-sm text-on-surface-variant">
             {leitura.estado === "ok"
               ? `${leitura.linhas.length} eventos confirmados de hoje em diante.`
               : "Eventos confirmados de hoje em diante."}

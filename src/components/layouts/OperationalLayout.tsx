@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import {ContextoTitulo,type TituloRegistrado} from "./TituloNoHeader";
+import {VoltarDinamico,registrarOrigem} from "./VoltarDinamico";
 import { useEffect, useState } from "react";
 import { redirect, usePathname } from "next/navigation";
 import { cn } from "../../lib/utils";
@@ -10,7 +12,6 @@ import {
   ClipboardList,
   HardHat,
   History,
-  ListChecks,
   Map,
   MapPinned,
   MessageCircle,
@@ -25,10 +26,12 @@ import {
   Wallet,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
-import { MenuDoUsuario } from "../MenuDoUsuario";
+import { SeletorDeTema } from "../SeletorDeTema";
+import { AvisoAtendimento } from "../whatsapp/AvisoAtendimento";
 
 export function OperationalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [titulo,setTitulo]=useState<TituloRegistrado>(null);
   const { podeVer } = useAuth();
 
   const isDespacho = pathname === "/operacional/despacho";
@@ -58,7 +61,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
    */
 
   return (
-    <div className="min-h-screen bg-surface font-body-md text-body-md text-on-surface antialiased flex">
+    <ContextoTitulo.Provider value={setTitulo}><div onClickCapture={registrarOrigem} className="min-h-screen bg-surface font-body-md text-body-md text-on-surface antialiased flex">
       {/* Fundo que fecha a gaveta. Só existe com ela aberta, e só no celular. */}
       {menuAberto && (
         <button
@@ -99,13 +102,13 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
               Ir para
             </span>
             <div className="grid grid-cols-2 gap-1">
-              <Link
+              <Link prefetch={false}
                 href="/cliente/contratar"
                 className="px-2 py-1.5 rounded font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-container hover:text-on-surface text-left transition-colors"
               >
                 👤 Cliente
               </Link>
-              <Link
+              <Link prefetch={false}
                 href="/operacional/minha-rota"
                 className={cn(
                   "px-2 py-1.5 rounded font-label-sm text-label-sm text-left transition-colors",
@@ -117,7 +120,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                 🍕 Equipe
               </Link>
               {podeVer(['gestao']) && (
-                <Link
+                <Link prefetch={false}
                   href="/operacional/despacho"
                   className={cn(
                     "px-2 py-1.5 rounded font-label-sm text-label-sm text-left transition-colors",
@@ -130,7 +133,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               )}
               {podeVer(['admin']) && (
-                <Link
+                <Link prefetch={false}
                   href="/admin/catalogo"
                   className={cn(
                     "px-2 py-1.5 rounded font-label-sm text-label-sm text-left transition-colors",
@@ -146,12 +149,40 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <nav className="flex flex-col gap-1 overflow-y-auto">
+            <span className="px-3 pt-4 pb-1 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
+              Equipe de Campo
+            </span>
+            <Link prefetch={false}
+              href="/operacional/minha-rota"
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
+                pathname === "/operacional/minha-rota"
+                  ? "bg-primary-container text-on-primary-container font-bold"
+                  : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              )}
+            >
+              <Route className="w-5 h-5" />
+              <span className="font-label-lg text-label-lg">Minha Rota</span>
+            </Link>
+            <Link prefetch={false}
+              href="/operacional/minha-escala"
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
+                pathname === "/operacional/minha-escala"
+                  ? "bg-primary-container text-on-primary-container font-bold"
+                  : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              )}
+            >
+              <Users className="w-5 h-5" />
+              <span className="font-label-lg text-label-lg">Minha escala</span>
+            </Link>
+
             {podeVer(['gestao']) && (
               <>
                 <span className="px-3 pt-2 pb-1 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
                   Operações & Despacho
                 </span>
-                <Link
+                <Link prefetch={false}
                   href="/operacional/despacho"
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
@@ -163,7 +194,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <CalendarClock className="w-5 h-5" />
                   <span className="font-label-lg text-label-lg">Despacho & Agenda</span>
                 </Link>
-                <Link
+                <Link prefetch={false}
                   href="/operacional/pendencias"
                   className={cn(
                     "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
@@ -175,19 +206,9 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <ClipboardList className="w-[18px] h-[18px]" />
                   Pendências
                 </Link>
-                <Link
-                  href="/operacional/escala"
-                  className={cn(
-                    "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
-                    pathname.startsWith("/operacional/escala")
-                      ? "bg-primary-container text-on-primary-container"
-                      : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                  )}
-                >
-                  <Users className="w-[18px] h-[18px]" />
-                  Escala de equipe
-                </Link>
-                <Link
+
+                <Link prefetch={false} href="/admin/montar-equipe" className={cn("flex items-center gap-3 rounded-lg px-3 py-2",pathname==="/admin/montar-equipe"?"bg-primary-container text-on-primary-container":"text-on-surface-variant hover:bg-surface-container")}><Users className="h-5 w-5"/>Montar equipe</Link>
+                <Link prefetch={false}
                   href="/admin/notificacoes"
                   className={cn(
                     "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
@@ -199,7 +220,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <MessageSquareShare className="w-[18px] h-[18px]" />
                   Notificações & regras
                 </Link>
-                <Link
+                <Link prefetch={false}
                   href="/operacional/clientes"
                   className={cn(
                     "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
@@ -211,7 +232,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <Users className="w-[18px] h-[18px]" />
                   Clientes
                 </Link>
-                <Link
+                <Link prefetch={false}
                   href="/operacional/mapa"
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
@@ -223,7 +244,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <Map className="w-5 h-5" />
                   <span className="font-label-lg text-label-lg">Mapa Tático</span>
                 </Link>
-                <Link
+                <Link prefetch={false}
                   href="/operacional/whatsapp"
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
@@ -238,52 +259,12 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
               </>
             )}
 
-            <span className="px-3 pt-4 pb-1 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
-              Equipe de Campo
-            </span>
-            <Link
-              href="/operacional/minha-rota"
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
-                pathname === "/operacional/minha-rota"
-                  ? "bg-primary-container text-on-primary-container font-bold"
-                  : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-              )}
-            >
-              <Route className="w-5 h-5" />
-              <span className="font-label-lg text-label-lg">Minha Rota</span>
-            </Link>
-            <Link
-              href="/operacional/minha-escala"
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
-                pathname === "/operacional/minha-escala"
-                  ? "bg-primary-container text-on-primary-container font-bold"
-                  : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-              )}
-            >
-              <Users className="w-5 h-5" />
-              <span className="font-label-lg text-label-lg">Minha escala</span>
-            </Link>
-            <Link
-              href="/operacional/checklist"
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
-                pathname === "/operacional/checklist"
-                  ? "bg-primary-container text-on-primary-container font-bold"
-                  : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-              )}
-            >
-              <ListChecks className="w-5 h-5" />
-              <span className="font-label-lg text-label-lg">Checklist & Forno</span>
-            </Link>
-
             {podeVer(['admin']) && (
               <>
                 <span className="px-3 pt-4 pb-1 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
                   Administração
                 </span>
-                <Link
+                <Link prefetch={false}
                   href="/admin/catalogo"
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
@@ -295,7 +276,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <BookOpen className="w-5 h-5" />
                   <span className="font-label-lg text-label-lg">Catálogo & Preços</span>
                 </Link>
-                <Link
+                <Link prefetch={false}
                   href="/admin/financeiro"
                   className={cn(
                     "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
@@ -307,7 +288,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <Wallet className="w-[18px] h-[18px]" />
                   Financeiro
                 </Link>
-                <Link
+                <Link prefetch={false}
                   href="/admin/localidades"
                   className={cn(
                     "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
@@ -319,7 +300,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <MapPinned className="w-[18px] h-[18px]" />
                   Localidades
                 </Link>
-                <Link
+                <Link prefetch={false}
                   href="/admin/operacao"
                   className={cn(
                     "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
@@ -331,7 +312,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <HardHat className="w-[18px] h-[18px]" />
                   Equipe de operação
                 </Link>
-                <Link
+                <Link prefetch={false}
                   href="/admin/auditoria"
                   className={cn(
                     "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",
@@ -343,7 +324,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <History className="w-[18px] h-[18px]" />
                   Auditoria
                 </Link>
-                <Link
+                <Link prefetch={false}
                   href="/admin/frota"
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg transition-all",
@@ -360,9 +341,6 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
 
-        <div className="flex flex-col gap-space-sm border-t border-outline-variant/30 pt-space-md mt-4">
-          <MenuDoUsuario />
-        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -379,24 +357,22 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
             >
               {menuAberto ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            {/* O aviso de cobertura some no celular: ocupa a largura inteira e
-                não é o que quem abre a tela no campo precisa ler primeiro. */}
-            <span className="hidden md:flex px-2.5 py-1 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm font-bold items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-tertiary-container"></span>
-              Operação ao Vivo: POA, Canoas, SL & NH
-            </span>
+            <VoltarDinamico fallback={pathname.startsWith("/operacional/eventos/")?"/operacional/despacho":pathname.startsWith("/operacional/clientes/")?"/operacional/clientes":undefined} sempre={pathname.startsWith("/operacional/eventos/")||pathname.startsWith("/operacional/clientes/")}/>
+            <h1 className="min-w-0 line-clamp-2 text-sm font-bold leading-tight md:block md:truncate md:text-xl">{titulo?.caminho===pathname?titulo.conteudo:"Operação"}</h1>
           </div>
-          <div className="flex items-center gap-space-sm">
-            <Link
-              href="/operacional/whatsapp"
+          <div className="flex shrink-0 items-center gap-space-sm">
+            {!podeVer(['gestao']) && <Link prefetch={false}
+              href="/api/operacao/whatsapp?contato=1"
               className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors"
             >
               <MessageCircle className="w-4 h-4 text-tertiary" />
               <span className="font-label-sm text-label-sm font-bold">
                 WhatsApp
               </span>
-            </Link>
-            <Link href="/cliente/perfil" className="w-8 h-8 rounded-full bg-primary flex items-center justify-center hover:opacity-80 transition-opacity cursor-pointer">
+            </Link>}
+            <SeletorDeTema />
+            {podeVer(['gestao']) && <AvisoAtendimento />}
+            <Link prefetch={false} href="/cliente/perfil" aria-label="Meu perfil" className="w-8 h-8 rounded-full bg-primary flex items-center justify-center hover:opacity-80 transition-opacity cursor-pointer">
               <User className="w-[18px] h-[18px] text-on-primary" />
             </Link>
           </div>
@@ -409,10 +385,10 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
           do último cartão da agenda, o `desligar` da última linha do catálogo.
           Sai junto com o interruptor, quando a última tela estiver ligada.
         */}
-        <main className="flex-1 bg-surface p-space-md md:p-space-lg pb-24 min-w-0">
+        <main className={pathname === "/operacional/whatsapp" ? "h-[calc(100dvh-4rem)] min-h-0 min-w-0 overflow-hidden bg-surface p-3 md:p-4" : "flex-1 bg-surface px-space-md py-3 md:px-space-lg pb-24 min-w-0"}>
           {children}
         </main>
       </div>
-    </div>
+    </div></ContextoTitulo.Provider>
   );
 }
