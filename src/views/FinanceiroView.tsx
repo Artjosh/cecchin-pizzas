@@ -1,10 +1,9 @@
-import Link from "next/link";
+import {ConciliacaoTabela,type Conciliacao} from "../components/painel/TabelasOperacionais";
 import { ArrowDownRight, ArrowUpRight, Receipt } from "lucide-react";
 
 import {
   CabecalhoDoPainel,
   Celula,
-  Etiqueta,
   FalhaDeLeitura,
   LacunaDeDados,
   Linha,
@@ -33,18 +32,7 @@ import { comoLeitura } from "../servidor/fonte";
  * financeira que funciona hoje, e vem de `evento`, não das tabelas vazias.
  */
 
-interface Conciliacao {
-  evento_id: string;
-  data_evento: string;
-  cliente_nome: string | null;
-  sinal: string | number | null;
-  a_acertar: string | number | null;
-  valor_cobrado: string | number | null;
-  sinal_lancado: boolean | null;
-  pagamento_lancado: boolean | null;
-  sinal_a_conferir: boolean | null;
-  acerto_pendente: boolean | null;
-}
+
 
 interface Lancamento {
   id: string;
@@ -144,47 +132,7 @@ export async function FinanceiroView() {
         )}
 
         {conciliacao.estado === "ok" && (
-          <Tabela
-            colunas={["Data", "Cliente", "Cobrado", "Sinal", "A acertar", "Situação", ""]}
-          >
-            {pendentes.map((c) => (
-              <Linha key={c.evento_id}>
-                <Celula className="whitespace-nowrap">
-                  {comoData(c.data_evento)}
-                </Celula>
-                <Celula destaque>{c.cliente_nome ?? "—"}</Celula>
-                <Celula className="text-right whitespace-nowrap">
-                  {c.valor_cobrado === null
-                    ? "não acertado"
-                    : formatBRL(Number(c.valor_cobrado))}
-                </Celula>
-                <Celula className="text-right whitespace-nowrap">
-                  {formatBRL(Number(c.sinal ?? 0))}
-                </Celula>
-                <Celula destaque className="text-right whitespace-nowrap">
-                  {formatBRL(Number(c.a_acertar ?? 0))}
-                </Celula>
-                <Celula>
-                  <span className="flex flex-wrap gap-1">
-                    {c.sinal_a_conferir && (
-                      <Etiqueta tom="atencao">conferir sinal</Etiqueta>
-                    )}
-                    {c.acerto_pendente && (
-                      <Etiqueta tom="atencao">acerto pendente</Etiqueta>
-                    )}
-                  </span>
-                </Celula>
-                <Celula className="text-right">
-                  <Link
-                    href={`/operacional/eventos/${c.evento_id}`}
-                    className="font-label-md text-label-md text-primary hover:opacity-80"
-                  >
-                    Abrir
-                  </Link>
-                </Celula>
-              </Linha>
-            ))}
-          </Tabela>
+          <ConciliacaoTabela pendentes={pendentes}/>
         )}
       </section>
 

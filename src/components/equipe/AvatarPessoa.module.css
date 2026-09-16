@@ -1,0 +1,3 @@
+.olhos { transform-box:fill-box; transform-origin:center; animation:piscar 6s infinite; }
+@keyframes piscar { 0%,45%,49%,100%{transform:scaleY(1)} 47%{transform:scaleY(.1)} }
+@media(prefers-reduced-motion:reduce){.olhos{animation:none}}

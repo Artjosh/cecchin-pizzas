@@ -1,3 +1,6 @@
+import Link from "next/link";
+import {EquipeOperacao} from "../components/equipe/EquipeOperacao";
+import {fonteDeDados} from "../servidor/fonte";
 import { BadgeCheck } from "lucide-react";
 
 import {
@@ -50,7 +53,7 @@ interface Funcionario {
   ativo: boolean;
 }
 
-export async function OperacaoEquipeView() {
+async function VinculosOperacao() {
   const sessao = await exigirPapel(["gestao"]);
 
   const [responsaveisR, funcionariosR, contasR] = await Promise.all([
@@ -166,3 +169,5 @@ export async function OperacaoEquipeView() {
     </div>
   );
 }
+
+export async function OperacaoEquipeView({vinculos=false}:{vinculos?:boolean}={}){await exigirPapel(["gestao"]);const demo=(await fonteDeDados())==="mock";if(vinculos&&!demo)return <div className="space-y-4"><Link href="/admin/operacao" className="text-sm text-primary">Voltar aos integrantes</Link><VinculosOperacao/></div>;return <EquipeOperacao demo={demo}/>;}

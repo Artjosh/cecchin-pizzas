@@ -1,17 +1,16 @@
 "use client";
 
+import { useHistoricoConversa,type Mensagem } from "./useHistoricoConversa";
+import estilos from "./HistoricoConversa.module.css";
 import { Paginacao } from "../painel/Paginacao";
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ModoConversaWhatsapp } from "../ModoConversaWhatsapp";
 import { EnviarMensagemWhatsapp } from "../EnviarMensagemWhatsapp";
-import { Trash2, Clock3, LoaderCircle, CircleAlert } from "lucide-react";
+import { ArrowDown, Trash2, Clock3, LoaderCircle, CircleAlert } from "lucide-react";
 import { SomAtendimento } from "./SomAtendimento";
 import { comoTelefone } from "../../lib/formato";
-
-type Mensagem = { id: string; direcao: string; conteudo: Record<string, unknown>; tipo: string; status: string; criado_em: string };
-type Historico = { total: number; historicoOculto: boolean; assumida: boolean; mensagens: Mensagem[]; temMais: boolean; modo: "automatico" | "atendimento_humano"; fila: Array<{ id: string; status: string; conteudo: Record<string, unknown> }> };
 
 function texto(conteudo: Record<string, unknown>, tipo = "") {
   if (typeof conteudo.texto === "string") return conteudo.texto;
@@ -53,7 +52,6 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [telefone, setTelefone] = useState("");
   const [numero, setNumero] = useState("");
-  const [pagina, setPagina] = useState(0);
   const [antigas, setAntigas] = useState(false);
   const [revisao, setRevisao] = useState(0);
   const [revisaoConversa, setRevisaoConversa] = useState(0);
@@ -64,16 +62,12 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
   const modal = useRef<HTMLDialogElement>(null);
   useEffect(() => { if (excluir) modal.current?.showModal(); else modal.current?.close(); }, [excluir]);
   const [atencao, setAtencao] = useState<string[]>([]);
-  const [dados, setDados] = useState<Historico | null>(null);
-  const [erro, setErro] = useState("");
+  const {dados,setDados,erro,carregandoMais,longeDoFim,novas,listaMensagens,conteudo,aoRolar,descer,carregarMais}=useHistoricoConversa(telefone,antigas,revisaoConversa);
   const [lista, setLista] = useState(telefones);
   const [paginaLista, setPaginaLista] = useState(0);
   const [totalConversas, setTotalConversas] = useState(0);
   const [erroLista, setErroLista] = useState("");
-  const listaMensagens = useRef<HTMLOListElement>(null);
   const abertura = useRef(0);
-  const mensagemMaisRecente = dados?.mensagens[0]?.id;
-  const filaAtual = dados?.fila.map(item => item.id).join(",");
 
   useEffect(() => {
     setAguardando(filtroInicial);
@@ -81,12 +75,6 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
     setLista([]);
     setCarregandoLista(true);
   }, [filtroInicial]);
-
-  useEffect(() => {
-    if (pagina === 0 && listaMensagens.current) {
-      listaMensagens.current.scrollTop = listaMensagens.current.scrollHeight;
-    }
-  }, [telefone, pagina, mensagemMaisRecente, filaAtual]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -112,27 +100,6 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
     if (/^\d{10,15}$/.test(telefoneInicial)) { void selecionar(telefoneInicial); setNumero(telefoneInicial); }
   }, [telefoneInicial]);
 
-  useEffect(() => {
-    if (!telefone) return;
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout>;
-    setErro("");
-    async function carregar() {
-      try {
-        const resposta = await fetch(`/api/operacao/whatsapp?telefone=${telefone}&pagina=${pagina}&antigas=${antigas ? "1" : "0"}`, { cache: "no-store", signal: controller.signal });
-        const resultado = await resposta.json();
-        if (!resposta.ok) throw new Error(resultado.mensagem ?? "Não foi possível carregar a conversa.");
-        if (!controller.signal.aborted) { setDados(resultado); setErro(""); }
-      } catch (causa) {
-        if (!controller.signal.aborted) setErro(causa instanceof Error ? causa.message : "Falha ao carregar a conversa.");
-      } finally {
-        if (!controller.signal.aborted) timer = setTimeout(() => { void carregar(); }, 10000);
-      }
-    }
-    void carregar();
-    return () => { controller.abort(); clearTimeout(timer); };
-  }, [telefone, pagina, antigas, revisaoConversa]);
-
   async function selecionar(valor: string) {
     const pedido = ++abertura.current;
     setErroLista("");
@@ -141,7 +108,7 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
       if (!r.ok) throw new Error("Não foi possível abrir a conversa.");
       if (pedido !== abertura.current) return;
       if (valor !== telefone) setDados(null);
-      setTelefone(valor); setPagina(0); setAntigas(false); setRevisao(v => v + 1);
+      setTelefone(valor); setAntigas(false); setRevisao(v => v + 1);
     } catch (e) { setErroLista(e instanceof Error ? e.message : "Falha ao abrir conversa."); }
   }
   async function remover() {
@@ -189,10 +156,14 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
           </div>
         </div>}
         {dados && <>
-          <div className="mb-3 flex flex-wrap gap-3">{dados.historicoOculto && <button onClick={() => { setAntigas(true); setPagina(0); }} className="text-sm text-primary">Carregar mensagens antigas</button>}<Paginacao pagina={pagina + 1} total={dados.total} porPagina={50} onPagina={valor => setPagina(valor - 1)} rotulo="Páginas de mensagens" /></div>
-          <ol ref={listaMensagens} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto [scrollbar-gutter:stable] rounded-lg bg-surface-container-low p-3">
-            {[...dados.mensagens].reverse().map((mensagem) => <li key={mensagem.id} className={`max-w-[90%] rounded-xl p-3 ${mensagem.direcao === "saida" ? "self-end bg-primary-container text-on-primary-container" : "self-start bg-surface"}`}><p className="whitespace-pre-wrap break-words">{texto(mensagem.conteudo, mensagem.tipo)}</p><AnexoDaMensagem mensagem={mensagem} /><p className="mt-1 text-xs opacity-75">{new Date(mensagem.criado_em).toLocaleString("pt-BR")} · {mensagem.status === "enviada" ? "Envio aceito pela ponte; entrega ainda não confirmada" : mensagem.status === "entregue" ? "Entregue no WhatsApp" : mensagem.status === "lida" ? "Lida no WhatsApp" : mensagem.status}</p></li>)}
-            {[...dados.fila].reverse().map(item => <li key={`fila-${item.id}`} className={`max-w-[90%] self-end rounded-xl border px-4 py-3 ${item.status === "falha" ? "border-error/30 bg-error/5" : "border-on-surface/15 bg-surface"}`}>
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg bg-surface-container-low">
+          <div ref={listaMensagens} onScroll={aoRolar} aria-label="Histórico da conversa" className="absolute inset-0 overflow-y-auto overscroll-contain [overflow-anchor:none] [scrollbar-gutter:stable]">
+          <ol ref={conteudo} className="flex min-h-full flex-col gap-3 p-3">
+            {carregandoMais&&<li role="status" className="flex shrink-0 items-center justify-center gap-2 py-2 text-xs text-on-surface-variant"><LoaderCircle size={14} className="animate-spin"/>Carregando mensagens anteriores…</li>}
+            {erro&&dados.temMais&&<li className="text-center"><button onClick={carregarMais} className="rounded-lg bg-surface-container px-3 py-2 text-xs">Tentar carregar anteriores</button></li>}
+            {dados.historicoOculto&&!dados.temMais&&<li className="text-center"><button onClick={()=>setAntigas(true)} className="rounded-full bg-surface-container px-3 py-2 text-xs text-primary">Carregar mensagens antigas</button></li>}
+            {[...dados.mensagens].reverse().map((mensagem) => <li key={mensagem.id} data-mensagem={mensagem.id} className={`shrink-0 max-w-[90%] rounded-xl p-3 ${mensagem.direcao === "saida" ? "self-end bg-primary-container text-on-primary-container" : "self-start bg-surface"}`}><p className="whitespace-pre-wrap break-words">{texto(mensagem.conteudo, mensagem.tipo)}</p><AnexoDaMensagem mensagem={mensagem} /><p className="mt-1 text-xs opacity-75">{new Date(mensagem.criado_em).toLocaleString("pt-BR")} · {mensagem.status === "enviada" ? "Envio aceito pela ponte; entrega ainda não confirmada" : mensagem.status === "entregue" ? "Entregue no WhatsApp" : mensagem.status === "lida" ? "Lida no WhatsApp" : mensagem.status}</p></li>)}
+            {[...dados.fila].reverse().map(item => <li key={`fila-${item.id}`} data-mensagem={`fila-${item.id}`} className={`shrink-0 max-w-[90%] self-end rounded-xl border px-4 py-3 ${item.status === "falha" ? "border-error/30 bg-error/5" : "border-on-surface/15 bg-surface"}`}>
               <p className="whitespace-pre-wrap break-words">{texto(item.conteudo)}</p>
               <div className={`mt-2 flex items-center justify-end gap-1.5 text-xs font-medium ${item.status === "falha" ? "text-error" : "text-on-surface-variant"}`}>
                 {item.status === "enviando" ? <LoaderCircle size={14} className="animate-spin" /> : item.status === "falha" ? <CircleAlert size={14} /> : <Clock3 size={14} />}
@@ -201,6 +172,9 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
             </li>)}
             {!dados.mensagens.length && !dados.fila.length && <li>Nenhuma mensagem registrada nesta conversa.</li>}
           </ol>
+          </div>
+          {longeDoFim&&<button type="button" onClick={descer} aria-label={novas?`Ir para mensagens recentes: ${novas} novas mensagens`:"Ir para mensagens recentes"} title="Ir para o fim da conversa" className={`${novas?estilos.novas:""} absolute bottom-4 right-4 z-10 flex cursor-pointer items-center gap-2 rounded-full border border-primary/20 bg-primary px-3 py-3 text-on-primary shadow-lg transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`}><ArrowDown size={21}/>{novas>0&&<span className="text-xs font-semibold">{novas>99?"99+":novas}</span>}</button>}
+          </div>
 
         </>}
         <div className="mt-4"><EnviarMensagemWhatsapp key={telefone} telefones={[telefone]} fixarTelefone aoEnviar={() => { setDados(anterior => anterior ? { ...anterior, modo: "atendimento_humano", assumida: true } : anterior); atualizarConversa(); }} /></div>

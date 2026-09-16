@@ -1,18 +1,14 @@
+import {ClientesTabela,type ClienteResumo} from "../components/painel/TabelasOperacionais";
 import { Paginacao } from "../components/painel/Paginacao";
 import { podeAcessar } from "../servidor/auth/sessao-atual";
 import Link from "next/link";
-import { ArrowRight, MessageCircle, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
 import {
   CabecalhoDoPainel,
-  Celula,
   FalhaDeLeitura,
-  Linha,
   SemLinhas,
-  Tabela,
 } from "../components/painel/Painel";
-import { comoData, comoTelefone, linkWhatsApp, linkCentralWhatsApp } from "../lib/formato";
-import { formatBRL } from "../lib/moeda";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 import { comoLeitura } from "../servidor/fonte";
@@ -29,16 +25,7 @@ import { comoLeitura } from "../servidor/fonte";
  * como evento; cancelado COM sinal conta, porque o dinheiro passou.
  */
 
-interface ClienteResumo {
-  id: string;
-  nome: string | null;
-  telefone: string | null;
-  eventos: number;
-  primeiro_evento: string | null;
-  ultimo_evento: string | null;
-  pessoas_atendidas: number | null;
-  total_gasto: string | number | null;
-}
+
 
 const POR_PAGINA = 50;
 
@@ -130,54 +117,7 @@ export async function ClientesView({
 
       {leitura.estado === "ok" && (
         <>
-          <Tabela
-            colunas={["Cliente", "Telefone", "Eventos", "Pessoas", "Gasto", "Último", ""]}
-          >
-            {linhas.map((c) => {
-              const zap = podeAcessar(sessao.usuario.papel, ["gestao"]) ? linkCentralWhatsApp(c.telefone) : linkWhatsApp(c.telefone);
-              return (
-                <Linha key={c.id}>
-                  <Celula destaque>{c.nome ?? "sem nome"}</Celula>
-                  <Celula className="whitespace-nowrap">
-                    {zap ? (
-                      <a
-                        href={zap}
-                        target={zap?.startsWith("/") ? undefined : "_blank"}
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-primary hover:opacity-80"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        {comoTelefone(c.telefone)}
-                      </a>
-                    ) : (
-                      comoTelefone(c.telefone)
-                    )}
-                  </Celula>
-                  <Celula destaque className="text-right">
-                    {c.eventos}
-                  </Celula>
-                  <Celula className="text-right">
-                    {c.pessoas_atendidas ?? "—"}
-                  </Celula>
-                  <Celula destaque className="text-right whitespace-nowrap">
-                    {formatBRL(Number(c.total_gasto ?? 0))}
-                  </Celula>
-                  <Celula className="whitespace-nowrap">
-                    {comoData(c.ultimo_evento)}
-                  </Celula>
-                  <Celula className="text-right">
-                    <Link
-                      href={`/operacional/clientes/${c.id}`}
-                      className="inline-flex items-center gap-1 font-label-md text-label-md text-primary hover:opacity-80"
-                    >
-                      Abrir
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </Celula>
-                </Linha>
-              );
-            })}
-          </Tabela>
+          <ClientesTabela linhas={linhas} gestao={podeAcessar(sessao.usuario.papel,["gestao"])}/>
 
 
         </>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   ChevronRight,
@@ -11,6 +11,7 @@ import {
   Search,
 } from "lucide-react";
 
+import { AgendaPlanilha } from "./AgendaPlanilha";
 import { QrEvento } from "./embarque/QrEvento";
 import { cn } from "../lib/utils";
 import { formatBRL } from "../lib/moeda";
@@ -143,17 +144,29 @@ export interface ResponsavelDisponivel {
 }
 
 export function AgendaFiltravel({
-  eventos,
+  eventos: eventosIniciais,
   hoje,
   responsaveis = [],
   podeAlocar = false,
+  demo = false,
 }: {
   eventos: EventoDaAgenda[];
   hoje: string;
   responsaveis?: ResponsavelDisponivel[];
   podeAlocar?: boolean;
+  demo?: boolean;
 }) {
   const parametros=useSearchParams();
+  const [eventos,setEventos]=useState(eventosIniciais);
+  const [visualizacao,setVisualizacao]=useState(3);
+  useEffect(()=>{try {const salvo=Number(localStorage.getItem("cecchin:agenda:visualizacao"));if(salvo>=1&&salvo<=6)setVisualizacao(salvo);}catch{}},[]);
+  useEffect(()=>{let lista=eventosIniciais;if(demo){try{const salvos=JSON.parse(localStorage.getItem("cecchin:demo:agenda:responsaveis")??"{}");lista=lista.map(e=>Object.hasOwn(salvos,e.id)?{...e,responsavel_id:salvos[e.id]||null,responsavel_nome:responsaveis.find(r=>r.id===salvos[e.id])?.nome??null}:e);}catch{}}setEventos(lista);},[eventosIniciais,demo,responsaveis]);
+  async function alocar(id:string,responsavel:string){
+    if(!demo){const r=await fetch("/api/operacao/evento",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({evento:id,responsavel})});if(!r.ok){const d=await r.json().catch(()=>({}));throw Error(d.mensagem??"Falha ao alocar responsável.");}}
+    if(demo){try{const salvos=JSON.parse(localStorage.getItem("cecchin:demo:agenda:responsaveis")??"{}");localStorage.setItem("cecchin:demo:agenda:responsaveis",JSON.stringify({...salvos,[id]:responsavel}));}catch{}}
+    setEventos(atual=>atual.map(e=>e.id===id?{...e,responsavel_id:responsavel||null,responsavel_nome:responsaveis.find(r=>r.id===responsavel)?.nome??null}:e));
+  }
+
   const [aba, setAba] = useState(parametros.get("aba")??"todos");
   const [busca, setBusca] = useState(parametros.get("busca")??"");
   const [soComTelefone, setSoComTelefone] = useState(parametros.get("telefone")==="1");
@@ -278,6 +291,14 @@ export function AgendaFiltravel({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <span className="text-on-surface-variant">{visiveis.length} eventos{demo?" de demonstração":""}</span>
+        <label className="flex items-center gap-3 rounded-lg bg-surface-container-low px-3 py-2">Visualização
+          <input type="range" min={1} max={6} step={1} value={visualizacao} aria-label="Visualização da agenda" aria-valuetext={visualizacao===6?"Planilha":`${visualizacao} cards por linha`} onChange={e=>{const valor=Number(e.target.value);setVisualizacao(valor);try{localStorage.setItem("cecchin:agenda:visualizacao",String(valor));}catch{}}} className="w-28 accent-primary sm:w-40"/>
+          <span className="w-20 font-semibold">{visualizacao===6?"6 · Planilha":`${visualizacao} por linha`}</span>
+        </label>
+      </div>
+
       {filtrosAbertos&&<section id="filtros-agenda" aria-label="Filtros da agenda" className="rounded-xl bg-surface-container-low p-3">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 [&_input]:bg-surface-container [&_select]:bg-surface-container [&_select]:text-on-surface [&_option]:bg-surface-container [&_option]:text-on-surface">
           <label className="text-sm">Responsável<select aria-label="Responsável" value={responsavelFiltro} onChange={e=>setResponsavelFiltro(e.target.value)} className="mt-1 block w-full rounded-lg p-2"><option value="">Todos</option><option value="sem">Sem responsável</option><option value="com">Com responsável</option></select></label>
@@ -297,25 +318,18 @@ export function AgendaFiltravel({
           {soComTelefone ? " com telefone cadastrado" : ""}.
         </p>
       ) : (
-        <ColunasEventos eventos={visiveis} responsaveis={responsaveis} podeAlocar={podeAlocar} />
+        visualizacao===6 ? <AgendaPlanilha eventos={visiveis} responsaveis={responsaveis} podeAlocar={podeAlocar} alocar={alocar} /> : <ColunasEventos quantidade={visualizacao} eventos={visiveis} responsaveis={responsaveis} podeAlocar={podeAlocar} demo={demo} alocar={alocar} />
       )}
     </div>
   );
 }
 
-function ColunasEventos({eventos,responsaveis,podeAlocar}:{eventos:EventoDaAgenda[];responsaveis:ResponsavelDisponivel[];podeAlocar:boolean}) {
-  const [quantidade,setQuantidade]=useState(1);
-  useEffect(()=>{
-    const tablet=window.matchMedia("(min-width: 768px)"),desktop=window.matchMedia("(min-width: 1280px)");
-    const atualizar=()=>setQuantidade(desktop.matches?3:tablet.matches?2:1);
-    atualizar();tablet.addEventListener("change",atualizar);desktop.addEventListener("change",atualizar);
-    return()=>{tablet.removeEventListener("change",atualizar);desktop.removeEventListener("change",atualizar);};
-  },[]);
-  return <div className="grid items-start gap-space-md" style={{gridTemplateColumns:`repeat(${quantidade}, minmax(0, 1fr))`}}>
-    {Array.from({length:quantidade},(_,coluna)=><div key={coluna} className="flex min-w-0 flex-col gap-space-md" data-coluna-eventos={coluna}>
-      {eventos.filter((_,i)=>i%quantidade===coluna).map(evento=><CartaoEvento key={evento.id} evento={evento} responsaveis={responsaveis} podeAlocar={podeAlocar}/>)}
+function ColunasEventos({eventos,responsaveis,podeAlocar,quantidade,demo,alocar}:{eventos:EventoDaAgenda[];responsaveis:ResponsavelDisponivel[];podeAlocar:boolean;quantidade:number;demo:boolean;alocar:(id:string,responsavel:string)=>Promise<void>}) {
+  return <div className="max-w-full overflow-x-auto pb-2"><div className="grid items-start gap-3" style={{gridTemplateColumns:`repeat(${quantidade}, minmax(0, 1fr))`,minWidth:quantidade===1?undefined:quantidade*220+(quantidade-1)*12}}>
+    {Array.from({length:quantidade},(_,coluna)=><div key={coluna} className="flex min-w-0 flex-col gap-3" data-coluna-eventos={coluna}>
+      {eventos.filter((_,i)=>i%quantidade===coluna).map(evento=><CartaoEvento key={evento.id} evento={evento} responsaveis={responsaveis} podeAlocar={podeAlocar} demo={demo} aoAlocar={alocar}/>)}
     </div>)}
-  </div>;
+  </div></div>;
 }
 
 /**
@@ -328,13 +342,15 @@ function CartaoEvento({
   evento,
   responsaveis,
   podeAlocar,
+  demo,
+  aoAlocar,
 }: {
   evento: EventoDaAgenda;
   responsaveis: ResponsavelDisponivel[];
   podeAlocar: boolean;
+  demo: boolean;
+  aoAlocar:(id:string,responsavel:string)=>Promise<void>;
 }) {
-  const router = useRouter();
-  const [pendente, comecar] = useTransition();
   const [aberto, setAberto] = useState(false);
   const [alocando, setAlocando] = useState(false);
   const [falha, setFalha] = useState<string | null>(null);
@@ -345,32 +361,9 @@ function CartaoEvento({
    * `responsavel_id` nulo, porque lá o nome de quem respondeu era anotado
    * depois do evento.
    */
-  async function alocar(responsavel: string) {
-    setFalha(null);
-    setAlocando(true);
+  async function alocar(responsavel:string){setFalha(null);setAlocando(true);try{await aoAlocar(evento.id,responsavel);}catch(e){setFalha(e instanceof Error?e.message:"Falha ao alocar");}finally{setAlocando(false);}}
 
-    try {
-      const r = await fetch("/api/operacao/evento", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ evento: evento.id, responsavel }),
-      });
-
-      if (!r.ok) {
-        const detalhe = (await r.json().catch(() => ({}))) as { mensagem?: string };
-        setFalha(detalhe.mensagem ?? "O servidor recusou a alocação.");
-        return;
-      }
-
-      comecar(() => router.refresh());
-    } catch {
-      setFalha("Falha de rede. A alocação não foi gravada.");
-    } finally {
-      setAlocando(false);
-    }
-  }
-
-  const pessoas = (evento.inteiros ?? 0) + Math.ceil((evento.meios ?? 0) / 2);
+  const pessoas = (evento.inteiros ?? 0) + (evento.meios ?? 0);
   const local =
     [evento.bairro, evento.cidade].filter(Boolean).join(" · ") || "Sem endereço";
   const zap = podeAlocar ? linkCentralWhatsApp(evento.cliente_telefone) : linkWhatsApp(evento.cliente_telefone);
@@ -398,7 +391,7 @@ function CartaoEvento({
 
       <div className="p-4 flex-1 flex flex-col gap-3">
         <div className={cn("flex flex-col min-w-0",podeAlocar&&"pr-24")}>
-          <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold truncate">
+          <h3 title={evento.cliente_nome??"Sem cliente"} className="font-headline-sm text-headline-sm text-on-surface font-bold truncate">
             {evento.cliente_nome ?? "Sem cliente"}
             {pessoas > 0 ? ` • ${pessoas}p` : ""}
           </h3>
@@ -421,7 +414,7 @@ function CartaoEvento({
           </div>
         </div>
 
-        <div className="flex items-center gap-4 bg-surface-container-low p-2 rounded-lg">
+        <div className="flex flex-wrap items-center gap-2 bg-surface-container-low p-2 rounded-lg">
           <div className="flex flex-col">
             <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">
               Cronograma
@@ -445,7 +438,7 @@ function CartaoEvento({
                 <select
                   id={`resp-${evento.id}`}
                   value={evento.responsavel_id ?? ""}
-                  disabled={alocando || pendente}
+                  disabled={alocando}
                   onChange={(e) => void alocar(e.target.value)}
                   className="font-label-md text-label-md text-on-surface bg-surface-container-high border border-on-surface/20 px-2 py-1.5 rounded max-w-[11rem] truncate focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                 >
@@ -495,9 +488,9 @@ function CartaoEvento({
         )}
       </div>
 
-      {podeAlocar && <div className="px-3 pb-3"><a href={`/admin/montar-equipe?evento=${evento.id}`} className="mb-2 block rounded-lg bg-primary px-3 py-2 text-center text-sm text-on-primary">Montar equipe</a><QrEvento compacto evento={evento.id} titulo={`${evento.cliente_nome ?? "Evento"} · ${comoData(evento.data_evento)}`} /></div>}
+      {podeAlocar && <div className="px-3 pb-3"><a href={`/admin/montar-equipe?evento=${evento.id}`} className="mb-2 block rounded-lg bg-primary px-3 py-2 text-center text-sm text-on-primary">Montar equipe</a><QrEvento compacto demo={demo} evento={evento.id} titulo={`${evento.cliente_nome ?? "Evento"} · ${comoData(evento.data_evento)}`} /></div>}
 
-      <div className="p-3 bg-surface-container-highest border-t border-outline-variant/20 flex gap-2">
+      <div className="p-3 bg-surface-container-highest border-t border-outline-variant/20 flex flex-wrap gap-2">
         <a href={`/operacional/eventos/${evento.id}`} className="flex-1 rounded-lg bg-primary px-3 py-1.5 text-center font-label-md text-label-md text-on-primary hover:opacity-90">Abrir evento</a>
         <button
           type="button"

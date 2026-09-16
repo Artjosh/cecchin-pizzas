@@ -1,0 +1,26 @@
+﻿import {chromium} from './.runtime/node_modules/playwright/index.mjs';import {cookiesDeSessao} from './sessao.mjs';import {execFileSync} from 'node:child_process';
+const email=execFileSync('docker',['exec','supabase_db_Nicolas','psql','-U','postgres','-d','postgres','-Atc',"select email from usuario where papel='admin' limit 1"]).toString().trim();const b=await chromium.launch({executablePath:'C:/Users/josh/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe'});try{const c=await b.newContext({viewport:{width:1920,height:1080}});await c.addCookies(await cookiesDeSessao('http://localhost:3000',email));await c.addCookies([{name:'cecchin_fonte',value:'mock',url:'http://localhost:3000'}]);const p=await c.newPage();const errors=[],writes=[];p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(r.url().includes('/api/operacao/')&&['POST','PATCH','DELETE'].includes(r.method()))writes.push(r.method());});
+await p.setViewportSize({width:1440,height:1000});
+await p.goto('http://localhost:3000/admin/operacao');await p.waitForTimeout(1600);
+await p.getByRole('button',{name:'Perfil e mapa'}).first().click();await p.waitForTimeout(7000);
+let dialog=p.getByRole('dialog',{name:'Perfil do integrante'});
+const canvas=await dialog.locator('canvas').boundingBox();if(!canvas||canvas.height<250)throw Error('Mapa sem altura');
+await p.evaluate(()=>document.documentElement.setAttribute('data-tema','escuro'));
+await p.screenshot({path:'skills/verificar-tela/capturas/perfil-diretorio-desktop.png',mask:[p.locator('header')]});
+await p.setViewportSize({width:390,height:844});await p.waitForTimeout(500);await p.screenshot({path:'skills/verificar-tela/capturas/perfil-diretorio-mobile.png',mask:[p.locator('header')]});
+await p.setViewportSize({width:1440,height:1000});await p.keyboard.press('Escape');
+await p.goto('http://localhost:3000/admin/montar-equipe');await p.waitForTimeout(1500);
+await p.getByRole('spinbutton',{name:'Equipe base',exact:true}).fill('5');
+await p.getByRole('button',{name:/Ver sugest/}).click();await p.getByRole('button',{name:'Aplicar equipe',exact:true}).click();
+await p.getByRole('button',{name:'Mapa do evento',exact:true}).click();await p.waitForTimeout(7000);
+dialog=p.getByRole('dialog',{name:'Evento e deslocamentos da equipe'});
+await dialog.getByRole('button',{name:/Sugest.*2 no mapa/}).click();
+await dialog.getByRole('slider',{name:'Tamanho dos cards no mapa'}).fill('40');
+await dialog.getByRole('button',{name:'Aplicar esta equipe'}).click();
+await p.screenshot({path:'skills/verificar-tela/capturas/mapa-equipe-inline-desktop.png',mask:[p.locator('header')]});
+await dialog.getByRole('button',{name:'Ver perfil',exact:true}).first().click();await p.waitForTimeout(2500);
+await p.screenshot({path:'skills/verificar-tela/capturas/perfil-evento-desktop.png',mask:[p.locator('header')]});
+await p.keyboard.press('Escape');await p.setViewportSize({width:390,height:844});await p.waitForTimeout(800);
+await p.screenshot({path:'skills/verificar-tela/capturas/mapa-equipe-inline-mobile.png',mask:[p.locator('header')]});
+console.log({canvas,overflow:await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),errors,writes});
+}finally{await b.close()}

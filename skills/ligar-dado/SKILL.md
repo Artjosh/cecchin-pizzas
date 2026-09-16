@@ -1,72 +1,39 @@
 ---
 name: ligar-dado
-description: Trocar mock por dado real numa tela. Use ao conectar qualquer tela ao Postgres, PostgREST, Storage ou NestJS. Decide por qual caminho o dado entra e o que precisa existir antes.
+description: Conectar ou revisar dados reais de uma tela, preservando sessão, autorização, componentes compartilhados e persistência.
 ---
 
 # Ligar dado numa tela
 
-Agenda, catálogo, equipe, clientes, mapa, checklist, suporte, rastreio e
-localidades já usam PostgREST sob RLS. Esta skill é o caminho para ligar uma
-tela nova ou substituir a última lacuna de dados. Confira
-`../ARQUITETURA.md` antes de assumir que algo ainda é mock.
+Leia [arquitetura](../../ARQUITETURA.md) e o [backend](../../../cecchin-pizzas-backend/README.md). Confira o código antes de chamar uma tela de mock: montagem/perfis já compartilham componentes em Banco e Desenho.
 
-## Antes: três coisas têm que ser verdade
+## Escolher o caminho
 
-1. **A regra de negócio está respondida.** Se a dúvida aparece em
-   `../cecchin-pizzas-backend/modelagem/docs/07-perguntas.md`, ela não se
-   resolve por inferência. Pergunte.
-2. **A tabela está carregada.** Despesas, contas abertas, auditoria,
-   vigências de preço, taxas de deslocamento e janela de pico já foram
-   carregadas. Receitas continuam sem fonte e tempos de deslocamento na fonte
-   estão vazios. Ver `../cecchin-pizzas-backend/migracao/ETL.md`.
-3. **Existe sessão.** RLS depende de `app.org_atual()`, que depende de um JWT.
-   Sem autenticação, a consulta volta vazia ou vaza — nenhum dos dois é bom.
+| Necessidade | Caminho atual |
+|---|---|
+| Leitura inicial autorizada | Server Component → PostgREST com JWT |
+| Interação/paginação no browser | Componente → BFF autenticado → PostgREST |
+| Escrita atômica de domínio | BFF → RPC PostgreSQL existente |
+| Fila, bot, webhooks e retries | Serviços Nest/adaptador |
+| Mídia WhatsApp | BFF autoriza mensagem sob RLS e busca ponte privada |
+| Upload genérico/Storage | Ainda não implementado; não pressupor bucket |
 
-## Por qual caminho
-
-| o que a tela faz | caminho | por quê |
-|---|---|---|
-| lê catálogo, agenda, evento | Server Component → **PostgREST** | leitura simples com RLS; intermediário só adiciona salto de rede e um lugar a mais para a regra divergir |
-| mostra ou envia arquivo | **Storage** do Supabase, direto | nenhum bucket criado ainda |
-| cria reserva, mexe em dinheiro | route handler do vinext → **NestJS** | precisa de transação, fila e retry |
-| recebe webhook | **NestJS**, sem passar pelo BFF | chega fora de ordem, repete e falha |
-
-Regra curta: **o BFF chama; o Nest decide.** Nada que mexa em dinheiro ou em
-estado de evento se resolve no Worker — ele abre e fecha conexão por
-requisição, não tem cron e tem teto de CPU.
+Uma transação não exige Nest se a RPC já garante suas invariantes. Não recrie autorização em React nem use service_role para esconder uma policy incorreta.
 
 ## Passos
 
-1. **Confirme que a view existe.** O Nest lê `vwEvento`, não a tabela. Leitura
-   nova provavelmente também quer uma view: ela é onde mora o cálculo que não
-   cabe em coluna GENERATED. Ver `DECISOES.md` §3.
-2. **Mantenha a view Server Component.** Se ela já é server, busque direto no
-   corpo do componente. Se virou client em algum momento, veja se dá para
-   voltar antes de criar route handler.
-3. **Preserve o formato do mock.** O mock mostra o que a tela precisa. Ajuste a
-   consulta ao formato da tela, não a tela ao formato da tabela.
-4. **Trate o vazio.** 10.462 clientes reais têm campo em branco, telefone
-   múltiplo e endereço solto. `cliente_id` é nullable de propósito
-   (`DECISOES.md` §16). Renderize ausência, não `undefined`.
-5. **Nada de segredo no cliente.** `NEXT_PUBLIC_` vai para o bundle e é
-   público. `service_role` **nunca** sai do servidor.
-6. **Verifique com a tela.** Rode a skill `verificar-tela` e olhe as imagens.
+1. Localize consulta/RPC e confira campos, grants e papel. Use dados mínimos no DTO.
+2. Verifique regra vigente; consulte perguntas históricas somente com as respostas e decisões posteriores. Não peça novamente uma decisão já aprovada.
+3. Preserve modo Banco real e Desenho local, sem fallback fictício na resposta real.
+4. Confira migrations no ambiente alvo e derivação do ORM se houve mudança de contrato.
+5. Trate vazio, erro, loading e dados incompletos. Não invente foto, coordenada, avaliação ou dinheiro real.
+6. Preserve filtros/seleção entre páginas e carregamento apropriado ao domínio; histórico de chat usa cursor ascendente.
+7. Verifique interface e persistência separadamente, respeitando restrições da sessão. [Verificar tela](../verificar-tela/SKILL.md).
 
-## Armadilhas específicas deste banco
+## Domínio e privacidade
 
-- **Valor pode ser negativo.** `deslocamento`, `extras` e `excedentes` aceitam
-  negativo: é desconto. Não formate como erro.
-- **`valor_cobrado` NULL ≠ 0.** NULL é "não acertado"; zero é cortesia
-  registrada. `DECISOES.md` §6.
-- **`numero_do_dia` é texto e ninguém lê.** É rastro da planilha. Não
-  reintroduza como chave nem como agrupador.
-- **Data de evento é imutável por gatilho.** Um `UPDATE` nela falha. Se a tela
-  precisa remarcar, isso é decisão de negócio, não bug.
-- **Nada é apagado.** Não exponha botão de excluir; exponha `ativo = false` ou
-  `quitada_em`.
+`valor_cobrado` NULL não é zero. Ajustes financeiros podem ser negativos. Data do evento segue fluxo de transferência. Número do dia é rastro textual. Perfil residencial não pertence à leitura ampla de usuário.
 
-## Depois
+Segredos não entram no cliente. `NEXT_PUBLIC_` é público. Não registre payloads com contatos/endereço. Confirmação de equipe e Central podem enviar mensagens reais; Desenho não isola globalmente o WhatsApp.
 
-Atualize `ARQUITETURA.md` e, quando a mudança alterar uma capacidade do banco,
-`../cecchin-pizzas-backend/README.md`. Os dois registram o estado atual e não
-devem voltar a afirmar que telas ligadas ao banco são mocks.
+Atualize o contrato principal afetado e indique o que foi implementado, aplicado e efetivamente conferido.

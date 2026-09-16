@@ -1,16 +1,12 @@
+import {AuditoriaTabela,type Registro} from "../components/painel/TabelasOperacionais";
 import Link from "next/link";
 import { History } from "lucide-react";
 
 import {
   CabecalhoDoPainel,
-  Celula,
-  Etiqueta,
   FalhaDeLeitura,
-  Linha,
   SemLinhas,
-  Tabela,
 } from "../components/painel/Painel";
-import { comoMomento } from "../lib/formato";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 import { comoLeitura } from "../servidor/fonte";
@@ -27,29 +23,9 @@ import { comoLeitura } from "../servidor/fonte";
  * separadas — audita lendo "mudou o horário de 20:00 para 21:30".
  */
 
-interface Registro {
-  id: string;
-  momento: string;
-  tabela: string;
-  registro_id: string | null;
-  operacao: string;
-  campo: string | null;
-  valor_anterior: string | null;
-  valor_novo: string | null;
-  autor: string | null;
-  origem: string | null;
-  frase: string | null;
-}
+
 
 const TABELAS = ["evento", "cliente", "entrada", "usuario", "responsavel"];
-
-/** O gatilho grava em minúscula (`insert`, `update`, `delete`). */
-function tomDaOperacao(op: string): "neutro" | "atencao" | "bom" {
-  const o = op.toLowerCase();
-  if (o === "delete") return "atencao";
-  if (o === "insert") return "bom";
-  return "neutro";
-}
 
 export async function AuditoriaView({
   tabela,
@@ -107,59 +83,7 @@ export async function AuditoriaView({
 
       {leitura.estado === "ok" && (
         <>
-          <Tabela colunas={["Quando", "Tabela", "Operação", "O que mudou", "Quem", ""]}>
-            {linhas.map((r) => (
-              <Linha key={r.id}>
-                <Celula className="whitespace-nowrap">
-                  {comoMomento(r.momento)}
-                </Celula>
-                <Celula>
-                  <span className="font-mono">{r.tabela}</span>
-                </Celula>
-                <Celula>
-                  <Etiqueta tom={tomDaOperacao(r.operacao)}>
-                    {r.operacao.toLowerCase()}
-                  </Etiqueta>
-                </Celula>
-                <Celula destaque>
-                  {r.frase ?? (
-                    <span className="flex flex-col gap-0.5">
-                      <span>{r.campo ?? "—"}</span>
-                      {(r.valor_anterior || r.valor_novo) && (
-                        <span className="font-body-sm text-body-sm text-on-surface-variant">
-                          <span className="line-through">
-                            {r.valor_anterior ?? "vazio"}
-                          </span>
-                          {" → "}
-                          {r.valor_novo ?? "vazio"}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </Celula>
-                <Celula>
-                  <span className="flex flex-col">
-                    <span>{r.autor ?? "—"}</span>
-                    {r.origem && (
-                      <span className="font-body-sm text-body-sm text-on-surface-variant">
-                        {r.origem}
-                      </span>
-                    )}
-                  </span>
-                </Celula>
-                <Celula className="text-right">
-                  {r.tabela === "evento" && r.registro_id && (
-                    <Link
-                      href={`/operacional/eventos/${r.registro_id}`}
-                      className="font-label-md text-label-md text-primary hover:opacity-80"
-                    >
-                      Abrir
-                    </Link>
-                  )}
-                </Celula>
-              </Linha>
-            ))}
-          </Tabela>
+          <AuditoriaTabela linhas={linhas}/>
 
           {linhas.length === 200 && (
             <p className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-space-xs">

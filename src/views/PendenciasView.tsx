@@ -1,17 +1,12 @@
+import {PendenciasTabela,type Pendencia} from "../components/painel/TabelasOperacionais";
 import { Paginacao } from "../components/painel/Paginacao";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 
 import {
   CabecalhoDoPainel,
-  Celula,
-  Etiqueta,
   FalhaDeLeitura,
-  Linha,
   SemLinhas,
-  Tabela,
 } from "../components/painel/Painel";
-import { comoData } from "../lib/formato";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 import { comoLeitura } from "../servidor/fonte";
@@ -28,15 +23,7 @@ import { comoLeitura } from "../servidor/fonte";
  * inteira e não tinha onde ver o que precisa de ação hoje.
  */
 
-interface Pendencia {
-  bloco: string;
-  ordem: number;
-  id: string;
-  data_evento: string;
-  codigo_legado: string | null;
-  pendencia: string;
-  faltando: string[] | null;
-}
+
 
 const NOME_DO_BLOCO: Record<string, string> = {
   informacao: "Informação",
@@ -44,13 +31,6 @@ const NOME_DO_BLOCO: Record<string, string> = {
   confirmacao: "Confirmação",
   feedback: "Feedback",
 };
-
-/** Dinheiro é o que atrasa faturamento. Feedback pode esperar. */
-function tomDoBloco(bloco: string): "neutro" | "atencao" | "bom" {
-  if (bloco === "dinheiro") return "atencao";
-  if (bloco === "feedback") return "bom";
-  return "neutro";
-}
 
 export async function PendenciasView({
   bloco,
@@ -110,55 +90,7 @@ export async function PendenciasView({
       )}
 
       {leitura.estado === "ok" && (
-        <Tabela
-          colunas={["Bloco", "Evento", "Data", "O que falta", ""]}
-          className="table-fixed min-w-[1104px] [&_td]:align-middle [&_tbody_tr:hover]:bg-primary/15 [&_tbody_tr:focus-within]:bg-primary/15"
-          larguras={["15%", "13.5%", "17.8%", "41%", "12.7%"]}
-        >
-          {linhas.map((p) => (
-            <Linha key={`${p.bloco}-${p.id}`}>
-              <Celula>
-                <Etiqueta tom={tomDoBloco(p.bloco)}>
-                  {NOME_DO_BLOCO[p.bloco] ?? p.bloco}
-                </Etiqueta>
-              </Celula>
-              <Celula destaque>
-                <span className="font-mono">{p.codigo_legado ?? "—"}</span>
-              </Celula>
-              <Celula className="whitespace-nowrap">
-                {comoData(p.data_evento)}
-              </Celula>
-              <Celula>
-                <div className="max-w-full overflow-x-auto" tabIndex={p.faltando?.length ? 0 : undefined} aria-label={p.faltando?.length ? "Detalhes da pendência" : undefined}>
-                  <span className="flex w-max min-w-full items-center whitespace-nowrap">
-                    {!p.faltando?.length && <span title={p.pendencia} className="min-w-0 truncate text-on-surface">{p.pendencia}</span>}
-                    {p.faltando && p.faltando.length > 0 && (
-                      <span className="flex w-max min-w-44 items-center justify-center gap-1">
-                        {p.faltando.map((f) => (
-                          <span
-                            key={f}
-                            className="shrink-0 px-1.5 py-0.5 rounded bg-surface-container font-label-sm text-label-sm"
-                          >
-                            {f}
-                          </span>
-                        ))}
-                      </span>
-                    )}
-                  </span>
-                </div>
-              </Celula>
-              <Celula className="text-right">
-                <Link prefetch={false}
-                  href={`/operacional/eventos/${p.id}`}
-                  className="inline-flex items-center gap-1 font-label-md text-label-md text-primary hover:opacity-80"
-                >
-                  Abrir
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </Celula>
-            </Linha>
-          ))}
-        </Tabela>
+        <PendenciasTabela linhas={linhas}/>
       )}
 
       {leitura.estado !== "erro" && <Paginacao pagina={pagina + 1} total={resultado.total ?? 0} porPagina={50} baseZero />}

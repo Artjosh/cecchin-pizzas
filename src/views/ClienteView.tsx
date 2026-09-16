@@ -1,15 +1,11 @@
+import {ClienteHistoricoTabela,type EventoDoCliente} from "../components/painel/TabelasOperacionais";
 import { podeAcessar } from "../servidor/auth/sessao-atual";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 
 import {
   CabecalhoDoPainel,
-  Celula,
-  Etiqueta,
-  Linha,
   SemLinhas,
-  Tabela,
 } from "../components/painel/Painel";
 import { comoData, comoTelefone, linkWhatsApp, linkCentralWhatsApp } from "../lib/formato";
 import { formatBRL } from "../lib/moeda";
@@ -34,17 +30,7 @@ interface Resumo {
   total_gasto: string | number | null;
 }
 
-interface EventoDoCliente {
-  id: string;
-  codigo_legado: string | null;
-  data_evento: string;
-  tipo_evento_nome: string | null;
-  inteiros: number | null;
-  total_do_evento: string | number | null;
-  situacao: string | null;
-  status: string | null;
-  cidade: string | null;
-}
+
 
 export async function ClienteView({ id }: { id: string }) {
   const sessao = await exigirPapel(["staff"]);
@@ -119,42 +105,7 @@ export async function ClienteView({ id }: { id: string }) {
             detalhe="O resumo conta eventos que a agenda pode não mostrar — cancelado sem sinal não entra na lista."
           />
         ) : (
-          <Tabela
-            colunas={["Código", "Data", "Tipo", "Cidade", "Pessoas", "Total", "Situação", ""]}
-          >
-            {eventos.map((e) => (
-              <Linha key={e.id}>
-                <Celula destaque>
-                  <span className="font-mono">{e.codigo_legado ?? "—"}</span>
-                </Celula>
-                <Celula className="whitespace-nowrap">
-                  {comoData(e.data_evento)}
-                </Celula>
-                <Celula>{e.tipo_evento_nome ?? "—"}</Celula>
-                <Celula>{e.cidade ?? "—"}</Celula>
-                <Celula className="text-right">{e.inteiros ?? 0}</Celula>
-                <Celula destaque className="text-right whitespace-nowrap">
-                  {formatBRL(Number(e.total_do_evento ?? 0))}
-                </Celula>
-                <Celula>
-                  <Etiqueta
-                    tom={e.status === "cancelado" ? "atencao" : "neutro"}
-                  >
-                    {e.situacao ?? e.status ?? "—"}
-                  </Etiqueta>
-                </Celula>
-                <Celula className="text-right">
-                  <Link
-                    href={`/operacional/eventos/${e.id}`}
-                    className="inline-flex items-center gap-1 font-label-md text-label-md text-primary hover:opacity-80"
-                  >
-                    Abrir
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                </Celula>
-              </Linha>
-            ))}
-          </Tabela>
+          <ClienteHistoricoTabela eventos={eventos}/>
         )}
       </section>
     </div>

@@ -65,12 +65,23 @@ export async function GET(request: NextRequest) {
   if (!conversa.dados?.[0]) return NextResponse.json({ mensagem: "Conversa indisponível. Abra novamente pela lista." }, { status: 404 });
   const corte = conversa.dados?.[0]?.historico_desde;
   const filtroHistorico = corte && request.nextUrl.searchParams.get("antigas") !== "1" ? `&criado_em=gte.${encodeURIComponent(corte)}` : "";
+  const tamanho = request.nextUrl.searchParams.has("limite") ? Number(request.nextUrl.searchParams.get("limite")) : 50;
+  if(!Number.isInteger(tamanho)||tamanho<20||tamanho>200)return NextResponse.json({mensagem:"Limite invalido."},{status:400});
+  const antes=request.nextUrl.searchParams.get("antes"),depois=request.nextUrl.searchParams.get("depois");
+  let filtroCursor="";
+  if(antes||depois){
+    const [data,id,...resto]=(antes??depois??"").split("|");
+    if((antes&&depois)||resto.length||!/^\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})$/.test(data)||!Number.isFinite(Date.parse(data))||!/^[-a-f0-9]{36}$/i.test(id??""))return NextResponse.json({mensagem:"Cursor invalido."},{status:400});
+    const op=antes?"lt":"gt",quando=encodeURIComponent(data);
+    filtroCursor=`&or=(criado_em.${op}.${quando},and(criado_em.eq.${quando},id.${op}.${id}))`;
+  }
   const [historico, fila] = await Promise.all([
-    consultar<unknown[]>(`mensagem_whatsapp?select=id,telefone,direcao,tipo,conteudo,status,criado_em&telefone=eq.${telefone}${filtroHistorico}&order=criado_em.desc,id.desc&limit=51&offset=${pagina * 50}`, sessao.accessToken, { headers: { Prefer: "count=exact" } }),
+    consultar<unknown[]>(`mensagem_whatsapp?select=id,telefone,direcao,tipo,conteudo,status,criado_em&telefone=eq.${telefone}${filtroHistorico}${filtroCursor}&order=criado_em.${depois?"asc":"desc"},id.${depois?"asc":"desc"}&limit=${tamanho+1}${antes||depois?"":`&offset=${pagina*tamanho}`}`, sessao.accessToken, request.nextUrl.searchParams.has("limite")?undefined:{ headers: { Prefer: "count=exact" } }),
     consultar<unknown[]>(`notificacao?select=id,status,conteudo,criado_em,tentativas&canal=eq.whatsapp&destinatario=eq.${telefone}&status=in.(pendente,enviando,falha)&order=criado_em.desc&limit=50`, sessao.accessToken),
   ]);
   if (!historico.ok || !fila.ok) return NextResponse.json({ mensagem: "Falha ao carregar conversa." }, { status: 502 });
-  return NextResponse.json({ total: historico.total ?? 0, historicoOculto: !!filtroHistorico, mensagens: (historico.dados ?? []).slice(0, 50), temMais: (historico.dados?.length ?? 0) > 50, modo: conversa.dados[0].modo, assumida: !!conversa.dados?.[0]?.atendente_id, fila: fila.dados ?? [] }, { headers: { "Cache-Control": "no-store" } });
+  const mensagens=(historico.dados??[]).slice(0,tamanho);
+  return NextResponse.json({ total: historico.total ?? 0, historicoOculto: !!filtroHistorico, mensagens: depois?mensagens.reverse():mensagens, temMais: (historico.dados?.length ?? 0) > tamanho, modo: conversa.dados[0].modo, assumida: !!conversa.dados?.[0]?.atendente_id, fila: fila.dados ?? [] }, { headers: { "Cache-Control": "no-store" } });
 }
 
 function mensagemDoBanco(erro: string | null): string {

@@ -1,65 +1,34 @@
 ---
 name: provar-cadeia
-description: Prova de ponta a ponta da cadeia operacional — conta vira staff, staff vira responsável, responsável recebe evento, evento aparece em Minha rota. Roda contra o banco de verdade e desfaz tudo no fim. Use depois de mexer em papel, RLS, alocação ou nas telas da operação.
+description: Conferir conta, perfil operacional, planejamento, escala aceita e Minha rota com cenário controlado, sem confundir vínculo legado com equipe confirmada.
 ---
 
 # Provar a cadeia operacional
 
-Cada elo desta cadeia tem teste próprio. O que nenhum deles mede é a cadeia
-**inteira**, e é exatamente onde o produto quebrou duas vezes:
+Contrato atualizado em 16/09/2026. A cadeia atual inclui conta staff ativa, perfil/habilidades, planejamento, confirmação, aceite de escala e Minha rota/checklist. Vínculo legado com `responsavel` sozinho não prova esse fluxo.
 
-- a auditoria impedia todo UPDATE em `evento` — os testes de leitura passavam,
-  os de escrita não existiam ainda, e o defeito só apareceu quando uma tela
-  tentou alocar responsável;
-- `Minha rota` ficava vazia mesmo com a conta ligada, porque nenhum dos 154
-  eventos futuros tinha responsável — os dois lados funcionavam, o caminho
-  entre eles não.
+`cadeia.mjs` registra a prova anterior conta → responsável → evento. Leia e adapte ao cenário atual antes de executar: ele altera dados e seu resultado não cobre automaticamente planejamento/funções/convites.
 
-Esta prova percorre os quatro elos com HTTP de verdade e termina olhando a
-tela. Ela **altera o banco de desenvolvimento e desfaz tudo no fim**, inclusive
-devolvendo o evento ao responsável que tinha antes.
+## Preparação
 
-## Rodar
+Leia [TESTES](../../TESTES.md), [verificação visual](../verificar-tela/SKILL.md) e [dimensionamento](../../../cecchin-pizzas-backend/migracao/DIMENSIONAMENTO_EQUIPE.md). Reutilize o servidor existente. Não rode `servidor.sh` automaticamente: ele pode construir, apagar saída e encerrar processo.
 
-```bash
-set -a; . ./.env; set +a
-bash skills/verificar-tela/servidor.sh 3210
-node skills/provar-cadeia/cadeia.mjs
-```
+Use IDs sintéticos, organização e contas de prova conhecidas. Registre os valores anteriores que serão modificados. Não faça limpeza ampla por prefixo sem comprovar que todos os registros pertencem à execução e que suas dependências estão cobertas.
 
-As capturas caem em `skills/verificar-tela/capturas/` — ignorado pelo git.
-**Abra os PNG com a ferramenta Read.** Status 200 não é verificação de
-interface: a tela pode responder 200 e mostrar "nenhum evento".
+## Conferências
 
-Variáveis: `ALVO` (padrão `http://localhost:3210`), `ADMIN` (a conta de admin
-que faz a ligação e a alocação), `SAIDA`.
+1. Conta/papel corretos no servidor e no banco, sem sessão resolvida por `limit=1`.
+2. Perfil com habilidades e privacidade de residência/transporte preservadas.
+3. Rascunho salva seleção/quantidades sem criar convite.
+4. Confirmação valida vagas, líderes e habilidades atomicamente.
+5. Aceite torna a escala elegível ao fluxo de campo; pessoa/tenant não autorizado não recebe dados.
+6. Minha rota mostra o evento correto, horários e checklist integrado. A antiga página Checklist separada redireciona; não exija seu antigo item de sidebar.
+7. QR/checklist/saída obedecem autenticação e escala, sem divulgar código de liberação indevidamente.
 
-## O que olhar na imagem
+Confirmar equipe pode enfileirar mensagens. Sem autorização de envio, prove transações com rollback antes que workers vejam os registros, ou use ambiente isolado; não confirme em produção para tirar screenshot.
 
-- [ ] `Minha rota` mostra **um** evento, e é o que foi alocado
-- [ ] a barra lateral do staff tem só `Minha Rota` e `Checklist & Forno` —
-      se aparecer `Catálogo` ou `Financeiro`, o guarda de papel furou
-- [ ] o rodapé traz o e-mail da conta de teste, não o do admin
-- [ ] data, horário de saída e horário de serviço batem com o evento escolhido
+## Finalização
 
-## Se falhar
+Restaure somente o cenário criado e confira dependências. Interrupção exige revisar resíduos por IDs/registro da execução, não executar DELETE genérico copiado de documentação. Registre as etapas realmente cobertas e o que ficou sem prova.
 
-O script imprime o status de cada passo. `ligar` ou `alocar` devolvendo 403 com
-`new row violates row-level security policy for table "auditoria"` é o defeito
-de `011_auditoria.sql` voltando: o gatilho de auditoria precisa ser SECURITY
-DEFINER, e `auditoria` precisa continuar SEM policy de INSERT.
-
-A reversão roda mesmo quando a prova falha no meio. Se o processo for
-interrompido antes dela, limpe à mão:
-
-```sql
-delete from responsavel where slug like 'prova-cadeia-%';
-delete from auth.users where email like 'prova.cadeia.%@cecchin.test';
-```
-
-E confira se algum evento ficou com responsável que não deveria:
-
-```sql
-select id, data_evento, responsavel_id from evento
- where data_evento >= current_date and responsavel_id is not null;
-```
+Falha ao auditar escrita autenticada merece revisar o gatilho e grants de auditoria; não resolva concedendo INSERT livre ao histórico.

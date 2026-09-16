@@ -1,0 +1,7 @@
+.preview { animation: entrar 260ms cubic-bezier(.2,.8,.2,1) both; }
+.pessoa { animation: aparecer 160ms ease both; }
+@keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+.arrastavel, .arrastavel * { user-select: none; -webkit-user-select: none; cursor: grab; }
+.arrastavel:active, .arrastavel:active * { cursor: grabbing; }
+@keyframes entrar { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .preview, .pessoa { animation: none; } }
