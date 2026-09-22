@@ -136,8 +136,6 @@ interface Reserva {
   setPaymentMethod: (v: FormaPagamento) => void;
   aceitouTermos: boolean;
   setAceitouTermos: (v: boolean) => void;
-  copied: boolean;
-  handleCopyPix: () => void;
 
   // derivados
   adultPrice: number;
@@ -189,7 +187,6 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
   const [ovenType, setOvenType] = useState<TipoForno>("gas");
   const [paymentMethod, setPaymentMethod] = useState<FormaPagamento>("pix");
   const [aceitouTermos, setAceitouTermos] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const escolherLocal = useCallback(
     (local: { address: string } & Coordenada) => {
@@ -227,13 +224,6 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
     [],
   );
 
-  const handleCopyPix = useCallback(() => {
-    navigator.clipboard.writeText(
-      "00020126580014br.gov.bcb.pix0136cecchinpizzas-reserva...",
-    );
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  }, []);
 
   const adultsTotal = adults * PRECO_ADULTO;
   const childrenTotal = children * PRECO_CRIANCA;
@@ -311,8 +301,6 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
       setPaymentMethod,
       aceitouTermos,
       setAceitouTermos,
-      copied,
-      handleCopyPix,
 
       adultPrice: PRECO_ADULTO,
       childPrice: PRECO_CRIANCA,
@@ -349,8 +337,6 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
       ovenType,
       paymentMethod,
       aceitouTermos,
-      copied,
-      handleCopyPix,
       adultsTotal,
       childrenTotal,
       grandTotal,

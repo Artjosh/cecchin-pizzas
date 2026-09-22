@@ -6,6 +6,7 @@ import { ArrowRight, Calendar, Clock, MapPin } from "lucide-react";
 import { cn } from "../lib/utils";
 import { formatBRL } from "../lib/moeda";
 import { MeuWhatsapp } from "../components/MeuWhatsapp";
+import { CheckoutReserva } from "../components/pagamentos/CheckoutReserva";
 
 /**
  * Meus eventos.
@@ -202,7 +203,7 @@ export function ClientEventsView({
 
       {doBanco && solicitacoes.length > 0 && (
         <section className="flex flex-col gap-space-sm">
-          <h2 className="font-headline-sm text-on-surface">Solicitações em análise</h2>
+          <h2 className="font-headline-sm text-on-surface">Minhas solicitações</h2>
           {solicitacoes.map((solicitacao) => (
             <article key={solicitacao.id} className="rounded-xl border border-primary/20 bg-primary/5 p-space-md">
               <div className="flex flex-wrap items-center justify-between gap-space-sm">
@@ -211,6 +212,7 @@ export function ClientEventsView({
               </div>
               <p className="mt-2 font-body-sm text-on-surface-variant">{comoDia(solicitacao.data_evento)} às {solicitacao.horario.slice(0, 5)} · {solicitacao.endereco}</p>
               <p className="mt-1 font-body-sm text-on-surface-variant">Estimativa {formatBRL(Number(solicitacao.valor_estimado))} · sinal previsto {formatBRL(Number(solicitacao.sinal_estimado))}</p>
+              <CheckoutReserva solicitacao={solicitacao.id} />
             </article>
           ))}
         </section>

@@ -289,6 +289,12 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   Financeiro
                 </Link>
                 <Link prefetch={false}
+                  href="/admin/pagamentos"
+                  className={cn("px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors", pathname.startsWith("/admin/pagamentos") ? "bg-primary-container text-on-primary-container" : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface")}
+                >
+                  <Wallet className="w-[18px] h-[18px]" />Pagamentos
+                </Link>
+                <Link prefetch={false}
                   href="/admin/localidades"
                   className={cn(
                     "px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors",

@@ -38,7 +38,7 @@ export default async function Page() {
     ),
     consultar<SolicitacaoReservaDoCliente[]>(
       "solicitacao_reserva?select=id,status,data_evento,horario,endereco,valor_estimado,sinal_estimado,criado_em" +
-        `&usuario_id=eq.${sessao.usuario.id}&status=in.(enviada,em_analise,aguardando_pagamento)&order=criado_em.desc&limit=20`,
+        `&usuario_id=eq.${sessao.usuario.id}&order=criado_em.desc&limit=20`,
       sessao.accessToken,
     ),
     consultar<{ telefone: string | null }[]>(`usuario?id=eq.${sessao.usuario.id}&select=telefone&limit=1`, sessao.accessToken),

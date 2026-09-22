@@ -41,6 +41,7 @@ interface Lancamento {
   valor_bruto: string | number;
   valor_liquido: string | number | null;
   tipo: string | null;
+  observacao?: string | null;
 }
 
 export async function FinanceiroView() {
@@ -53,7 +54,7 @@ export async function FinanceiroView() {
       sessao.accessToken,
     ),
     consultar<Lancamento[]>(
-      "entrada?select=id,data,descricao,valor_bruto,valor_liquido,tipo&order=data.desc&limit=30",
+      "entrada?select=id,data,descricao,valor_bruto,valor_liquido,tipo,observacao&order=data.desc&limit=30",
       sessao.accessToken,
     ),
     consultar<Lancamento[]>(
@@ -141,7 +142,7 @@ export async function FinanceiroView() {
           titulo="Entradas"
           icone={<ArrowUpRight className="w-5 h-5" />}
           linhas={entradasR.dados ?? []}
-          vazio="Nenhuma entrada lançada. A carga do financeiro ainda não rodou."
+          vazio="Nenhuma entrada lançada."
         />
         <Lancamentos
           titulo="Despesas"
@@ -186,7 +187,7 @@ function Lancamentos({
                 </span>
               </Celula>
               <Celula destaque className="text-right whitespace-nowrap">
-                {formatBRL(Number(l.valor_liquido ?? l.valor_bruto ?? 0))}
+                {l.observacao?.startsWith("INFINITEPAY_TAXA_PENDENTE:") ? <><span>{formatBRL(Number(l.valor_bruto))} bruto</span><small className="block text-on-surface-variant">Taxas a conciliar</small></> : formatBRL(Number(l.valor_liquido ?? l.valor_bruto ?? 0))}
               </Celula>
             </Linha>
           ))}
