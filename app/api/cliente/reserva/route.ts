@@ -11,10 +11,15 @@ function numero(valor: unknown): number | null {
 }
 
 export async function POST(request: NextRequest) {
+  if (request.headers.get("origin") !== request.nextUrl.origin) return NextResponse.json({ mensagem: "Origem inválida." }, { status: 403 });
   const sessao = await sessaoAtual();
   if (!sessao) return NextResponse.json({ mensagem: "Sem sessão." }, { status: 401 });
   let corpo: Record<string, unknown>;
-  try { corpo = (await request.json()) as Record<string, unknown>; } catch { return NextResponse.json({ mensagem: "JSON inválido." }, { status: 400 }); }
+  try {
+    const dados: unknown = await request.json();
+    if (!dados || typeof dados !== "object" || Array.isArray(dados)) return NextResponse.json({ mensagem: "Dados inválidos." }, { status: 400 });
+    corpo = dados as Record<string, unknown>;
+  } catch { return NextResponse.json({ mensagem: "JSON inválido." }, { status: 400 }); }
   const endereco = typeof corpo.endereco === "string" ? corpo.endereco.trim() : "";
   const tipoLocal = typeof corpo.tipoLocal === "string" ? corpo.tipoLocal : "";
   const data = typeof corpo.data === "string" ? corpo.data : "";

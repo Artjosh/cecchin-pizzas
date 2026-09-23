@@ -97,6 +97,6 @@ Medição de desenvolvimento de 15/09 reduziu Pendências de aproximadamente 572
 
 ## Limites atuais
 
-Frota física, upload de foto/Storage, cobrança integrada e emissão de GPS continuam ausentes. Ativação de login social e deploy dependem do ambiente. Banco e Desenho têm equivalência de componentes de equipe, mas volume e dados disponíveis diferem; nunca preencha lacunas reais com mocks.
+Frota física, upload de foto/Storage e emissão de GPS continuam ausentes. A integração InfinitePay tem BFF, aprovação em `/admin/pagamentos`, checkout hospedado e acompanhamento pelo cliente escritos; continua desabilitada, depende da migration 044 e da configuração da API/worker, e ainda não foi validada por execução de testes. Consulte [o contrato no backend](../cecchin-pizzas-backend/infra/INFINITEPAY.md). Ativação de login social e deploy dependem do ambiente. Banco e Desenho têm equivalência de componentes de equipe, mas volume e dados disponíveis diferem; nunca preencha lacunas reais com mocks.
 
 Veja a [matriz auditada](skills/verificar-tela/AUDITORIA_BANCO_2026-09-15.md), os [procedimentos de verificação](TESTES.md) e o [backend](../cecchin-pizzas-backend/README.md).

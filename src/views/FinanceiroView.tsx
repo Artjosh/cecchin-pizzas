@@ -19,17 +19,8 @@ import { comoLeitura } from "../servidor/fonte";
 /**
  * Financeiro: o que entrou, o que saiu e o que está a acertar.
  *
- * **As três tabelas estão vazias, e não é defeito.** `entrada`, `despesa` e
- * `conta_a_pagar` foram modeladas na migração e nunca carregadas — o financeiro
- * da planilha ficou de fora da primeira carga, e continua lá.
- *
- * A tela existe com a estrutura pronta porque o que falta é o ETL, não o
- * desenho. Quando a carga rodar, isto passa a mostrar dado sem tocar em uma
- * linha daqui.
- *
- * Enquanto isso, `vw_conciliacao_evento` já tem o que importa: quanto cada
- * evento deveria ter recebido contra o que foi lançado. É a única leitura
- * financeira que funciona hoje, e vem de `evento`, não das tabelas vazias.
+ * Entradas incluem recebimentos confirmados da InfinitePay. Taxas ainda não
+ * conciliadas são sinalizadas sem apresentar o bruto como líquido definitivo.
  */
 
 
@@ -76,6 +67,7 @@ export async function FinanceiroView() {
   );
 
   const semLancamento =
+    entradasR.ok && despesasR.ok && contasR.ok &&
     (entradasR.dados?.length ?? 0) === 0 &&
     (despesasR.dados?.length ?? 0) === 0 &&
     (contasR.dados?.length ?? 0) === 0;
@@ -88,18 +80,10 @@ export async function FinanceiroView() {
       />
 
       {semLancamento && (
-        <LacunaDeDados titulo="As tabelas de lançamento estão vazias">
+        <LacunaDeDados titulo="Nenhum lançamento financeiro disponível">
           <p>
-            <code className="font-mono">entrada</code>,{" "}
-            <code className="font-mono">despesa</code> e{" "}
-            <code className="font-mono">conta_a_pagar</code> foram modeladas na
-            migração e nunca carregadas: o financeiro da planilha ficou de fora
-            da primeira carga.
-          </p>
-          <p>
-            O que falta é o ETL, não a tela. Quando a carga rodar, esta página
-            passa a mostrar dado sem mudar uma linha de código. Lista em{" "}
-            <code className="font-mono">migracao/ETL.md</code>.
+            Recebimentos confirmados e demais lançamentos aparecerão aqui.
+            As pendências dos eventos continuam disponíveis abaixo.
           </p>
         </LacunaDeDados>
       )}
@@ -116,9 +100,7 @@ export async function FinanceiroView() {
           )}
         </div>
         <p className="font-body-sm text-body-sm text-on-surface-variant">
-          Vem de <code className="font-mono">vw_conciliacao_evento</code>, sobre{" "}
-          <code className="font-mono">evento</code> — a única leitura financeira
-          que funciona sem as tabelas de lançamento.
+          Compare os valores previstos dos eventos com os recebimentos registrados.
         </p>
 
         {conciliacao.estado === "erro" && (

@@ -1,4 +1,5 @@
 "use client";
+import type * as GeoJSON from "geojson";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LocateFixed, Minus, Plus, Route, Search, Timer } from "lucide-react";

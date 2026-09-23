@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import type { LineString } from "geojson";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
     const url = `https://router.project-osrm.org/route/v1/driving/${origemLng},${origemLat};${destinoLng},${destinoLat}?overview=full&geometries=geojson`;
     const resposta = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!resposta.ok) throw new Error(`route ${resposta.status}`);
-    const dado = (await resposta.json()) as { routes?: Array<{ distance?: number; duration?: number; geometry?: GeoJSON.LineString }> };
+    const dado = (await resposta.json()) as { routes?: Array<{ distance?: number; duration?: number; geometry?: LineString }> };
     const rota = dado.routes?.[0];
     if (!rota?.geometry || !Number.isFinite(rota.distance) || !Number.isFinite(rota.duration)) throw new Error("rota ausente");
     return NextResponse.json({ distanciaMetros: rota.distance, duracaoSegundos: rota.duration, geometria: rota.geometry }, { headers: { "cache-control": "public, s-maxage=3600, stale-while-revalidate=86400" } });

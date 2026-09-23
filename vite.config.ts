@@ -22,6 +22,8 @@ export default defineConfig(({ command }) => {
   const paraWorkers = command === "build";
 
   return {
+    // Dois servidores dev podem coexistir sem invalidar o cache um do outro.
+    ...(process.env.CECCHIN_HTTP_TEST === "true" ? { cacheDir: "node_modules/.vite-http-test", envDir: false as const } : {}),
     plugins: [
       vinext(),
       ...(paraWorkers

@@ -117,20 +117,8 @@ describe("pedir acesso", () => {
 });
 
 describe("o e-mail", () => {
-  /*
-   * Só roda com o SMTP LOCAL ligado (Mailpit). Com a Brevo configurada a
-   * mensagem sai para o mundo e não há caixa para ler — o resto da suíte não
-   * depende disto porque pega o código por `admin/generate_link`.
-   *
-   * O endereço aqui precisa ser enviável: os demais testes usam TLD reservada,
-   * para a qual o BFF suprime o envio de propósito.
-   */
+  // Entrega real pelo SMTP isolado; falha de entrega deve falhar o teste.
   it("chega com o nosso template, com link E código", async () => {
-    /*
-     * Registrado em `criados` e NÃO apagado no fim do teste: os `return`
-     * antecipados abaixo pulariam a limpeza, e cada execução com SMTP externo
-     * deixava uma conta órfã no banco. Aconteceu: seis delas.
-     */
     const email = `prova.template.${Date.now().toString(36)}@mailpit.local`;
     criados.push(email);
     await limparEmails();
@@ -138,17 +126,9 @@ describe("o e-mail", () => {
     const ap = new Aparelho();
     const r = await ap.pedir("/api/auth/login?passo=iniciar", { corpo: { email } });
 
-    if (!r.corpo.email_enviado) {
-      // SMTP externo ligado: a mensagem saiu para a Brevo, não para o Mailpit.
-      return;
-    }
-
-    let entregue;
-    try {
-      entregue = await esperarEmail(email);
-    } catch {
-      return; // sem Mailpit, nada a afirmar aqui
-    }
+    expect(r.status).toBe(200);
+    expect(r.corpo.email_enviado).toBe(true);
+    const entregue = await esperarEmail(email);
 
     expect(entregue.assunto).toBe("Seu acesso ao Cecchin Pizzas");
     expect(entregue.codigo).toMatch(/^\d{6}$/);
@@ -160,6 +140,17 @@ describe("o e-mail", () => {
     // ao pedido pollado no computador.
     expect(decodeURIComponent(entregue.link)).toContain(r.corpo.selector);
     expect(decodeURIComponent(entregue.link)).toContain("/entrar/confirmar");
+    const tokenHash = new URLSearchParams(new URL(entregue.link).hash.slice(1)).get("token_hash");
+    const aprovado = await new Aparelho().pedir("/api/auth/aprovar-hash", {
+      corpo: { selector: r.corpo.selector, tokenHash },
+    });
+    expect(aprovado.status).toBe(204);
+    const sessao = await ap.pedir("/api/auth/login?passo=consultar", {
+      corpo: { selector: r.corpo.selector },
+    });
+    expect(sessao.corpo.status).toBe("aprovado");
+    expect(ap.temCookie("cecchin_acesso")).toBe(true);
+
   });
 
   it("domínio reservado por RFC não recebe envio, e o pedido continua válido", async () => {
@@ -340,7 +331,7 @@ describe("sair", () => {
     // O que importa: o token não vale mais NO GOTRUE. Apagar só o cookie
     // deixaria o refresh válido por trinta dias — e "sair" não teria surtido
     // efeito onde importa.
-    const noProvedor = await fetch("http://127.0.0.1:54321/auth/v1/user", {
+    const noProvedor = await fetch(`${process.env.SUPABASE_URL ?? "http://127.0.0.1:54321"}/auth/v1/user`, {
       headers: {
         apikey: process.env.SUPABASE_ANON_KEY ?? "",
         authorization: `Bearer ${tokenAntigo}`,

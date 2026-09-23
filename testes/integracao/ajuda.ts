@@ -12,6 +12,10 @@ import { execFileSync } from "node:child_process";
 export const BFF = process.env.ALVO_BFF ?? "http://localhost:3000";
 export const MAILPIT = process.env.ALVO_MAILPIT ?? "http://127.0.0.1:54324";
 const CONTAINER = process.env.CONTAINER_DB ?? "supabase_db_Nicolas";
+const BANCO = process.env.BANCO_TESTE_HTTP ?? "";
+if (process.env.CECCHIN_HTTP_TEST !== "true" || !/^cecchin_http_test_[a-z0-9_]+$/.test(BANCO)) {
+  throw new Error("A suíte HTTP exige uma base isolada. Use skills/provar-cadeia/http-isolado.mjs; não execute sobre dados operacionais.");
+}
 
 /**
  * Um navegador: pote de cookies próprio.
@@ -34,6 +38,7 @@ export class Aparelho {
       cabecalhos.cookie = [...this.cookies].map(([k, v]) => `${k}=${v}`).join("; ");
     }
     if (opcoes.corpo !== undefined) cabecalhos["content-type"] = "application/json";
+    if (opcoes.corpo !== undefined || opcoes.metodo && !["GET", "HEAD"].includes(opcoes.metodo)) cabecalhos.origin = new URL(BFF).origin;
 
     const url = caminho.startsWith("http") ? caminho : BFF + caminho;
 
@@ -105,7 +110,7 @@ export class Aparelho {
 export function sql(comando: string): string {
   return execFileSync(
     "docker",
-    ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-d", "postgres", "-tAc", comando],
+    ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-d", BANCO, "-tAc", comando],
     { encoding: "utf8" },
   ).trim();
 }

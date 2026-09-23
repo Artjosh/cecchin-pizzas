@@ -135,7 +135,8 @@ export function verificarMagicLink(
     "/auth/v1/verify",
     {
       method: "POST",
-      body: JSON.stringify({ token_hash: tokenHash, type: "magiclink" }),
+      // `email` aceita tanto o primeiro acesso (signup) quanto acessos seguintes.
+      body: JSON.stringify({ token_hash: tokenHash, type: "email" }),
     },
     config.supabase.anonKey,
   );

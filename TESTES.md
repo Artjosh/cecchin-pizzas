@@ -17,6 +17,39 @@ Configuração efetiva está no manifest e nos arquivos de Vitest. Não fixe con
 
 ## O que verificar
 
+### Integração HTTP isolada
+
+A suíte HTTP exige `CECCHIN_HTTP_TEST=true` e banco com prefixo
+`cecchin_http_test_`. Não aponte para o banco operacional: testes antigos alteram
+catálogos/eventos e limpam a caixa de e-mail. Use o launcher na raiz frontend:
+
+```powershell
+node skills/provar-cadeia/http-isolado.mjs preparar
+node skills/provar-cadeia/http-isolado.mjs servir
+# Em outro terminal:
+node skills/provar-cadeia/http-isolado.mjs testar
+```
+
+`preparar` copia somente definições public/app/auth do Supabase local, versões
+do GoTrue e fixtures sintéticos. Cria banco separado e containers de teste;
+não copia clientes/eventos nem conecta workers. Exige Docker e o container local
+`supabase_db_Nicolas`. O arquivo `.env.http-test.json` é ignorado pelo Git.
+Se já existe, reutilize `servir`/`testar`; o script não sobrescreve ou apaga bases.
+
+Portas: BFF 3100, gateway 54621, Mailpit 54624, PostgREST 54631 e Auth 54632.
+O launcher usa ambiente restrito e inicia Vite sem carregar `.env` operacional.
+O cache é separado do servidor habitual. Fechar o launcher encerra seus processos;
+containers e base ficam disponíveis para inspeção. Não há limpeza automática ampla.
+Mudanças posteriores de schema exigem aplicar as migrations novas também nessa
+base isolada. O schema copiado não replica privilégios padrão de papéis gerenciados;
+os testes pgTAP locais com rollback continuam sendo a referência complementar de RLS.
+
+O SMTP de teste usa apenas Mailpit. O teste de primeiro acesso exige entrega,
+template, código e consumo do hash; não passa silenciosamente sem e-mail.
+`reserva-pagamento.test.ts` cobre reserva pelo BFF, autorização, origem, leitura
+da cobrança, idempotência do retorno e ausência de confirmação financeira por query.
+Ele mantém InfinitePay desabilitado e não chama o PSP.
+
 Unidade cobre decisões isoladas: papéis, cookies, destinos seguros, orçamento e mapeamento de erros. Integração HTTP cobre cookies reais, corpo sem tokens, respostas 401/403 e acesso direto ao PostgREST. Cross-device exige dois potes de cookies independentes.
 
 Banco e autorização são descritos em [TESTES do backend](../cecchin-pizzas-backend/TESTES.md). Uma resposta 200, typecheck ou build não prova isolamento entre organizações, nem que uma migration foi aplicada.

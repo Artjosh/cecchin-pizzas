@@ -69,7 +69,7 @@ function MapaReal({ eventos, base, selecionado, aoSelecionar }: { eventos: Event
   useEffect(() => {
     const modulo = biblioteca.current;
     if (!recipiente.current || mapa.current || !modulo) return;
-    const instancia = new modulo.Map({ container: recipiente.current, style: ESTILO_MAPA_OPERACIONAL, center: paraLngLat(base), zoom: 11, attributionControl: true });
+    const instancia = new modulo.Map({ container: recipiente.current, style: ESTILO_MAPA_OPERACIONAL, center: paraLngLat(base), zoom: 11, attributionControl: {} });
     mapa.current = instancia;
     instancia.addControl(new modulo.NavigationControl({ showCompass: false }), "bottom-right");
     instancia.on("load", () => aplicarVisualOperacional(instancia));

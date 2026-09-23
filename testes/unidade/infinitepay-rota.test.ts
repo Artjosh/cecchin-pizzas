@@ -1,16 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({ sessao: vi.fn(), rpc: vi.fn(), consultar: vi.fn() }));
 vi.mock("@/src/servidor/auth/sessao-atual", () => ({ sessaoAtual: mocks.sessao }));
 vi.mock("@/src/servidor/supabase", () => ({ chamarFuncao: mocks.rpc, consultar: mocks.consultar }));
 import { POST, GET } from "@/app/api/pagamentos/infinitepay/route";
+import { PATCH } from "@/app/api/operacao/solicitacao-reserva/route";
 
 const pedido = "12345678-1234-4234-8234-123456789012";
 function sessao(papel = "gestao") { return { accessToken: "sessao-ficticia", usuario: { id: pedido, papel } }; }
 function post(body: object, origin = "https://app.example") { return new NextRequest("https://app.example/api/pagamentos/infinitepay", { method: "POST", headers: { "Content-Type": "application/json", origin }, body: JSON.stringify(body) }); }
 
 describe("BFF InfinitePay", () => {
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => { vi.resetAllMocks(); mocks.sessao.mockResolvedValue(sessao()); mocks.rpc.mockResolvedValue({ ok: true, dados: pedido }); vi.stubEnv("INFINITEPAY_ENABLED", "true"); });
   it("exige sessão e mesma origem", async () => {
     expect((await POST(post({ acao: "liberar" }, "https://outro.example"))).status).toBe(403);
@@ -47,5 +49,19 @@ describe("BFF InfinitePay", () => {
     expect(r.headers.get("cache-control")).toBe("no-store");
     expect(mocks.consultar.mock.calls[0][1]).toBe("sessao-ficticia");
     expect(await r.text()).not.toContain("sessao-ficticia");
+  });
+  it("cancelamento exige gestão, origem válida e corpo estruturado", async () => {
+    function patch(body: unknown, origin = "https://app.example") {
+      return new NextRequest("https://app.example/api/operacao/solicitacao-reserva", { method: "PATCH", headers: { "Content-Type": "application/json", origin }, body: JSON.stringify(body) });
+    }
+    expect((await PATCH(patch(null))).status).toBe(400);
+    expect((await PATCH(patch({ solicitacao: pedido, status: "cancelada" }, "https://outro.example"))).status).toBe(403);
+    mocks.sessao.mockResolvedValue(sessao("cliente"));
+    expect((await PATCH(patch({ solicitacao: pedido, status: "cancelada" }))).status).toBe(403);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    mocks.sessao.mockResolvedValue(sessao("gestao"));
+    expect((await PATCH(patch({ solicitacao: pedido, status: "aguardando_pagamento" }))).status).toBe(400);
+    expect((await PATCH(patch({ solicitacao: pedido, status: "cancelada" }))).status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith("atualizar_solicitacao_reserva", { p_solicitacao: pedido, p_status: "cancelada" }, "sessao-ficticia");
   });
 });

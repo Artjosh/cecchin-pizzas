@@ -38,6 +38,7 @@ const ROTAS = [
   "/admin/frota",
   "/admin/equipe",
   "/admin/financeiro",
+  "/admin/pagamentos",
   "/admin/localidades",
   "/admin/operacao",
   "/admin/auditoria",
@@ -57,7 +58,7 @@ describe("nenhuma tela quebra", () => {
           const ap = await comoAdmin();
           ap.definirCookie("cecchin_fonte", fonte);
           const r = await ap.rota(rota);
-          expect(r.status, `${rota} devolveu ${r.status}`).toBeLessThan(500);
+          expect(r.status, `${rota} devolveu ${r.status}`).toBe(rota === "/operacional/checklist" ? 307 : 200);
         });
       }
     });
@@ -72,8 +73,8 @@ describe("detalhe de evento e de cliente", () => {
     const evento = sql("select id from evento order by data_evento desc limit 1");
     const cliente = sql("select id from cliente limit 1");
 
-    expect((await ap.rota(`/operacional/eventos/${evento}`)).status).toBeLessThan(500);
-    expect((await ap.rota(`/operacional/clientes/${cliente}`)).status).toBeLessThan(500);
+    expect((await ap.rota(`/operacional/eventos/${evento}`)).status).toBe(200);
+    expect((await ap.rota(`/operacional/clientes/${cliente}`)).status).toBe(200);
 
     const nada = "00000000-0000-0000-0000-000000000000";
     expect((await ap.rota(`/operacional/eventos/${nada}`)).status).toBe(404);

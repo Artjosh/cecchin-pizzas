@@ -10,6 +10,8 @@ export function CheckoutReserva({ pedido, solicitacao, transacao, fatura }: { pe
   const [cobranca, setCobranca] = useState<CobrancaInfinitePay | null>(null);
   const [erro, setErro] = useState(""); const [carregando, setCarregando] = useState(true);
   const [aviso, setAviso] = useState(""); const [habilitado, setHabilitado] = useState(false);
+  const [erroRetorno, setErroRetorno] = useState("");
+  const [enviandoRetorno, setEnviandoRetorno] = useState(false);
   const atualizar = useCallback(async (signal?: AbortSignal) => {
     try {
       const params = new URLSearchParams(pedido ? { pedido } : { solicitacao: solicitacao ?? "" });
@@ -23,20 +25,34 @@ export function CheckoutReserva({ pedido, solicitacao, transacao, fatura }: { pe
   useEffect(() => {
     const controller = new AbortController(); let timer: ReturnType<typeof setTimeout>;
     async function ciclo() {
-      await atualizar(controller.signal);
+      if (document.visibilityState !== "hidden") await atualizar(controller.signal);
       if (!controller.signal.aborted) timer = setTimeout(ciclo, 10000);
     }
     void ciclo();
     return () => { controller.abort(); clearTimeout(timer); };
   }, [atualizar]);
-  useEffect(() => {
+  const registrarRetorno = useCallback(async (signal?: AbortSignal) => {
     if (!pedido || !transacao || !fatura) return;
-    const controller = new AbortController();
-    void fetch("/api/pagamentos/infinitepay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "retorno", pedido, transacao, fatura }), signal: controller.signal })
-      .then(async r => { const b = await r.json(); if (!r.ok) throw new Error(b.mensagem); setAviso("Recebemos seu retorno. Aguardando confirmação segura do pagamento."); void atualizar(controller.signal); })
-      .catch(e => { if (!controller.signal.aborted) setErro(e instanceof Error ? e.message : "Não foi possível registrar o retorno. Tente novamente."); });
-    return () => controller.abort();
+    setEnviandoRetorno(true);
+    try {
+      const r = await fetch("/api/pagamentos/infinitepay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "retorno", pedido, transacao, fatura }), signal });
+      const b = await r.json();
+      if (!r.ok) throw new Error(b.mensagem ?? "Não foi possível registrar o retorno.");
+      if (signal?.aborted) return;
+      setErroRetorno("");
+      setAviso("Recebemos seu retorno. Aguardando confirmação segura do pagamento.");
+      await atualizar(signal);
+    } catch (e) {
+      if (!signal?.aborted) setErroRetorno(e instanceof Error ? e.message : "Não foi possível registrar o retorno. Tente novamente.");
+    } finally {
+      if (!signal?.aborted) setEnviandoRetorno(false);
+    }
   }, [pedido, transacao, fatura, atualizar]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void registrarRetorno(controller.signal);
+    return () => controller.abort();
+  }, [registrarRetorno]);
 
   const link = cobranca?.status === "aberta" && habilitado ? checkoutPermitido(cobranca.checkout_url) : null;
   return <div className="mt-3 rounded-xl border border-outline-variant p-4 space-y-3">
@@ -52,5 +68,6 @@ export function CheckoutReserva({ pedido, solicitacao, transacao, fatura }: { pe
     </> : !erro && <p>A Central ainda está conferindo a disponibilidade e o valor da sua reserva.</p>}
     {aviso && cobranca?.status !== "paga" && <p className="text-sm text-on-surface-variant">{aviso}</p>}
     {erro && <p role="alert" className="text-error">{erro}</p>}
+    {erroRetorno && <div className="space-y-2"><p role="alert" className="text-error">{erroRetorno}</p><button type="button" disabled={enviandoRetorno} onClick={() => void registrarRetorno()} className="rounded-lg border border-outline-variant px-3 py-2 disabled:opacity-50">{enviandoRetorno ? "Registrando retorno…" : "Tentar registrar o pagamento novamente"}</button><p className="text-sm text-on-surface-variant">Isso apenas solicita a conferência do pagamento existente. Não gera outra cobrança.</p></div>}
   </div>;
 }

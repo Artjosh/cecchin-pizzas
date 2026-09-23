@@ -221,7 +221,6 @@ describe("a sessão sobrevive ao vencimento do access token", () => {
     const email = conta("renova");
     const ap = await entrar(email);
 
-    const antes = ap.valorDoCookie("cecchin_acesso");
 
     // Simula o access vencido apagando só ele: o servidor tem que usar o
     // refresh e gravar um par novo.
@@ -236,7 +235,10 @@ describe("a sessão sobrevive ao vencimento do access token", () => {
     expect(r.status).toBe(200);
     expect(r.corpo.usuario.email).toBe(email);
     expect(apenasRefresh.temCookie("cecchin_acesso")).toBe(true);
-    expect(apenasRefresh.valorDoCookie("cecchin_acesso")).not.toBe(antes);
+    // JWTs emitidos no mesmo segundo podem ser idênticos. O que importa
+    // é o BFF emitir cookies válidos usando apenas o refresh.
+    expect(apenasRefresh.atributos.get("cecchin_acesso")).toContain("httponly");
+    expect((await apenasRefresh.pedir("/api/auth/sessao")).corpo.usuario.email).toBe(email);
   });
 
   it("refresh inválido não vira sessão", async () => {
