@@ -30,6 +30,8 @@ export type VeiculoPlanejavel = {
   lugares: number;
   limiteLevar: number;
   disponivel: boolean;
+  janelasCarro?: { inicioMs: number; fimMs: number }[];
+  janelasMotorista?: { inicioMs: number; fimMs: number }[];
 };
 
 export type ConfiguracaoPlanejador = {
@@ -98,6 +100,16 @@ function custo(veiculo: VeiculoPlanejavel, km: number, material: boolean, config
   return Math.max(config.minimoCentavos, Math.round(km * (material ? config.materialCentavosKm : config.pessoasCentavosKm))) + (material ? config.adicionalMaterialCentavos : 0);
 }
 
+function cobreViagem(janelas: { inicioMs: number; fimMs: number }[], saida: number, retorno: number) {
+  let cobertoAte = saida;
+  for (const janela of janelas) {
+    if (janela.inicioMs > cobertoAte) break;
+    if (janela.fimMs > cobertoAte) cobertoAte = janela.fimMs;
+    if (cobertoAte >= retorno) return true;
+  }
+  return false;
+}
+
 /** Sugere uma alocação; conflitos, equipamento ausente e folga de saída vão à gestão. */
 export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: VeiculoPlanejavel[], config: ConfiguracaoPlanejador, aprovadas: OcupacaoAprovada[] = []): ResultadoPlanejador {
   const propostas: PropostaLogistica[] = [];
@@ -142,6 +154,8 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
           if (segundo && modo === "levar") continue; // mesma equipe e mesmo carro na dupla
           if (modo === "levar" && carro.limiteLevar < 1) continue;
           const retorno = modo === "levar" ? retornoLevar : terminaServico + (segundo ? Math.ceil(evento.segundaRotaMinutos! * config.fatorPicoPercentual / 100) : viagem) * minuto;
+          if (carro.janelasCarro && !cobreViagem(carro.janelasCarro, saida, retorno)) continue;
+          if (carro.janelasMotorista && !cobreViagem(carro.janelasMotorista, saida, retorno)) continue;
           if (ocupacoes.some((o) => saida < o.fim + config.minutosCarregar * minuto && retorno + config.minutosCarregar * minuto > o.inicio)) continue;
           const kmTotal = modo === "levar" ? evento.rotaKm * 2 : segundo ? evento.rotaKm + evento.trechoSegundoKm! + evento.segundaRotaKm! : evento.rotaKm * 2;
           const custoCentavos = custo(carro, kmTotal, material, config);

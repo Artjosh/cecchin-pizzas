@@ -1,10 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { planejarLogistica, type ConfiguracaoPlanejador, type EventoPlanejavel, type VeiculoPlanejavel } from "../../src/lib/logistica/planejador";
+import { janelasCarro, janelasPessoa } from "../../src/lib/logistica/janelasDisponibilidade";
 
 const config: ConfiguracaoPlanejador = { minutosCarregar: 10, flexSaidaMinutos: 30, montagemPadraoMinutos: 60, montagemBebidaAntesMinutos: 120, fatorPicoPercentual: 135, custoFrotaCentavosKm: 70, materialCentavosKm: 175, pessoasCentavosKm: 150, minimoCentavos: 4000, adicionalMaterialCentavos: 3000, duracaoEventoMinutos: 240 };
 const evento: EventoPlanejavel = { id: "evento-a", inicioMs: Date.parse("2026-10-06T12:00:00-03:00"), convidados: 30, forno: "mini", bebida: "isopor_pequeno", bebidaAntes: false, pessoas: 3, rotaMinutos: 30, rotaKm: 20 };
 const empresa: VeiculoPlanejavel = { id: "empresa", modelo: "Kombi", placa: "ABC1234", proprietarioId: null, forno: "medio", bebida: "isopor_grande", lugares: 5, limiteLevar: 3, disponivel: true };
 const particular: VeiculoPlanejavel = { ...empresa, id: "particular", proprietarioId: "motorista" };
+
+it("exige carro e motorista disponiveis durante toda a viagem, inclusive ao atravessar a semana", () => {
+  const disponivel = {
+    ...particular,
+    janelasCarro: janelasCarro("2026-10-05", [false, true, false, false, false, false, false]),
+    janelasMotorista: janelasPessoa("2026-10-05", [null, "09:00", null, null, null, null, null]),
+  };
+  expect(planejarLogistica([evento], [disponivel], config).propostas).toHaveLength(1);
+  expect(planejarLogistica([evento], [{ ...disponivel, janelasMotorista: janelasPessoa("2026-10-05", [null, "11:00", null, null, null, null, null]) }], config).propostas).toHaveLength(0);
+  expect(planejarLogistica([evento], [{ ...disponivel, janelasCarro: [] }], config).propostas).toHaveLength(0);
+  expect(planejarLogistica([evento], [{ ...disponivel, janelasMotorista: janelasPessoa("2026-10-05", [null, { inicio: "09:00", fim: "10:00" }, null, null, null, null, null]) }], config).propostas).toHaveLength(0);
+
+  const atravessa = { ...evento, inicioMs: Date.parse("2026-10-12T01:30:00-03:00") };
+  const carroDoisDias = [...janelasCarro("2026-10-05", [false, false, false, false, false, false, true]), ...janelasCarro("2026-10-12", [true, false, false, false, false, false, false])];
+  const motoristaUmDia = janelasPessoa("2026-10-05", [null, null, null, null, null, null, "18:00"]);
+  const motoristaDoisDias = [...motoristaUmDia, ...janelasPessoa("2026-10-12", ["00:00", null, null, null, null, null, null])];
+  expect(planejarLogistica([atravessa], [{ ...disponivel, janelasCarro: carroDoisDias, janelasMotorista: motoristaUmDia }], config).propostas).toHaveLength(0);
+  expect(planejarLogistica([atravessa], [{ ...disponivel, janelasCarro: carroDoisDias, janelasMotorista: motoristaDoisDias }], config).propostas).toHaveLength(1);
+});
 
 describe("planejador logístico", () => {
   it("considera montagem, pico e pagamento do carro particular", () => {
