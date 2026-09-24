@@ -40,6 +40,28 @@ export function BrotosGestao() {
     catch (e) { if (versao === versaoCarregamento.current) setErro(e instanceof Error ? e.message : "Falha ao carregar"); }
   }, [tipoPedidos, paginaPedidos, paginaFinanceiro]);
   useEffect(() => { setDados(null); void carregar(); }, [carregar]);
+  const pedidosCarregados = dados !== null;
+  useEffect(() => {
+    if (aba !== "pedidos" || tipoPedidos !== "ativos" || paginaPedidos !== 0 || !pedidosCarregados || salvando) return;
+    let emAndamento = false;
+    const controlador = new AbortController();
+    const atualizarPedidos = async () => {
+      if (document.visibilityState !== "visible" || emAndamento) return;
+      emAndamento = true;
+      const versao = versaoCarregamento.current;
+      try {
+        const resposta = await fetch("/api/broto/gestao?tipoPedidos=ativos&paginaPedidos=0&somentePedidos=1", { cache: "no-store", signal: controlador.signal });
+        if (!resposta.ok) return;
+        const lista = await resposta.json() as Pick<Dados, "pedidos" | "temMaisPedidos">;
+        if (!controlador.signal.aborted && versao === versaoCarregamento.current) {
+          setDados((atual) => atual ? { ...atual, pedidos: lista.pedidos, temMaisPedidos: lista.temMaisPedidos } : atual);
+        }
+      } catch { /* A próxima atualização tenta novamente. */ }
+      finally { emAndamento = false; }
+    };
+    const intervalo = window.setInterval(() => void atualizarPedidos(), 30_000);
+    return () => { controlador.abort(); window.clearInterval(intervalo); };
+  }, [aba, tipoPedidos, paginaPedidos, pedidosCarregados, salvando]);
   const enviar = async (corpo: Record<string, unknown>, mensagem: string) => {
     setSalvando(true); setErro(""); setAviso("");
     try { const resposta = await fetch("/api/broto/gestao", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) }); const resultado = await resposta.json() as { mensagem?: string }; if (!resposta.ok) throw new Error(resultado.mensagem ?? "Não foi possível salvar"); setAviso(mensagem); await carregar(); return true; }
