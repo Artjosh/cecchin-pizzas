@@ -24,6 +24,12 @@ it("exige carro e motorista disponiveis durante toda a viagem, inclusive ao atra
   expect(planejarLogistica([evento], [disponivel], config).propostas).toHaveLength(1);
   expect(planejarLogistica([evento], [{ ...disponivel, janelasMotorista: janelasPessoa("2026-10-05", [null, "11:00", null, null, null, null, null]) }], config).propostas).toHaveLength(0);
   expect(planejarLogistica([evento], [{ ...disponivel, janelasCarro: [] }], config).propostas).toHaveLength(0);
+  const semanaSeguinte = janelasCarro("2026-10-12", [false, true, false, false, false, false, false]);
+  const motoristaSeguinte = janelasPessoa("2026-10-12", [null, "09:00", null, null, null, null, null]);
+  expect(planejarLogistica([evento], [{ ...disponivel,
+    janelasCarro: [...semanaSeguinte, ...disponivel.janelasCarro],
+    janelasMotorista: [...motoristaSeguinte, ...disponivel.janelasMotorista],
+  }], config).propostas).toHaveLength(1);
   expect(planejarLogistica([evento], [{ ...disponivel, janelasMotorista: janelasPessoa("2026-10-05", [null, { inicio: "09:00", fim: "10:00" }, null, null, null, null, null]) }], config).propostas).toHaveLength(0);
 
   const atravessa = { ...evento, inicioMs: Date.parse("2026-10-12T01:30:00-03:00") };

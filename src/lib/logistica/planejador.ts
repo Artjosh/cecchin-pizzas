@@ -116,7 +116,11 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
   const propostas: PropostaLogistica[] = [];
   const alternativas: ResultadoPlanejador["alternativas"] = {};
   const pendencias: ResultadoPlanejador["pendencias"] = [];
-  const disponibilidade = veiculos.filter((v) => v.disponivel);
+  const disponibilidade = veiculos.filter((v) => v.disponivel).map((v) => ({
+    ...v,
+    janelasCarro: v.janelasCarro?.slice().sort((a, b) => a.inicioMs - b.inicioMs),
+    janelasMotorista: v.janelasMotorista?.slice().sort((a, b) => a.inicioMs - b.inicioMs),
+  }));
   const ocupacao = new Map<string, { inicio: number; fim: number }[]>();
   for (const plano of aprovadas) {
     if (!Number.isFinite(plano.saidaMs) || !Number.isFinite(plano.retornoMs) || plano.retornoMs <= plano.saidaMs) continue;
