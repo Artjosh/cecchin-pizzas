@@ -4,9 +4,13 @@ import { chamarFuncao, consultar } from "@/src/servidor/supabase";
 
 const erro = (mensagem: string, status: number) => NextResponse.json({ mensagem }, { status });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const sessao = await sessaoAtual();
   if (!sessao) return erro("Entre na sua conta", 401);
+  const paginaTexto = request.nextUrl.searchParams.get("pagina") ?? "0";
+  if (!/^\d{1,4}$/.test(paginaTexto)) return erro("Página inválida", 400);
+  const pagina = Number(paginaTexto);
+  const limite = 50;
   const [clientes, produtos] = await Promise.all([
     consultar(`cliente_broto?select=id,razao_social,cnpj,telefone,endereco,cidade,uf,cep,complemento,ativo&usuario_id=eq.${sessao.usuario.id}&limit=1`, sessao.accessToken),
     consultar("produto_broto?select=id,nome,descricao,preco_base_centavos&ativo=eq.true&order=nome.asc&limit=100", sessao.accessToken),
@@ -14,13 +18,14 @@ export async function GET() {
   if (!clientes.ok || !produtos.ok) return erro("Não foi possível carregar o catálogo de brotos", 503);
   const cliente = Array.isArray(clientes.dados) ? clientes.dados[0] ?? null : null;
   const id = cliente && typeof cliente === "object" && "id" in cliente ? String(cliente.id) : null;
-  if (!id) return NextResponse.json({ cliente: null, produtos: produtos.dados ?? [], precos: [], pedidos: [] }, { headers: { "Cache-Control": "no-store" } });
+  if (!id) return NextResponse.json({ cliente: null, produtos: produtos.dados ?? [], precos: [], pedidos: [], temMaisPedidos: false }, { headers: { "Cache-Control": "no-store" } });
   const [precos, pedidos] = await Promise.all([
     consultar(`preco_cliente_broto?select=cliente_id,produto_id,valor_centavos&cliente_id=eq.${id}&limit=100`, sessao.accessToken),
-    consultar(`pedido_broto?select=id,cliente_id,total_centavos,status,pagamento_status,valor_pago_centavos,solicitado_em,prazo_entrega,endereco_entrega,observacao,item_pedido_broto(produto_id,nome_produto,quantidade,preco_unitario_centavos)&cliente_id=eq.${id}&order=solicitado_em.desc&limit=50`, sessao.accessToken),
+    consultar(`pedido_broto?select=id,cliente_id,total_centavos,status,pagamento_status,valor_pago_centavos,solicitado_em,prazo_entrega,endereco_entrega,observacao,item_pedido_broto(produto_id,nome_produto,quantidade,preco_unitario_centavos)&cliente_id=eq.${id}&order=solicitado_em.desc,id.desc&limit=${limite + 1}&offset=${pagina * limite}`, sessao.accessToken),
   ]);
   if (!precos.ok || !pedidos.ok) return erro("Não foi possível carregar seus pedidos", 503);
-  return NextResponse.json({ cliente, produtos: produtos.dados ?? [], precos: precos.dados ?? [], pedidos: pedidos.dados ?? [] }, { headers: { "Cache-Control": "no-store" } });
+  const lista = Array.isArray(pedidos.dados) ? pedidos.dados : [];
+  return NextResponse.json({ cliente, produtos: produtos.dados ?? [], precos: precos.dados ?? [], pedidos: lista.slice(0, limite), temMaisPedidos: lista.length > limite }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: NextRequest) {

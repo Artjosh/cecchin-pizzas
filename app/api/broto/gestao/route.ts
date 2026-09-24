@@ -4,20 +4,28 @@ import { chamarFuncao, consultar } from "@/src/servidor/supabase";
 
 const erro = (mensagem: string, status: number) => NextResponse.json({ mensagem }, { status });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const sessao = await sessaoAtual();
   if (!sessao || !["admin", "gestao"].includes(sessao.usuario.papel)) return erro("Sem permissão", 403);
+  const paginaPedidosTexto = request.nextUrl.searchParams.get("paginaPedidos") ?? "0";
+  const paginaFinanceiroTexto = request.nextUrl.searchParams.get("paginaFinanceiro") ?? "0";
+  if (!/^\d{1,4}$/.test(paginaPedidosTexto) || !/^\d{1,4}$/.test(paginaFinanceiroTexto)) return erro("Página inválida", 400);
+  const paginaPedidos = Number(paginaPedidosTexto);
+  const paginaFinanceiro = Number(paginaFinanceiroTexto);
+  const limite = 50;
   const [clientes, produtos, precos, pedidos, financeiro, resumo, pessoas] = await Promise.all([
     consultar("cliente_broto?select=id,usuario_id,razao_social,cnpj,telefone,endereco,cidade,uf,cep,ativo&order=razao_social.asc&limit=300", sessao.accessToken),
     consultar("produto_broto?select=id,nome,descricao,preco_base_centavos,ativo&order=nome.asc&limit=200", sessao.accessToken),
     consultar("preco_cliente_broto?select=cliente_id,produto_id,valor_centavos&limit=1000", sessao.accessToken),
-    consultar("pedido_broto?select=id,cliente_id,total_centavos,status,pagamento_status,valor_pago_centavos,solicitado_em,prazo_entrega,endereco_entrega,observacao,item_pedido_broto(produto_id,nome_produto,quantidade,preco_unitario_centavos)&order=solicitado_em.desc&limit=200", sessao.accessToken),
-    consultar("vw_financeiro_broto?select=data,tipo,valor_centavos,descricao,pedido_id&order=data.desc&limit=200", sessao.accessToken),
+    consultar(`pedido_broto?select=id,cliente_id,total_centavos,status,pagamento_status,valor_pago_centavos,solicitado_em,prazo_entrega,endereco_entrega,observacao,item_pedido_broto(produto_id,nome_produto,quantidade,preco_unitario_centavos)&order=solicitado_em.desc,id.desc&limit=${limite + 1}&offset=${paginaPedidos * limite}`, sessao.accessToken),
+    consultar(`vw_financeiro_broto?select=lancamento_id,data,tipo,valor_centavos,descricao,pedido_id&order=data.desc,lancamento_id.desc&limit=${limite + 1}&offset=${paginaFinanceiro * limite}`, sessao.accessToken),
     consultar("vw_resumo_financeiro_broto?select=entradas_centavos,despesas_centavos,saldo_centavos&limit=1", sessao.accessToken),
     consultar("usuario?select=id,nome,email&ativo=eq.true&order=nome.asc&limit=500", sessao.accessToken),
   ]);
   if ([clientes, produtos, precos, pedidos, financeiro, resumo, pessoas].some((r) => !r.ok)) return erro("Não foi possível carregar a gestão de brotos", 503);
-  return NextResponse.json({ clientes: clientes.dados ?? [], produtos: produtos.dados ?? [], precos: precos.dados ?? [], pedidos: pedidos.dados ?? [], financeiro: financeiro.dados ?? [], resumo: Array.isArray(resumo.dados) ? resumo.dados[0] ?? null : null, pessoas: pessoas.dados ?? [] }, { headers: { "Cache-Control": "no-store" } });
+  const listaPedidos = Array.isArray(pedidos.dados) ? pedidos.dados : [];
+  const listaFinanceiro = Array.isArray(financeiro.dados) ? financeiro.dados : [];
+  return NextResponse.json({ clientes: clientes.dados ?? [], produtos: produtos.dados ?? [], precos: precos.dados ?? [], pedidos: listaPedidos.slice(0, limite), temMaisPedidos: listaPedidos.length > limite, financeiro: listaFinanceiro.slice(0, limite), temMaisFinanceiro: listaFinanceiro.length > limite, resumo: Array.isArray(resumo.dados) ? resumo.dados[0] ?? null : null, pessoas: pessoas.dados ?? [] }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: NextRequest) {
