@@ -94,6 +94,17 @@ describe("planejador logístico", () => {
     expect(comPausa.propostas).toHaveLength(1);
   });
 
+  it("não sugere dois carros particulares do mesmo motorista no mesmo horário", () => {
+    const outroCarro = { ...particular, id: "particular-2" };
+    const mesmoHorario = { ...evento, id: "evento-b" };
+    const propostas = planejarLogistica([evento, mesmoHorario], [particular, outroCarro], config);
+    expect(propostas.propostas).toHaveLength(1);
+    expect(propostas.pendencias).toHaveLength(1);
+
+    const aprovado = { veiculoId: outroCarro.id, saidaMs: Date.parse("2026-10-06T10:00:00-03:00"), retornoMs: Date.parse("2026-10-06T12:00:00-03:00") };
+    expect(planejarLogistica([evento], [particular, outroCarro], config, [aprovado]).propostas).toHaveLength(0);
+  });
+
   it("antecipa a saída dentro de 30 minutos para reutilizar o carro sem atrasar a montagem", () => {
     const proximo = { ...evento, id: "evento-b", inicioMs: Date.parse("2026-10-06T13:00:00-03:00") };
     const semFlex = planejarLogistica([evento, proximo], [empresa], { ...config, flexSaidaMinutos: 0 });

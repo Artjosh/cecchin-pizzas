@@ -126,9 +126,14 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
     janelasMotorista: v.janelasMotorista?.slice().sort((a, b) => a.inicioMs - b.inicioMs),
   }));
   const ocupacao = new Map<string, { inicio: number; fim: number }[]>();
+  const ocupacaoMotorista = new Map<string, { inicio: number; fim: number }[]>();
+  const donoPorCarro = new Map(veiculos.map((veiculo) => [veiculo.id, veiculo.proprietarioId]));
   for (const plano of aprovadas) {
     if (!Number.isFinite(plano.saidaMs) || !Number.isFinite(plano.retornoMs) || plano.retornoMs <= plano.saidaMs) continue;
-    ocupacao.set(plano.veiculoId, [...(ocupacao.get(plano.veiculoId) ?? []), { inicio: plano.saidaMs, fim: plano.retornoMs }]);
+    const intervalo = { inicio: plano.saidaMs, fim: plano.retornoMs };
+    ocupacao.set(plano.veiculoId, [...(ocupacao.get(plano.veiculoId) ?? []), intervalo]);
+    const dono = donoPorCarro.get(plano.veiculoId);
+    if (dono) ocupacaoMotorista.set(dono, [...(ocupacaoMotorista.get(dono) ?? []), intervalo]);
   }
   const ordenados = [...eventos].sort((a, b) => saidaBase(a, config) - saidaBase(b, config) || a.rotaMinutos - b.rotaMinutos);
   const flex = Number.isFinite(config.flexSaidaMinutos) ? Math.min(30, Math.max(0, config.flexSaidaMinutos)) : 0;
@@ -168,6 +173,7 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
           if (carro.janelasCarro && !cobreViagem(carro.janelasCarro, saida, retorno)) continue;
           if (carro.janelasMotorista && !cobreViagem(carro.janelasMotorista, saida, retorno)) continue;
           if (ocupacoes.some((o) => saida < o.fim + config.minutosCarregar * minuto && retorno + config.minutosCarregar * minuto > o.inicio)) continue;
+          if (carro.proprietarioId && (ocupacaoMotorista.get(carro.proprietarioId) ?? []).some((o) => saida < o.fim && retorno > o.inicio)) continue;
           const kmTotal = modo === "levar" ? evento.rotaKm * 2 : segundo ? evento.rotaKm + evento.trechoSegundoKm! + evento.segundaRotaKm! : evento.rotaKm * 2;
           const custoCentavos = custo(carro, kmTotal, material, config);
           const alertas: string[] = [];
@@ -198,7 +204,10 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
     }
     alternativas[evento.id] = opcoes;
     propostas.push(escolhido);
-    ocupacao.set(escolhido.veiculoId, [...(ocupacao.get(escolhido.veiculoId) ?? []), { inicio: Date.parse(escolhido.saidaPrevista), fim: Date.parse(escolhido.retornoPrevisto) }]);
+    const intervalo = { inicio: Date.parse(escolhido.saidaPrevista), fim: Date.parse(escolhido.retornoPrevisto) };
+    ocupacao.set(escolhido.veiculoId, [...(ocupacao.get(escolhido.veiculoId) ?? []), intervalo]);
+    const dono = donoPorCarro.get(escolhido.veiculoId);
+    if (dono) ocupacaoMotorista.set(dono, [...(ocupacaoMotorista.get(dono) ?? []), intervalo]);
   }
   return { propostas, alternativas, pendencias, eventos: eventos.length, carrosDisponiveis: disponibilidade.length };
 }
