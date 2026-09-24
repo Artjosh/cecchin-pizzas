@@ -110,4 +110,16 @@ describe("planejador logístico", () => {
       expect(Date.parse(proposta.saidaPrevista) + proposta.rotaMinutos * 60_000).toBeLessThanOrEqual(inicio - config.montagemPadraoMinutos * 60_000);
     }
   });
-});
+  it("calcula o pico no inicio de cada trecho, inclusive retorno e passagem entre eventos", () => {
+    const semFlex = { ...config, flexSaidaMinutos: 0 };
+    const fimNoPico = planejarLogistica([{ ...evento, inicioMs: Date.parse("2026-10-06T13:00:00-03:00") }], [empresa], semFlex);
+    const equipe = [fimNoPico.propostas[0], ...fimNoPico.alternativas[evento.id]].find((proposta) => proposta.modo === "equipe");
+    expect(equipe?.retornoPrevisto).toBe("2026-10-06T20:41:00.000Z");
+
+    const levar = planejarLogistica([{ ...evento, inicioMs: Date.parse("2026-10-06T18:00:00-03:00") }], [empresa], semFlex);
+    const viagem = [levar.propostas[0], ...levar.alternativas[evento.id]].find((proposta) => proposta.modo === "levar");
+    expect(viagem?.retornoPrevisto).toBe("2026-10-06T20:41:00.000Z");
+
+    const dupla = planejarLogistica([{ ...evento, segundoEventoId: "evento-b", segundoInicioMs: Date.parse("2026-10-06T17:35:00-03:00"), trechoSegundoMinutos: 30, trechoSegundoKm: 20, segundaRotaKm: 20, segundaRotaMinutos: 30 }], [empresa], semFlex);
+    expect(dupla.propostas).toHaveLength(1);
+  });});

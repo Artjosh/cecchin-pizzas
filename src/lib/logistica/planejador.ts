@@ -80,8 +80,12 @@ function pico(saidaMs: number): boolean {
   return (hora >= 7 && hora < 9) || (hora >= 17 && hora < 20);
 }
 
+function trechoMinutos(minutos: number, config: ConfiguracaoPlanejador, saidaMs: number) {
+  return Math.ceil(minutos * (pico(saidaMs) ? config.fatorPicoPercentual / 100 : 1));
+}
+
 function viagemMinutos(evento: EventoPlanejavel, config: ConfiguracaoPlanejador, saidaMs: number) {
-  return Math.ceil(evento.rotaMinutos * (pico(saidaMs) ? config.fatorPicoPercentual / 100 : 1));
+  return trechoMinutos(evento.rotaMinutos, config, saidaMs);
 }
 
 function saidaBase(evento: EventoPlanejavel, config: ConfiguracaoPlanejador) {
@@ -146,20 +150,21 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
       const segundo = !!evento.segundoEventoId;
       if (segundo && (!evento.segundoInicioMs || !evento.trechoSegundoMinutos || !evento.trechoSegundoKm || !evento.segundaRotaKm || !evento.segundaRotaMinutos)) continue;
       const terminaServico = segundo ? evento.segundoInicioMs! + config.duracaoEventoMinutos * minuto : evento.inicioMs + config.duracaoEventoMinutos * minuto;
-      const trechoSegundo = segundo ? Math.ceil(evento.trechoSegundoMinutos! * config.fatorPicoPercentual / 100) : 0;
       const primeiroFim = evento.inicioMs + config.duracaoEventoMinutos * minuto;
+      const trechoSegundo = segundo ? trechoMinutos(evento.trechoSegundoMinutos!, config, primeiroFim) : 0;
       if (segundo && primeiroFim + trechoSegundo * minuto > evento.segundoInicioMs! - (evento.segundoBebidaAntes ? config.montagemBebidaAntesMinutos : config.montagemPadraoMinutos) * minuto) continue;
       for (const ajuste of deslocamentos) {
         const saida = base + ajuste * minuto;
         const viagem = viagemMinutos(evento, config, saida);
         const montagem = evento.bebidaAntes ? config.montagemBebidaAntesMinutos : config.montagemPadraoMinutos;
         if (saida + viagem * minuto > evento.inicioMs - montagem * minuto) continue;
-        const retornoLevar = saida + viagem * 2 * minuto;
+        const chegada = saida + viagem * minuto;
+        const retornoLevar = chegada + trechoMinutos(evento.rotaMinutos, config, chegada) * minuto;
         const precisaReutilizar = ordenados.some((outro) => outro.id !== evento.id && saidaBase(outro, config) >= retornoLevar + config.minutosCarregar * minuto && saidaBase(outro, config) < terminaServico + viagem * minuto);
         for (const modo of (["equipe", "levar"] as const)) {
           if (segundo && modo === "levar") continue; // mesma equipe e mesmo carro na dupla
           if (modo === "levar" && carro.limiteLevar < 1) continue;
-          const retorno = modo === "levar" ? retornoLevar : terminaServico + (segundo ? Math.ceil(evento.segundaRotaMinutos! * config.fatorPicoPercentual / 100) : viagem) * minuto;
+          const retorno = modo === "levar" ? retornoLevar : terminaServico + trechoMinutos(segundo ? evento.segundaRotaMinutos! : evento.rotaMinutos, config, terminaServico) * minuto;
           if (carro.janelasCarro && !cobreViagem(carro.janelasCarro, saida, retorno)) continue;
           if (carro.janelasMotorista && !cobreViagem(carro.janelasMotorista, saida, retorno)) continue;
           if (ocupacoes.some((o) => saida < o.fim + config.minutosCarregar * minuto && retorno + config.minutosCarregar * minuto > o.inicio)) continue;
