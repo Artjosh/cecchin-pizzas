@@ -9,11 +9,11 @@ type Requisito = { evento_id: string; forno_necessario: string; bebida_necessari
 type Rota = { evento_id: string; distancia_km: number; duracao_minutos: number; medido_em: string; latitude: number; longitude: number };
 type Duplo = { id: string; primeiro_evento_id: string; segundo_evento_id: string };
 type TrechoDuplo = { evento_duplo_id: string; primeira_latitude: number; primeira_longitude: number; segunda_latitude: number; segunda_longitude: number; distancia_km: number; duracao_minutos: number; medido_em: string };
-type Plano = { id: string; evento_id: string; situacao: string; veiculo_id: string; modo: string; saida_prevista: string; retorno_previsto: string };
+type Plano = { id: string; evento_id: string; situacao: string; veiculo_id: string; motorista_id: string | null; modo: string; saida_prevista: string; retorno_previsto: string };
 type Parada = { plano_id: string; evento_id: string; ordem: number; chegada_prevista: string };
 type ViagemPrevista = { eventos: string[]; veiculo_id: string; saida_prevista: string; retorno_previsto: string; distancia_km: number; custo_estimado: number; paradas: Array<{ eventoId: string; nome: string; chegadaPrevista: string; prazo: string }> };
 type Veiculo = { id: string; modelo: string; placa: string; forno_maximo: TipoForno; bebida_maxima: TipoBebida; lugares: number; limite_eventos_levar: number; proprietario_id: string | null };
-type Dados = { eventos: Evento[]; eventosVinculados: Evento[]; requisitos: Requisito[]; rotas: Rota[]; locais: Array<{ evento_id: string; latitude: number; longitude: number }>; duplos: Duplo[]; trechosDuplos: TrechoDuplo[]; planos: Plano[]; paradas: Parada[]; veiculos: Veiculo[]; pessoas: Array<{ id: string; nome: string }>; disponibilidades: Array<{ veiculo_id: string; semana: string; dias: boolean[] }>; disponibilidadesPessoas: Array<{ usuario_id: string; semana: string; dias: DiaPessoa[] }>; configuracao: Record<string, number> | null; capacidade: { duracao_minutos: number } | null; regra: Record<string, number> | null };
+type Dados = { eventos: Evento[]; eventosVinculados: Evento[]; requisitos: Requisito[]; rotas: Rota[]; locais: Array<{ evento_id: string; latitude: number; longitude: number }>; duplos: Duplo[]; trechosDuplos: TrechoDuplo[]; planos: Plano[]; paradas: Parada[]; veiculos: Veiculo[]; pessoas: Array<{ id: string; nome: string; papel: string }>; disponibilidades: Array<{ veiculo_id: string; semana: string; dias: boolean[] }>; disponibilidadesPessoas: Array<{ usuario_id: string; semana: string; dias: DiaPessoa[] }>; configuracao: Record<string, number> | null; capacidade: { duracao_minutos: number } | null; regra: Record<string, number> | null };
 const campo = "min-w-0 rounded-xl bg-surface-container px-3 py-2 text-sm text-on-surface";
 
 function dataLocal() { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); }
@@ -35,6 +35,24 @@ function trechoAtual(dados: Dados, dupla: Duplo): TrechoDuplo | undefined {
 
 const ordemForno: TipoForno[] = ["nenhum", "mini", "mini_medio", "medio"];
 const ordemBebida: TipoBebida[] = ["nenhuma", "isopor_pequeno", "isopor_grande"];
+
+function motoristaDisponivel(dados: Dados, id: string, saidaIso: string, retornoIso: string, exigirDeclaracao = false) {
+  const pessoa = dados.pessoas.find((item) => item.id === id);
+  const saida = Date.parse(saidaIso), retorno = Date.parse(retornoIso);
+  if (!pessoa || !Number.isFinite(saida) || !Number.isFinite(retorno) || retorno <= saida) return false;
+  if (dados.planos.some((plano) => plano.situacao === "aprovado" && plano.motorista_id === id &&
+    saida < Date.parse(plano.retorno_previsto) && retorno > Date.parse(plano.saida_prevista))) return false;
+  if (pessoa.papel !== "staff" && !exigirDeclaracao) return true;
+  const janelas = dados.disponibilidadesPessoas.filter((item) => item.usuario_id === id)
+    .flatMap((item) => janelasPessoa(item.semana, item.dias)).sort((a, b) => a.inicioMs - b.inicioMs);
+  let cobertoAte = saida;
+  for (const janela of janelas) {
+    if (janela.inicioMs > cobertoAte) break;
+    cobertoAte = Math.max(cobertoAte, janela.fimMs);
+    if (cobertoAte >= retorno) return true;
+  }
+  return false;
+}
 
 function veiculosDoDia(dados: Dados, dia: string): VeiculoPlanejavel[] {
   const carrosPorId = new Map<string, ReturnType<typeof janelasCarro>>();
@@ -132,6 +150,7 @@ export function LogisticaPainel() {
   const planejamento = useMemo(() => dados ? propostasDoDia(dados, veiculosSelecionados) : { propostas: [], pendencias: [], eventos: 0, carrosDisponiveis: 0 }, [dados, veiculosSelecionados]);
   const propostas = new Map<string, PropostaLogistica>(planejamento.propostas.map((proposta) => [proposta.eventoId, proposta]));
   const carroEscolhido = dados?.veiculos.find((carro) => carro.id === carroViagem);
+  const motoristaViagemPronto = Boolean(dados && previsaoViagem && motoristaDisponivel(dados, motoristaViagem, previsaoViagem.saida_prevista, previsaoViagem.retorno_previsto, Boolean(carroEscolhido?.proprietario_id)));
   const eventosParaViagem = dados?.eventos.filter((evento) => dados.requisitos.some((requisito) => requisito.evento_id === evento.id) && dados.locais.some((local) => local.evento_id === evento.id) && !dados.duplos.some((dupla) => dupla.primeiro_evento_id === evento.id || dupla.segundo_evento_id === evento.id) && !dados.planos.some((plano) => plano.evento_id === evento.id && plano.situacao === "aprovado") && !dados.paradas.some((parada) => parada.evento_id === evento.id && dados.planos.some((plano) => plano.id === parada.plano_id && plano.situacao === "aprovado"))) ?? [];
 
   return <section className="space-y-4 rounded-2xl bg-surface-container-low p-4 sm:p-5">
@@ -150,8 +169,9 @@ export function LogisticaPainel() {
           <button type="button" disabled={Boolean(ocupado) || eventosViagem.length < 2} onClick={() => void preverViagem()} className="rounded-xl bg-surface-container-high px-4 py-2 text-sm font-semibold disabled:opacity-50">{ocupado === "prever_viagem" ? "Calculando rota…" : "Calcular viagem"}</button></>}
         {previsaoViagem && <div className="space-y-3 rounded-xl bg-surface-container-lowest p-4 text-sm"><div className="flex flex-wrap justify-between gap-2"><strong>{previsaoViagem.distancia_km} km · custo estimado R$ {previsaoViagem.custo_estimado.toFixed(2).replace(".",",")}</strong><span>Saída {new Date(previsaoViagem.saida_prevista).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo",dateStyle:"short",timeStyle:"short"})} · volta {new Date(previsaoViagem.retorno_previsto).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo",timeStyle:"short"})}</span></div>
           <ol className="grid gap-1">{previsaoViagem.paradas.map((parada,indice) => <li key={parada.eventoId}>{indice+1}. {parada.nome} · chegada {new Date(parada.chegadaPrevista).toLocaleTimeString("pt-BR",{timeZone:"America/Sao_Paulo",hour:"2-digit",minute:"2-digit"})}</li>)}</ol>
-          <div className="grid gap-2 sm:grid-cols-2"><label className="grid gap-1 text-xs">Motorista<select className={campo} value={motoristaViagem} disabled={Boolean(carroEscolhido?.proprietario_id)} onChange={(ev) => setMotoristaViagem(ev.target.value)}><option value="">Selecione</option>{dados.pessoas.map((pessoa) => <option key={pessoa.id} value={pessoa.id}>{pessoa.nome}</option>)}</select></label><label className="grid gap-1 text-xs">Como as equipes serão buscadas?<input className={campo} maxLength={500} value={justificativaViagem} onChange={(ev) => setJustificativaViagem(ev.target.value)} placeholder="Descreva o recolhimento no fim dos eventos" /></label></div>
-          <button type="button" disabled={Boolean(ocupado) || !motoristaViagem || justificativaViagem.trim().length < 10} onClick={() => void acao("viagem",{ eventos: eventosViagem, veiculo_id: carroViagem, motorista_id: motoristaViagem, justificativa: justificativaViagem })} className="rounded-xl bg-primary px-4 py-2 font-semibold text-on-primary disabled:opacity-50">Aprovar viagem com {previsaoViagem.paradas.length} paradas</button></div>}
+          <div className="grid gap-2 sm:grid-cols-2"><label className="grid gap-1 text-xs">Motorista<select className={campo} value={motoristaViagem} disabled={Boolean(carroEscolhido?.proprietario_id)} onChange={(ev) => setMotoristaViagem(ev.target.value)}><option value="">Selecione</option>{dados.pessoas.map((pessoa) => <option key={pessoa.id} value={pessoa.id} disabled={!motoristaDisponivel(dados, pessoa.id, previsaoViagem.saida_prevista, previsaoViagem.retorno_previsto, Boolean(carroEscolhido?.proprietario_id))}>{pessoa.nome}</option>)}</select></label><label className="grid gap-1 text-xs">Como as equipes serão buscadas?<input className={campo} maxLength={500} value={justificativaViagem} onChange={(ev) => setJustificativaViagem(ev.target.value)} placeholder="Descreva o recolhimento no fim dos eventos" /></label></div>
+          {motoristaViagem && !motoristaViagemPronto && <p className="text-sm text-on-surface-variant">O motorista precisa declarar disponibilidade e não pode ter outra viagem nesse horário.</p>}
+          <button type="button" disabled={Boolean(ocupado) || !motoristaViagemPronto || justificativaViagem.trim().length < 10} onClick={() => void acao("viagem",{ eventos: eventosViagem, veiculo_id: carroViagem, motorista_id: motoristaViagem, justificativa: justificativaViagem })} className="rounded-xl bg-primary px-4 py-2 font-semibold text-on-primary disabled:opacity-50">Aprovar viagem com {previsaoViagem.paradas.length} paradas</button></div>}
       </section>}
       {dados.eventos.length === 0 ? <p className="rounded-xl bg-surface-container p-5 text-sm text-on-surface-variant">Nenhum evento confirmado para este dia.</p> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{dados.eventos.map((evento) => {
         const requisito = dados.requisitos.find((item) => item.evento_id === evento.id);
@@ -189,6 +209,7 @@ function Proposta({ proposta, dados, ocupado, salvar }: { proposta: PropostaLogi
   const carro = dados.veiculos.find((item) => item.id === proposta.veiculoId);
   const [motorista, setMotorista] = useState(carro?.proprietario_id ?? "");
   const [justificativa, setJustificativa] = useState("");
+  const motoristaPronto = motoristaDisponivel(dados, motorista, proposta.saidaPrevista, proposta.retornoPrevisto, Boolean(carro?.proprietario_id));
   useEffect(() => setMotorista(carro?.proprietario_id ?? ""), [carro?.proprietario_id]);
   return <div className="space-y-2 rounded-xl bg-primary/10 p-3 text-xs">
     <strong>Sugestão: {carro?.modelo ?? "Carro"} · {proposta.modo === "levar" ? "levar equipe" : "carro com a equipe"}</strong>
@@ -196,8 +217,9 @@ function Proposta({ proposta, dados, ocupado, salvar }: { proposta: PropostaLogi
     <p>{proposta.distanciaTotalKm} km · custo estimado R$ {(proposta.custoCentavos / 100).toFixed(2).replace(".", ",")}</p>
     {proposta.alertas.map((alerta) => <p key={alerta} className="text-on-surface-variant">{alerta}</p>)}
     <p className="text-on-surface-variant">Estimativa sem trânsito ao vivo. Confira os horários e a equipe antes de aprovar.</p>
-    <label className="grid gap-1">Motorista<select className={campo} value={motorista} disabled={Boolean(carro?.proprietario_id)} onChange={(ev) => setMotorista(ev.target.value)}><option value="">Selecione</option>{dados.pessoas.map((pessoa) => <option key={pessoa.id} value={pessoa.id}>{pessoa.nome}</option>)}</select></label>
+    <label className="grid gap-1">Motorista<select className={campo} value={motorista} disabled={Boolean(carro?.proprietario_id)} onChange={(ev) => setMotorista(ev.target.value)}><option value="">Selecione</option>{dados.pessoas.map((pessoa) => <option key={pessoa.id} value={pessoa.id} disabled={!motoristaDisponivel(dados, pessoa.id, proposta.saidaPrevista, proposta.retornoPrevisto, Boolean(carro?.proprietario_id))}>{pessoa.nome}</option>)}</select></label>
+    {motorista && !motoristaPronto && <p className="text-on-surface-variant">O motorista precisa declarar disponibilidade e não pode ter outra viagem nesse horário.</p>}
     {(proposta.modo === "levar" || proposta.segundoEventoId) && <label className="grid gap-1">{proposta.segundoEventoId ? "Confira desmontagem e trajeto entre os eventos" : "Como a equipe será buscada?"}<input className={campo} value={justificativa} onChange={(ev) => setJustificativa(ev.target.value)} minLength={10} maxLength={500} /></label>}
-    <button disabled={ocupado || !motorista || ((proposta.modo === "levar" || !!proposta.segundoEventoId) && justificativa.trim().length < 10)} onClick={() => salvar({ evento_id: proposta.eventoId, veiculo_id: proposta.veiculoId, motorista_id: motorista, modo: proposta.modo, saida_prevista: proposta.saidaPrevista, retorno_previsto: proposta.retornoPrevisto, distancia_km: proposta.distanciaTotalKm, custo_estimado: proposta.custoCentavos / 100, justificativa, aprovar: true })} className="rounded-xl bg-primary px-3 py-2 font-semibold text-on-primary disabled:opacity-50">Aprovar saída</button>
+    <button disabled={ocupado || !motoristaPronto || ((proposta.modo === "levar" || !!proposta.segundoEventoId) && justificativa.trim().length < 10)} onClick={() => salvar({ evento_id: proposta.eventoId, veiculo_id: proposta.veiculoId, motorista_id: motorista, modo: proposta.modo, saida_prevista: proposta.saidaPrevista, retorno_previsto: proposta.retornoPrevisto, distancia_km: proposta.distanciaTotalKm, custo_estimado: proposta.custoCentavos / 100, justificativa, aprovar: true })} className="rounded-xl bg-primary px-3 py-2 font-semibold text-on-primary disabled:opacity-50">Aprovar saída</button>
   </div>;
 }

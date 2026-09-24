@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     consultar<Array<Record<string, unknown>>>("configuracao_logistica?select=*&limit=1", token),
     consultar<Array<{ duracao_minutos: number }>>("configuracao_capacidade?select=duracao_minutos&limit=1", token),
     consultar<Array<Record<string, unknown>>>("regra_veiculo_particular?select=*&limit=1", token),
-    consultar<Array<{ id: string; nome: string }>>("usuario?select=id,nome&ativo=is.true&papel=in.(staff,gestao,admin)&order=nome.asc&limit=300", token),
+    consultar<Array<{ id: string; nome: string; papel: string }>>("usuario?select=id,nome,papel&ativo=is.true&papel=in.(staff,gestao,admin)&order=nome.asc&limit=300", token),
   ]);
   if ([eventos, veiculos, configuracao, capacidade, regra, pessoas].some((r) => !r.ok)) return NextResponse.json({ mensagem: "Não foi possível carregar a logística. Confira as migrações e o acesso ao banco." }, { status: 503 });
   const ids = (eventos.dados ?? []).map((e) => e.id);
@@ -108,8 +108,6 @@ export async function GET(request: NextRequest) {
   const semanaAnterior = new Date(semana); semanaAnterior.setUTCDate(semanaAnterior.getUTCDate() - 7);
   const semanaSeguinte = new Date(semana); semanaSeguinte.setUTCDate(semanaSeguinte.getUTCDate() + 7);
   const semanas = [semanaAnterior.toISOString().slice(0, 10), inicioSemana, semanaSeguinte.toISOString().slice(0, 10)].join(",");
-  const donos = [...new Set(((veiculos.dados ?? []) as Array<{ proprietario_id: string | null }>).flatMap((carro) => carro.proprietario_id ? [carro.proprietario_id] : []))];
-  const filtroDonos = donos.length ? donos.join(",") : "00000000-0000-0000-0000-000000000000";
   const idsFiltro = ids.length ? `&evento_id=in.(${ids.join(",")})` : "&evento_id=eq.00000000-0000-0000-0000-000000000000";
   const amanha = new Date(`${dia}T12:00:00Z`);
   amanha.setUTCDate(amanha.getUTCDate() + 1);
@@ -121,7 +119,7 @@ export async function GET(request: NextRequest) {
     consultar(`plano_logistico?select=*&saida_prevista=lt.${fimDia}T00:00:00-03:00&retorno_previsto=gt.${dia}T00:00:00-03:00&situacao=neq.cancelado&limit=200`, token),
     consultar(`evento_duplo?select=*&or=(primeiro_evento_id.in.(${ids.length ? ids.join(",") : "00000000-0000-0000-0000-000000000000"}),segundo_evento_id.in.(${ids.length ? ids.join(",") : "00000000-0000-0000-0000-000000000000"}))&limit=100`, token),
     consultar(`disponibilidade_veiculo?select=veiculo_id,semana,dias&semana=in.(${semanas})&limit=600`, token),
-    consultar(`disponibilidade_semanal?select=usuario_id,semana,dias&usuario_id=in.(${filtroDonos})&semana=in.(${semanas})&limit=600`, token),
+    consultar(`disponibilidade_semanal?select=usuario_id,semana,dias&semana=in.(${semanas})&limit=1000`, token),
   ]);
   if ([requisitos, rotas, locais, planos, duplos, disponibilidades, disponibilidadesPessoas].some((r) => !r.ok)) return NextResponse.json({ mensagem: "Não foi possível carregar os planos e a disponibilidade." }, { status: 503 });
   const idsDuplos = ((duplos.dados ?? []) as Array<{ id: string }>).map((item) => item.id);
