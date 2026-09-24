@@ -39,8 +39,9 @@ interface Lancamento {
 }
 
 const LANCAMENTOS_POR_PAGINA = 30;
+const FREELANCE_POR_PAGINA = 30;
 
-export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1 }: { paginaEntradas?: number; paginaDespesas?: number } = {}) {
+export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, paginaAcertos = 1, paginaEscalas = 1 }: { paginaEntradas?: number; paginaDespesas?: number; paginaAcertos?: number; paginaEscalas?: number } = {}) {
   const sessao = await exigirPapel(["gestao"]);
 
   const [conciliacaoR, entradasR, despesasR, contasR] = await Promise.all([
@@ -69,8 +70,8 @@ export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1 }:
   const [caixaR, resumoR, acertosR, escalasR, cartoesR, faturasR, pessoasR, planosR, veiculosR, usosR, lavagensR, usosResumoR] = await Promise.all([
     consultar<MovimentoHoje[]>(`vw_caixa_hoje?select=origem_id,dia,natureza,descricao,valor&dia=eq.${hoje}&order=natureza.asc,descricao.asc,valor.asc,origem_id.asc&limit=50`, sessao.accessToken),
     consultar<ResumoCaixa[]>(`vw_caixa_resumo_dia?select=movimentos,entradas,saidas,saldo&dia=eq.${hoje}&limit=1`, sessao.accessToken),
-    consultar<Acerto[]>("acerto_freelance?select=id,usuario_id,evento_id,valor,chave_pix_retrato,estado,criado_em,evento(data_evento,codigo_legado)&estado=eq.pendente&order=criado_em.asc&limit=100", sessao.accessToken),
-    consultar<EscalaFreelance[]>("vw_escala_freelance_a_concluir?select=id,usuario_id,evento_id,data_evento,codigo_legado,nome&order=data_evento.desc,id.asc&limit=100", sessao.accessToken),
+    consultar<Acerto[]>(`acerto_freelance?select=id,usuario_id,evento_id,valor,chave_pix_retrato,estado,criado_em,evento(data_evento,codigo_legado)&estado=eq.pendente&order=criado_em.asc,id.asc&limit=${FREELANCE_POR_PAGINA}&offset=${(paginaAcertos - 1) * FREELANCE_POR_PAGINA}`, sessao.accessToken, { headers: { Prefer: "count=exact" } }),
+    consultar<EscalaFreelance[]>(`vw_escala_freelance_a_concluir?select=id,usuario_id,evento_id,data_evento,codigo_legado,nome&order=data_evento.desc,id.asc&limit=${FREELANCE_POR_PAGINA}&offset=${(paginaEscalas - 1) * FREELANCE_POR_PAGINA}`, sessao.accessToken, { headers: { Prefer: "count=exact" } }),
     consultar<Cartao[]>("cartao_credito_empresa?select=id,nome,fechamento_dia,vencimento_dia&ativo=eq.true&order=nome.asc&limit=100", sessao.accessToken),
     consultar<Fatura[]>("vw_fatura_cartao?select=cartao_id,nome,competencia,vencimento,total,pago&order=competencia.desc&limit=100", sessao.accessToken),
     consultar<{ id: string; nome: string }[]>("usuario?select=id,nome&ativo=eq.true&limit=500", sessao.accessToken),
@@ -102,7 +103,7 @@ export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1 }:
         descricao="O que ainda não foi acertado, e o que foi lançado."
       />
 
-      {caixaR.ok && resumoR.ok && acertosR.ok && escalasR.ok && cartoesR.ok && faturasR.ok && pessoasR.ok ? <GestaoFinanceira movimentos={caixaR.dados ?? []} resumo={resumoR.dados?.[0] ?? { movimentos: 0, entradas: 0, saidas: 0, saldo: 0 }} acertos={acertosR.dados ?? []} escalas={escalasR.dados ?? []} cartoes={cartoesR.dados ?? []} faturas={faturasR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Os novos módulos financeiros aguardam a migration da branch. Os lançamentos existentes continuam abaixo.</p>}
+      {caixaR.ok && resumoR.ok && acertosR.ok && escalasR.ok && cartoesR.ok && faturasR.ok && pessoasR.ok ? <GestaoFinanceira movimentos={caixaR.dados ?? []} resumo={resumoR.dados?.[0] ?? { movimentos: 0, entradas: 0, saidas: 0, saldo: 0 }} acertos={acertosR.dados ?? []} totalAcertos={acertosR.total ?? 0} paginaAcertos={paginaAcertos} escalas={escalasR.dados ?? []} totalEscalas={escalasR.total ?? 0} paginaEscalas={paginaEscalas} cartoes={cartoesR.dados ?? []} faturas={faturasR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Os novos módulos financeiros aguardam a migration da branch. Os lançamentos existentes continuam abaixo.</p>}
 
       {planosR.ok && veiculosR.ok && usosR.ok && lavagensR.ok && usosResumoR.ok && pessoasR.ok ? <ReembolsoVeiculos planos={planosR.dados ?? []} veiculos={veiculosR.dados ?? []} usos={usosR.dados ?? []} lavagens={lavagensR.dados ?? []} resumos={usosResumoR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Não foi possível carregar os reembolsos de veículos.</p>}
 
