@@ -71,7 +71,7 @@ Contrato detalhado: [dimensionamento](../cecchin-pizzas-backend/migracao/DIMENSI
 
 Perfil mostra casa–QG; aberto pela montagem inclui o evento. A modal de mapa da montagem reúne opções em uma coluna com scroll e slider de densidade, sem outro preview sobreposto. MapLibre é carregado no navegador e usa worker estático.
 
-Três dados são independentes: meios de deslocamento, veículos próprios e categorias de CNH. Uber/ônibus/empresa não significam veículo próprio; ter veículo não implica habilitação. O cadastro `veiculo_operacional` reúne frota da empresa (`proprietario_id` nulo) e carros particulares; `plano_logistico` registra a alocação planejada por evento. A gestão edita os veículos em `/admin/frota`.
+Três dados são independentes: meios de deslocamento, veículos próprios e categorias de CNH. Uber/ônibus/empresa não significam veículo próprio; ter veículo não implica habilitação. O cadastro `veiculo_operacional` reúne frota da empresa (`proprietario_id` nulo) e carros particulares; `plano_logistico` registra a alocação planejada por evento. A gestão edita os veículos em `/admin/frota`; o integrante cadastra e edita o próprio carro em `/operacional/minha-escala`, onde também declara os dias em que o disponibiliza. O bot só oferece essa escolha depois que existe uma ficha ativa do carro.
 
 Residência fica em `perfil_operacional_equipe`, com leitura de gestão/admin; não amplie a exposição de `usuario` para guardar endereço privado. QG vem de `QG_CECCHIN` em `src/lib/operacao.ts`. O ponto do evento fica em `localizacao_evento`: escolha explícita do geocoder, gravação autorizada e uso condicionado ao endereço de referência ainda coincidir com o evento.
 

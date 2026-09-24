@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const semana = request.nextUrl.searchParams.get("semana");
   if (!semana || !/^\d{4}-\d{2}-\d{2}$/.test(semana)) return NextResponse.json({ mensagem: "Semana inválida" }, { status: 400 });
   const [veiculos, declaracoes] = await Promise.all([
-    consultar<{ id: string; modelo: string; placa: string }[]>(`veiculo_operacional?select=id,modelo,placa&proprietario_id=eq.${sessao.usuario.id}&ativo=eq.true&limit=20`, sessao.accessToken),
+    consultar(`veiculo_operacional?select=id,placa,modelo,carroceria,forno_maximo,bebida_maxima,lugares,limite_eventos_levar,proprietario_id,ativo&proprietario_id=eq.${sessao.usuario.id}&order=modelo.asc&limit=20`, sessao.accessToken),
     consultar<{ veiculo_id: string; dias: boolean[] }[]>(`disponibilidade_veiculo?select=veiculo_id,dias&semana=eq.${semana}&limit=20`, sessao.accessToken),
   ]);
   if (!veiculos.ok || !declaracoes.ok) return NextResponse.json({ mensagem: "Não foi possível consultar o carro" }, { status: 503 });
