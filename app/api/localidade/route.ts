@@ -42,6 +42,29 @@ async function sessaoDeGestao() {
 }
 
 /** Atualiza uma localidade ou a única janela de pico da organização. */
+export async function GET(request: NextRequest) {
+  const { sessao, erro } = await sessaoDeGestao();
+  if (erro) return erro;
+  const textoPagina = request.nextUrl.searchParams.get("pagina") ?? "0";
+  const busca = (request.nextUrl.searchParams.get("busca") ?? "").trim();
+  const incompletas = request.nextUrl.searchParams.get("incompletas") === "1";
+  if (!/^\d{1,4}$/.test(textoPagina) || busca.length > 80) return NextResponse.json({ mensagem: "Busca inválida" }, { status: 400 });
+  const pagina = Number(textoPagina);
+  const porPagina = 30;
+  const termo = busca.replace(/[,*().%]/g, " ").trim();
+  const buscaExpressao = `cidade.ilike.*${encodeURIComponent(termo)}*,bairro.ilike.*${encodeURIComponent(termo)}*`;
+  const incompletasExpressao = "valor.is.null,minutos_normal.is.null,minutos_pico.is.null";
+  const filtro = termo && incompletas ? `&and=(or(${buscaExpressao}),or(${incompletasExpressao}))`
+    : termo ? `&or=(${buscaExpressao})` : incompletas ? `&or=(${incompletasExpressao})` : "";
+  const [localidades, totalIncompletas, pico] = await Promise.all([
+    consultar(`localidade?select=id,cidade,bairro,uf,valor,minutos_normal,minutos_pico,ativa${filtro}&order=cidade.asc,bairro.asc,id.asc&limit=${porPagina}&offset=${pagina * porPagina}`, sessao.accessToken, { headers: { Prefer: "count=exact" } }),
+    consultar("localidade?select=id&or=(valor.is.null,minutos_normal.is.null,minutos_pico.is.null)&limit=1", sessao.accessToken, { headers: { Prefer: "count=exact" } }),
+    consultar<Array<{ inicio: string; fim: string }>>("janela_pico?select=inicio,fim&limit=1", sessao.accessToken),
+  ]);
+  if (!localidades.ok || !totalIncompletas.ok || !pico.ok) return NextResponse.json({ mensagem: "Não foi possível carregar as localidades" }, { status: 503 });
+  return NextResponse.json({ localidades: localidades.dados ?? [], total: localidades.total ?? 0, incompletas: totalIncompletas.total ?? 0, inicioPico: pico.dados?.[0]?.inicio ?? "17:00", fimPico: pico.dados?.[0]?.fim ?? "20:00", porPagina }, { headers: { "Cache-Control": "private, no-store" } });
+}
+
 export async function PATCH(request: NextRequest) {
   const { sessao, erro } = await sessaoDeGestao();
   if (erro) return erro;
