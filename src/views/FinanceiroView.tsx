@@ -12,6 +12,7 @@ import {
 } from "../components/painel/Painel";
 import { comoData } from "../lib/formato";
 import { formatBRL } from "../lib/moeda";
+import { GestaoFinanceira, type MovimentoHoje, type ResumoCaixa, type Acerto, type Cartao, type Fatura } from "../components/financeiro/GestaoFinanceira";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 import { comoLeitura } from "../servidor/fonte";
@@ -58,6 +59,16 @@ export async function FinanceiroView() {
     ),
   ]);
 
+  const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const [caixaR, resumoR, acertosR, cartoesR, faturasR, pessoasR] = await Promise.all([
+    consultar<MovimentoHoje[]>(`vw_caixa_hoje?select=origem_id,dia,natureza,descricao,valor&dia=eq.${hoje}&order=natureza.asc,descricao.asc,valor.asc,origem_id.asc&limit=50`, sessao.accessToken),
+    consultar<ResumoCaixa[]>(`vw_caixa_resumo_dia?select=movimentos,entradas,saidas,saldo&dia=eq.${hoje}&limit=1`, sessao.accessToken),
+    consultar<Acerto[]>("acerto_freelance?select=id,usuario_id,evento_id,valor,chave_pix_retrato,estado,criado_em,evento(data_evento,codigo_legado)&estado=eq.pendente&order=criado_em.asc&limit=100", sessao.accessToken),
+    consultar<Cartao[]>("cartao_credito_empresa?select=id,nome,fechamento_dia,vencimento_dia&ativo=eq.true&order=nome.asc&limit=100", sessao.accessToken),
+    consultar<Fatura[]>("vw_fatura_cartao?select=cartao_id,nome,competencia,vencimento,total,pago&order=competencia.desc&limit=100", sessao.accessToken),
+    consultar<{ id: string; nome: string }[]>("usuario?select=id,nome&ativo=eq.true&limit=500", sessao.accessToken),
+  ]);
+
   const conciliacao = comoLeitura(conciliacaoR);
   const pendentes = conciliacao.estado === "ok" ? conciliacao.linhas : [];
 
@@ -78,6 +89,8 @@ export async function FinanceiroView() {
         titulo="Financeiro"
         descricao="O que ainda não foi acertado, e o que foi lançado."
       />
+
+      {caixaR.ok && resumoR.ok && acertosR.ok && cartoesR.ok && faturasR.ok && pessoasR.ok ? <GestaoFinanceira movimentos={caixaR.dados ?? []} resumo={resumoR.dados?.[0] ?? { movimentos: 0, entradas: 0, saidas: 0, saldo: 0 }} acertos={acertosR.dados ?? []} cartoes={cartoesR.dados ?? []} faturas={faturasR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Os novos módulos financeiros aguardam a migration da branch. Os lançamentos existentes continuam abaixo.</p>}
 
       {semLancamento && (
         <LacunaDeDados titulo="Nenhum lançamento financeiro disponível">

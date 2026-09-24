@@ -25,6 +25,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     { name: "Contratar Evento", path: "/cliente/contratar" },
     { name: "Rastreio Ao Vivo", path: "/cliente/rastreio" },
     { name: "Meus Eventos", path: "/cliente/eventos" },
+    { name: "Brotos", path: "/cliente/brotos" },
   ];
 
   return (

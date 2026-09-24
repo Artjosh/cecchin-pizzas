@@ -15,11 +15,13 @@ import {
   History,
   Map,
   MapPinned,
+  Megaphone,
   MessageCircle,
   Menu,
   MessageSquareShare,
   Pizza,
   Route,
+  ShoppingBasket,
   X,
   Truck,
   User,
@@ -150,6 +152,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <nav className="flex flex-col gap-1 overflow-y-auto">
+            {podeVer(['staff']) && <Link prefetch={false} href="/operacional/marketing" className={cn("flex items-center gap-3 rounded-lg px-3 py-2 transition-colors", pathname === "/operacional/marketing" ? "bg-primary-container font-bold text-on-primary-container" : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface")}><Megaphone className="h-5 w-5" /><span className="font-label-lg text-label-lg">Marketing</span></Link>}
             <span className="px-3 pt-4 pb-1 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
               Equipe de Campo
             </span>
@@ -289,6 +292,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <Wallet className="w-[18px] h-[18px]" />
                   Financeiro
                 </Link>
+                <Link prefetch={false} href="/admin/brotos" className={cn("flex items-center gap-3 rounded-lg px-3 py-2 transition-colors", pathname === "/admin/brotos" ? "bg-primary-container font-bold text-on-primary-container" : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface")}><ShoppingBasket className="h-5 w-5" /><span className="font-label-lg text-label-lg">Brotos</span></Link>
                 <Link prefetch={false}
                   href="/admin/pagamentos"
                   className={cn("px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors", pathname.startsWith("/admin/pagamentos") ? "bg-primary-container text-on-primary-container" : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface")}

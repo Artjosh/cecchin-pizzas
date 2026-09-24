@@ -1,0 +1,38 @@
+import { describe, expect, it } from "vitest";
+import { planejarLogistica, type ConfiguracaoPlanejador, type EventoPlanejavel, type VeiculoPlanejavel } from "../../src/lib/logistica/planejador";
+
+const config: ConfiguracaoPlanejador = { minutosCarregar: 10, flexSaidaMinutos: 30, montagemPadraoMinutos: 60, montagemBebidaAntesMinutos: 120, fatorPicoPercentual: 135, custoFrotaCentavosKm: 70, materialCentavosKm: 175, pessoasCentavosKm: 150, minimoCentavos: 4000, adicionalMaterialCentavos: 3000, duracaoEventoMinutos: 240 };
+const evento: EventoPlanejavel = { id: "evento-a", inicioMs: Date.parse("2026-10-06T12:00:00-03:00"), convidados: 30, forno: "mini", bebida: "isopor_pequeno", bebidaAntes: false, pessoas: 3, rotaMinutos: 30, rotaKm: 20 };
+const empresa: VeiculoPlanejavel = { id: "empresa", modelo: "Kombi", placa: "ABC1234", proprietarioId: null, forno: "medio", bebida: "isopor_grande", lugares: 5, limiteLevar: 3, disponivel: true };
+const particular: VeiculoPlanejavel = { ...empresa, id: "particular", proprietarioId: "motorista" };
+
+describe("planejador logístico", () => {
+  it("considera montagem, pico e pagamento do carro particular", () => {
+    const resultado = planejarLogistica([evento], [particular], config);
+    expect(resultado.pendencias).toHaveLength(0);
+    expect(resultado.propostas[0].saidaPrevista).toBe("2026-10-06T13:30:00.000Z");
+    expect(resultado.propostas[0].distanciaTotalKm).toBe(40);
+    expect(resultado.propostas[0].custoCentavos).toBe(10000); // 40 km × R$1,75 + R$30
+    const horaPico = planejarLogistica([{ ...evento, inicioMs: Date.parse("2026-10-06T20:00:00-03:00") }], [particular], config);
+    expect(Date.parse(horaPico.propostas[0].saidaPrevista)).toBeLessThan(Date.parse("2026-10-06T18:30:00-03:00"));
+  });
+
+  it("prioriza frota própria, respeita capacidade e pede ajuda sem carro compatível", () => {
+    const resultado = planejarLogistica([evento], [particular, empresa], config);
+    expect(resultado.propostas[0].veiculoId).toBe("empresa");
+    const incapaz = planejarLogistica([{ ...evento, pessoas: 6 }], [particular, empresa], config);
+    expect(incapaz.propostas).toHaveLength(0);
+    expect(incapaz.pendencias[0].motivo).toMatch(/lugares/i);
+  });
+
+  it("usa uma única saída do QG para a dupla e rejeita ligação inviável", () => {
+    const dupla: EventoPlanejavel = { ...evento, segundoEventoId: "evento-b", segundoInicioMs: Date.parse("2026-10-06T18:00:00-03:00"), trechoSegundoMinutos: 20, trechoSegundoKm: 12, segundaRotaKm: 15, segundaRotaMinutos: 25, segundoBebidaAntes: false };
+    const possivel = planejarLogistica([dupla], [empresa], config);
+    expect(possivel.propostas).toHaveLength(1);
+    expect(possivel.propostas[0].distanciaTotalKm).toBe(47);
+    expect(possivel.propostas[0].alertas.join(" ")).toMatch(/uma vez/);
+    const impossivel = planejarLogistica([{ ...dupla, segundoInicioMs: Date.parse("2026-10-06T15:00:00-03:00") }], [empresa], config);
+    expect(impossivel.propostas).toHaveLength(0);
+    expect(impossivel.pendencias).toHaveLength(1);
+  });
+});

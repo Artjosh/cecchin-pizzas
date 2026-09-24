@@ -6,6 +6,7 @@ import {
   ChevronDown,
   LogOut,
   ShieldCheck,
+  ShoppingBasket,
   User as UserIcon,
   UserPlus,
 } from "lucide-react";
@@ -126,6 +127,8 @@ export function MenuDoUsuario() {
               Meu perfil
             </span>
           </Link>
+
+          <Link href="/cliente/brotos" onClick={() => setAberto(false)} className="flex items-center gap-space-sm px-space-md py-space-sm hover:bg-surface-container transition-colors"><ShoppingBasket className="w-4 h-4 text-tertiary" /><span className="font-body-md text-body-md text-on-surface">Pedir brotos</span></Link>
 
           {usuario.papel === "cliente" && (
             <Link
