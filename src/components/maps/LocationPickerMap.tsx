@@ -1,8 +1,7 @@
 "use client";
-import type * as GeoJSON from "geojson";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LocateFixed, Minus, Plus, Route, Search, Timer } from "lucide-react";
+import { LocateFixed, Minus, Plus, Search, Timer } from "lucide-react";
 import estilos from "./LocationPickerMap.module.css";
 
 import { cn } from "../../lib/utils";
@@ -23,18 +22,18 @@ interface LocationPickerMapProps {
 }
 
 interface LocalEncontrado extends Coordenada { endereco: string }
-interface RotaEncontrada { distanciaMetros: number; duracaoSegundos: number; geometria: { coordinates: [number, number][] } }
+interface RotaEncontrada { duracaoSegundos: number }
 type BibliotecaMapa = typeof import("maplibre-gl");
 type MapaMapLibre = any;
 type Marker = any;
-type GeoJSONSource = { setData: (dados: GeoJSON.Feature<GeoJSON.LineString>) => void };
 const QG = QG_CECCHIN.coordenada;
+const CENTRO_PORTO_ALEGRE: Coordenada = { lat: -30.0346, lng: -51.2177 };
 
 function estimativa(destino: Coordenada) {
   const rad = (grau: number) => (grau * Math.PI) / 180;
   const a = Math.sin(rad(destino.lat - QG.lat) / 2) ** 2 + Math.cos(rad(QG.lat)) * Math.cos(rad(destino.lat)) * Math.sin(rad(destino.lng - QG.lng) / 2) ** 2;
   const km = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 1.28;
-  return { distance: `${Math.max(1, Math.round(km))} km`, duration: `~ ${Math.max(5, Math.round(km * 60 / 32))} min` };
+  return `~ ${Math.max(5, Math.round(km * 60 / 32))} min`;
 }
 
 function criarPino() {
@@ -43,29 +42,6 @@ function criarPino() {
   elemento.setAttribute("aria-label", "Local do evento");
   elemento.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" class="h-9 w-9 fill-current"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/></svg>';
   return elemento;
-}
-
-function criarIconeQG() {
-  const elemento = document.createElement("div");
-  elemento.className = "flex flex-col items-center gap-1";
-  elemento.setAttribute("role", "img");
-  elemento.setAttribute("aria-label", "QG Cecchin — base operacional");
-  elemento.title = "QG Cecchin — base operacional";
-  elemento.innerHTML = '<span class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-on-primary shadow-lg ring-2 ring-surface"><svg viewBox="0 0 24 24" aria-hidden="true" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 21v-8h6v8M9 9h6"/></svg></span><span class="rounded-md bg-surface px-2 py-1 font-label-sm text-label-sm text-on-surface shadow-md">QG Cecchin</span>';
-  return elemento;
-}
-
-function configurarRota(mapa: MapaMapLibre) {
-  if (mapa.getSource("rota-qg")) return;
-  const vazio: GeoJSON.Feature<GeoJSON.LineString> = { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [] } };
-  mapa.addSource("rota-qg", { type: "geojson", data: vazio });
-  mapa.addLayer({ id: "rota-qg-contorno", type: "line", source: "rota-qg", paint: { "line-color": "#ffffff", "line-width": 7, "line-opacity": 0.35 } });
-  mapa.addLayer({ id: "rota-qg", type: "line", source: "rota-qg", paint: { "line-color": "#a51e06", "line-width": 4 } });
-}
-
-function desenharRota(mapa: MapaMapLibre, coordinates: [number, number][]) {
-  const fonte = mapa.getSource("rota-qg") as GeoJSONSource | undefined;
-  fonte?.setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } });
 }
 
 async function carregarBibliotecaMapa(): Promise<BibliotecaMapa> {
@@ -120,7 +96,7 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
   const marcacaoAtual = useRef(markingMode);
   const [pronto, setPronto] = useState(false);
   const [bibliotecaCarregada, setBibliotecaCarregada] = useState(false);
-  const [informacaoRota, setInformacaoRota] = useState<{ distance: string; duration: string; estimated: boolean } | null>(null);
+  const [informacaoRota, setInformacaoRota] = useState<{ duration: string; estimated: boolean } | null>(null);
   const [mensagem, setMensagem] = useState<string | null>(null);
 
   const escolher = useCallback(async (local: Coordenada, endereco?: string) => {
@@ -151,16 +127,15 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
   useEffect(() => {
     const modulo = biblioteca.current;
     if (!recipiente.current || mapa.current || !modulo) return;
-    const instancia = new modulo.Map({ container: recipiente.current, style: ESTILO_MAPA_OPERACIONAL, center: paraLngLat(QG), zoom: 12, attributionControl: false });
+    const instancia = new modulo.Map({ container: recipiente.current, style: ESTILO_MAPA_OPERACIONAL, center: paraLngLat(selectedLocation ?? CENTRO_PORTO_ALEGRE), zoom: 12, attributionControl: false });
     mapa.current = instancia;
     // A base não acompanha o destino: cada local tem seu próprio marcador.
-    const marcadorQG = new modulo.Marker({ element: criarIconeQG(), anchor: "bottom" }).setLngLat(paraLngLat(QG)).addTo(instancia);
-    const marcador = new modulo.Marker({ element: criarPino(), draggable: true, anchor: "bottom" }).setLngLat(paraLngLat(QG));
+    const marcador = new modulo.Marker({ element: criarPino(), draggable: true, anchor: "bottom" }).setLngLat(paraLngLat(selectedLocation ?? CENTRO_PORTO_ALEGRE));
     pino.current = marcador;
     marcador.on("dragend", () => { void escolherAtual.current(deLngLat(marcador.getLngLat())); });
-    instancia.on("load", () => { aplicarVisualOperacional(instancia); configurarRota(instancia); setPronto(true); });
+    instancia.on("load", () => { aplicarVisualOperacional(instancia); setPronto(true); });
     instancia.on("click", (evento) => { if (marcacaoAtual.current) void escolherAtual.current(deLngLat(evento.lngLat)); });
-    return () => { marcadorQG.remove(); marcador.remove(); gps.current?.remove(); instancia.remove(); mapa.current = null; pino.current = null; gps.current = null; };
+    return () => { marcador.remove(); gps.current?.remove(); instancia.remove(); mapa.current = null; pino.current = null; gps.current = null; };
   }, [bibliotecaCarregada]);
 
   useEffect(() => {
@@ -176,20 +151,17 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
   }, [selectedLocation, bibliotecaCarregada]);
 
   useEffect(() => {
-    const modulo = biblioteca.current;
-    if (!selectedLocation || !pronto || !mapa.current || !modulo) return;
-    let cancelado = false; const instancia = mapa.current; const reta = estimativa(selectedLocation);
-    setInformacaoRota({ ...reta, estimated: true }); desenharRota(instancia, [paraLngLat(QG), paraLngLat(selectedLocation)]);
+    if (!selectedLocation || !pronto) { setInformacaoRota(null); return; }
+    let cancelado = false;
+    setInformacaoRota({ duration: estimativa(selectedLocation), estimated: true });
     void (async () => {
       try {
         const qs = new URLSearchParams({ origemLat: String(QG.lat), origemLng: String(QG.lng), destinoLat: String(selectedLocation.lat), destinoLng: String(selectedLocation.lng) });
-        const resposta = await fetch(`/api/mapa/rota?${qs}`); const rota = await resposta.json() as RotaEncontrada;
+        const resposta = await fetch(`/api/mapa/rota?${qs}`);
+        const rota = await resposta.json() as RotaEncontrada;
         if (!resposta.ok || cancelado) return;
-        desenharRota(instancia, rota.geometria.coordinates);
-        setInformacaoRota({ distance: `${(rota.distanciaMetros / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km`, duration: `${Math.max(1, Math.round(rota.duracaoSegundos / 60))} min`, estimated: false });
-        const limites = rota.geometria.coordinates.reduce((todos, ponto) => todos.extend(ponto), new modulo.LngLatBounds(paraLngLat(QG), paraLngLat(QG)));
-        instancia.fitBounds(limites, { padding: 76, maxZoom: 15, duration: 650 });
-      } catch { /* A reta e a estimativa continuam visíveis. */ }
+        setInformacaoRota({ duration: `${Math.max(1, Math.round(rota.duracaoSegundos / 60))} min`, estimated: false });
+      } catch { /* Mantem a estimativa de tempo. */ }
     })();
     return () => { cancelado = true; };
   }, [pronto, selectedLocation]);
@@ -210,7 +182,7 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
     {/* O CSS do MapLibre define position: relative fora das layers do Tailwind.
         inset-0 sozinho perde a altura; dimensione o recipiente explicitamente. */}
     <div ref={recipiente} className="h-full w-full" />
-    {controles && <div className="absolute left-1/2 top-3 z-20 w-[min(92%,38rem)] -translate-x-1/2"><BuscaDeEndereco address={address} addressAction={addressAction} aoEscolher={(local) => void escolher(local, local.endereco)} />{addressBelow && <div className="mt-1.5">{addressBelow}</div>}{informacaoRota && <div className="mt-1.5 flex items-center gap-2 rounded-lg bg-surface/95 px-2.5 py-1.5 shadow-sm backdrop-blur-md"><Route className="h-4 w-4 shrink-0 text-primary" /><span className="min-w-0 flex-1 truncate font-label-sm text-label-sm text-on-surface">{informacaoRota.estimated ? "Trajeto estimado" : "Rota do QG"} · {informacaoRota.distance}</span><span className="flex shrink-0 items-center gap-1 font-label-sm text-label-sm text-on-surface-variant"><Timer className="h-3.5 w-3.5" />{informacaoRota.duration}</span></div>}</div>}
+    {controles && <div className="absolute left-1/2 top-3 z-20 w-[min(92%,38rem)] -translate-x-1/2"><BuscaDeEndereco address={address} addressAction={addressAction} aoEscolher={(local) => void escolher(local, local.endereco)} />{addressBelow && <div className="mt-1.5">{addressBelow}</div>}{informacaoRota && <div className="mt-1.5 flex items-center gap-2 rounded-lg bg-surface/95 px-2.5 py-1.5 shadow-sm backdrop-blur-md"><Timer className="h-4 w-4 shrink-0 text-primary" /><span className="min-w-0 flex-1 truncate font-label-sm text-label-sm text-on-surface">Tempo estimado de deslocamento</span><span className="font-label-sm text-label-sm text-on-surface-variant">{informacaoRota.duration}</span></div>}</div>}
     {controles && <div role="group" aria-label="Controles do mapa" className="absolute bottom-36 right-3 z-20 flex flex-col gap-3 sm:bottom-24">
       <div className="overflow-hidden rounded-2xl bg-surface/95 text-on-surface shadow-lg backdrop-blur-md">
         <button type="button" aria-label="Aproximar mapa" title="Aproximar mapa" disabled={!pronto} onClick={() => mapa.current?.zoomIn()} className="flex h-11 w-11 items-center justify-center hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-40"><Plus className="h-5 w-5" /></button>

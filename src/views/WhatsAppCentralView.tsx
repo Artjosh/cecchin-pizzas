@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  CabecalhoDoPainel,
   Etiqueta,
   LacunaDeDados,
   SemLinhas,
@@ -9,9 +8,10 @@ import { comoData, comoHora, comoTelefone, linkCentralWhatsApp } from "../lib/fo
 import { formatBRL } from "../lib/moeda";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
-import { ConversaReal } from "../components/whatsapp/ConversaReal";
+import { ContasWhatsApp } from "../components/whatsapp/ContasWhatsApp";
 import { AbasCentral } from "../components/whatsapp/AbasCentral";
 import { MessageCircle } from 'lucide-react';
+import { TituloNoHeader } from "../components/layouts/TituloNoHeader";
 
 interface ContatoPendente {
   id: string;
@@ -30,11 +30,6 @@ interface DadosDoContato {
   horario_texto: string | null;
   a_acertar: string | number | null;
   sinal: string | number | null;
-}
-
-interface ConversaWhatsApp {
-  telefone: string;
-  modo: "automatico" | "atendimento_humano";
 }
 
 /**
@@ -93,17 +88,11 @@ const NOME_DO_BLOCO: Record<string, string> = {
 async function CentralDoBanco() {
   const sessao = await exigirPapel(["gestao"]);
 
-  const [pendentesR, conversasR] = await Promise.all([
-    consultar<ContatoPendente[]>(
+  const pendentesR = await consultar<ContatoPendente[]>(
       "vw_pendencia?select=id,bloco,pendencia,data_evento,codigo_legado" +
         "&order=ordem.asc,data_evento.asc&limit=40",
       sessao.accessToken,
-    ),
-    consultar<ConversaWhatsApp[]>(
-      "vw_conversa_central?removida_em=is.null&select=telefone,modo&order=telefone.asc&limit=50",
-      sessao.accessToken,
-    ),
-  ]);
+    );
 
   const pendentes = pendentesR.dados ?? [];
 
@@ -131,17 +120,11 @@ async function CentralDoBanco() {
         c.evento !== undefined,
     );
 
-  const telefonesDaCentral = (conversasR.dados ?? []).map((conversa) => conversa.telefone);
-
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-      <CabecalhoDoPainel
-        titulo="Central de WhatsApp"
-        descricao="Histórico recebido pelo provedor conectado e fila de contatos da operação."
-      />
+      <TituloNoHeader>Central de WhatsApp</TituloNoHeader>
 
-      {!conversasR.ok && <LacunaDeDados titulo="Falha ao carregar conversas">Tente recarregar a página.</LacunaDeDados>}
-      <AbasCentral conversas={<ConversaReal telefones={telefonesDaCentral} />}>
+      <AbasCentral conversas={<ContasWhatsApp />}>
       {(!pendentesR.ok || !eventosR.ok) && <LacunaDeDados titulo="Falha ao carregar pendências">A lista de contatos pode estar incompleta.</LacunaDeDados>}
 
       {contatos.length === 0 ? (

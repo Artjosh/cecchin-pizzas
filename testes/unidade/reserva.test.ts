@@ -52,9 +52,9 @@ describe("taxaPorDistancia", () => {
     }
   });
 
-  it("devolve sempre um número inteiro de reais", () => {
+  it("arredonda o deslocamento em centavos", () => {
     for (let km = 0; km <= 100; km += 3) {
-      expect(Number.isInteger(taxaPorDistancia(km))).toBe(true);
+      expect(taxaPorDistancia(km) * 100).toBeCloseTo(Math.round(taxaPorDistancia(km) * 100), 8);
     }
   });
 });

@@ -38,4 +38,4 @@ A montagem e o diretório de equipe compartilham componentes nos dois modos. Ban
 
 **A Central do WhatsApp usa a integração real mesmo com Desenho selecionado.** O seletor não é um isolamento global contra efeitos externos.
 
-Limites conhecidos: frota física não está modelada, rastreio não transmite GPS, não existe upload de foto implementado e rotas usam estimativas de carro sem trânsito em tempo real. Veja a [auditoria Banco/Desenho](skills/verificar-tela/AUDITORIA_BANCO_2026-09-15.md).
+Limites conhecidos: frota física não está modelada, rastreio não transmite GPS, não existe upload de foto implementado e rotas usam estimativas de carro sem trânsito em tempo real. Veja a [arquitetura](ARQUITETURA.md) e o [contrato de equipe](../cecchin-pizzas-backend/migracao/DIMENSIONAMENTO_EQUIPE.md).

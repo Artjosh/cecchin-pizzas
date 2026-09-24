@@ -1,3 +1,4 @@
+import { DisponibilidadeSemanal } from "../components/DisponibilidadeSemanal";
 import { CalendarDays, MapPin, Users } from "lucide-react";
 
 import { ResponderEscala } from "../components/ResponderEscala";
@@ -26,6 +27,7 @@ export async function MinhaEscalaView() {
 
   return <div className="mx-auto flex max-w-4xl flex-col gap-space-lg">
     <CabecalhoDoPainel titulo="Minha escala" descricao="Convites e eventos que você confirmou." contagem={escalas.length} />
+    <div id="disponibilidade"><DisponibilidadeSemanal /></div>
     {!escalas.length ? <SemLinhas titulo="Nenhum convite de escala" detalhe="Quando a gestão escalar você, o convite aparece aqui e pode também chegar por WhatsApp ou e-mail." /> : <ul className="flex flex-col gap-space-md">
       {escalas.map((escala) => {
         const evento = porId.get(escala.evento_id);

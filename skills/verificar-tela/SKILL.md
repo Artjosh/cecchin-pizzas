@@ -41,4 +41,4 @@ Abra as capturas com a ferramenta de imagem e inspecione. Para WebGL, uma captur
 
 Capturas ficam em `capturas/`, ignoradas pelo Git, com dados pessoais mascarados. Registre cenário, modo, viewport, resultado e limitações. Não declare algo verificado apenas porque um arquivo PNG existe.
 
-Relatórios datados: [Banco/Desenho](AUDITORIA_BANCO_2026-09-15.md) e [performance](PERFORMANCE_2026-09-15.md). Não publique dumps RSC com dados de sessão ou clientes.
+Não publique dumps RSC com dados de sessão ou clientes.

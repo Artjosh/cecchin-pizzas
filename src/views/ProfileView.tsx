@@ -1,5 +1,7 @@
 "use client";
 
+import { VerificarWhatsapp } from "../components/VerificarWhatsapp";
+
 import { useState } from "react";
 import { LogOut, Mail, ShieldCheck, User } from "lucide-react";
 
@@ -9,8 +11,7 @@ import { NOME_DO_PAPEL, useAuth } from "../contexts/AuthContext";
  * Perfil da conta autenticada.
  *
  * Nome, e-mail e papel vêm da sessão que o servidor já conferiu no Postgres.
- * Telefone, CPF e preferências ainda não têm campos nem regra de alteração no
- * modelo; não são mostrados como formulário fictício.
+ * WhatsApp é confirmado por OTP antes de vincular um pré-cadastro da equipe.
  */
 export function ProfileView() {
   const { usuario } = useAuth();
@@ -50,6 +51,8 @@ export function ProfileView() {
           Informações da conta que está conectada agora.
         </p>
       </header>
+
+      <VerificarWhatsapp />
 
       <section className="rounded-xl border border-outline-variant/50 bg-surface-container-lowest p-space-lg shadow-sm">
         <div className="flex items-center gap-space-md">

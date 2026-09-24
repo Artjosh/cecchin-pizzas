@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function ModoConversaWhatsapp({ telefone, modo, assumida = false, aoAtualizar }: { telefone: string; modo: "automatico" | "atendimento_humano"; assumida?: boolean; aoAtualizar?: () => void }) {
+export function ModoConversaWhatsapp({ conta = "principal", telefone, modo, assumida = false, aoAtualizar }: { conta?: string; telefone: string; modo: "automatico" | "atendimento_humano"; assumida?: boolean; aoAtualizar?: () => void }) {
   const router = useRouter();
   const [atual, setAtual] = useState(modo);
   const [atendida, setAtendida] = useState(assumida);
@@ -16,7 +16,7 @@ export function ModoConversaWhatsapp({ telefone, modo, assumida = false, aoAtual
     setEnviando(true);
     setErro("");
     try {
-      const resposta = await fetch("/api/operacao/whatsapp", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ telefone, modo: proximo }) });
+      const resposta = await fetch("/api/operacao/whatsapp", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ conta, telefone, modo: proximo }) });
       const dados = (await resposta.json().catch(() => ({}))) as { mensagem?: string };
       if (!resposta.ok) throw new Error(dados.mensagem ?? "Não foi possível atualizar a conversa.");
       setAtual(proximo);

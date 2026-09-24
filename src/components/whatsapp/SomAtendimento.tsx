@@ -87,9 +87,9 @@ export function ProvedorSomAtendimento({ children }: { children: ReactNode }) {
   return <SomContexto.Provider value={{ ativo: !!ativo, bloqueado, alternar }}>{children}</SomContexto.Provider>;
 }
 
-export function SomAtendimento() {
+export function SomAtendimento({ compacto = false }: { compacto?: boolean }) {
   const { ativo, bloqueado, alternar } = useContext(SomContexto);
-  return <button type="button" onClick={alternar} aria-pressed={ativo} title={ativo && bloqueado ? "Som salvo como ativo. Interaja com a página para liberar o áudio do navegador." : "Aviso para novas mensagens em qualquer página do sistema"} className="mt-3 flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm">
-    {ativo ? <Volume2 size={16} /> : <VolumeX size={16} />}{ativo ? "Som ativado" : "Ativar som"}
+  return <button type="button" onClick={alternar} aria-pressed={ativo} aria-label={ativo ? "Desativar som" : "Ativar som"} title={ativo && bloqueado ? "Som salvo como ativo. Interaja com a página para liberar o áudio do navegador." : "Aviso para novas mensagens em qualquer página do sistema"} className={compacto ? "p-1" : "mt-3 flex items-center gap-2 rounded-lg bg-surface-container px-3 py-2 text-sm"}>
+    {ativo ? <Volume2 size={16} /> : <VolumeX size={16} />}{!compacto && (ativo ? "Som ativado" : "Ativar som")}
   </button>;
 }

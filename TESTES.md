@@ -77,6 +77,8 @@ Capturas e payloads autenticados ficam locais e mascarados. Abra as imagens ante
 
 ## Desempenho
 
-Meça com o mesmo papel, volume, filtros, viewport e modo. Registre bytes RSC, tempo da consulta/resposta e arraste. [Performance de 15/09](skills/verificar-tela/PERFORMANCE_2026-09-15.md) é evidência histórica em dev, não benchmark de produção.
+Meça com o mesmo papel, volume, filtros, viewport e modo. Registre bytes RSC, tempo da consulta/resposta e fluidez do arraste. Linhas do payload de desenvolvimento não são teto de produto.
 
-Na revisão documental de 16/09 não foram executados testes, typecheck, lint, build ou reinícios.
+## Reserva e pagamento
+
+Teste os estados de capacidade em /cliente/contratar, incluindo consulta manual à Central e checkout hospedado. O administrador pode selecionar checkout real de R$ 1,00 na etapa de pagamento; esse ensaio cobra dinheiro e os testes automatizados não efetuam a transação. Disponibilidade obrigatória também se aplica ao teste. Confira /admin/pagamentos e /admin/pagamentos/devolucoes, onde a devolução é registrada manualmente. Contrato e migrations: [InfinitePay](../cecchin-pizzas-backend/infra/INFINITEPAY.md). Capturas locais em skills/verificar-tela/capturas/ não são versionadas.

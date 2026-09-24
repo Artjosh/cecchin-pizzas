@@ -7,19 +7,22 @@ export async function GET(request:NextRequest){
  if(request.nextUrl.searchParams.get("equipe")==="1"){
   const pagina=Number(request.nextUrl.searchParams.get("pagina")??0),busca=(request.nextUrl.searchParams.get("busca")??"").slice(0,100).replace(/[*,().]/g," ").trim();
   if(!Number.isSafeInteger(pagina)||pagina<0||pagina>10000)return NextResponse.json({mensagem:"Pagina invalida"},{status:400});
-  const usuarios=await consultar<Array<Record<string,unknown>>>(`usuario?select=id,nome,telefone,foto_url,perfil:perfil_operacional_equipe(*)&papel=eq.staff&ativo=is.true${busca?`&nome=ilike.*${encodeURIComponent(busca)}*`:""}&order=nome.asc,id.asc&limit=24&offset=${pagina*24}`,s.accessToken,{headers:{Prefer:"count=exact"}});
+  const usuarios=await consultar<Array<Record<string,unknown>>>(`usuario?select=id,nome,telefone,foto_url,teste_operacional,perfil:perfil_operacional_equipe(*)&papel=eq.staff&ativo=is.true${busca?`&nome=ilike.*${encodeURIComponent(busca)}*`:""}&order=nome.asc,id.asc&limit=24&offset=${pagina*24}`,s.accessToken,{headers:{Prefer:"count=exact"}});
   if(!usuarios.ok)return NextResponse.json({mensagem:"Falha ao carregar integrantes"},{status:502});
   const ids=(usuarios.dados??[]).map(p=>p.id).join(',');
   const [notas,bloqueios]=ids?await Promise.all([consultar<Array<{usuario_id:string;nota_media:number;quantidade:number}>>(`vw_notas_montagem?select=usuario_id,nota_media,quantidade&usuario_id=in.(${ids})`,s.accessToken),consultar<Array<{usuario_id:string}>>(`bloqueio_equipe?select=usuario_id&usuario_id=in.(${ids})&encerrado_em=is.null&bloqueado_ate=gt.${encodeURIComponent(new Date().toISOString())}`,s.accessToken)]):[{ok:true,dados:[]},{ok:true,dados:[]}];
   if(!notas.ok||!bloqueios.ok)return NextResponse.json({mensagem:"Falha ao carregar notas"},{status:502});
-  return NextResponse.json({total:usuarios.total??0,pessoas:(usuarios.dados??[]).map(p=>{const nota=notas.dados?.find(n=>n.usuario_id===p.id);return {...p,perfil:Array.isArray(p.perfil)?p.perfil[0]??null:p.perfil,nota:nota?.nota_media??null,avaliacoes:nota?.quantidade??0,bloqueado:bloqueios.dados?.some(b=>b.usuario_id===p.id)??false};})},{headers:{"Cache-Control":"private, no-store"}});
+  return NextResponse.json({total:usuarios.total??0,pessoas:(usuarios.dados??[]).map(p=>{const nota=notas.dados?.find(n=>n.usuario_id===p.id);return {...p,perfil:Array.isArray(p.perfil)?p.perfil[0]??null:p.perfil,nota:nota?.nota_media??null,avaliacoes:nota?.quantidade??0,bloqueado:p.teste_operacional===true||(bloqueios.dados?.some(b=>b.usuario_id===p.id)??false)};})},{headers:{"Cache-Control":"private, no-store"}});
  }
  const evento=request.nextUrl.searchParams.get("evento");
  if(!evento){const hoje=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo"}).format(new Date());const r=await consultar(`vw_eventos_montagem?select=id,cliente_nome,data_evento,inteiros,meios&data_evento=gte.${hoje}&order=data_evento.asc,id.asc&limit=100`,s.accessToken);return NextResponse.json({eventos:r.dados??[],mensagem:r.ok?undefined:"Falha ao carregar eventos"},{status:r.ok?200:502});}
  if(!/^[a-f0-9-]{36}$/i.test(evento))return NextResponse.json({mensagem:"Evento inválido"},{status:400});
+ const teste=await consultar<Array<{teste_centavo:boolean}>>(`cobranca_infinitepay?select=solicitacao_reserva(teste_centavo)&evento_id=eq.${evento}&limit=1`,s.accessToken);
+ if(!teste.ok)return NextResponse.json({mensagem:"Falha ao verificar o evento"},{status:502});
+ const eventoTeste=Boolean((teste.dados?.[0] as {solicitacao_reserva?:{teste_centavo?:boolean}}|undefined)?.solicitacao_reserva?.teste_centavo);
  const resultados=await Promise.all([
  consultar<Array<Record<string,unknown>>>(`vw_evento?select=id,cliente_nome,data_evento,horario,horario_texto,horario_saida,endereco,bairro,cidade,inteiros,meios,descricao_extra,observacao&id=eq.${evento}`,s.accessToken),
- consultar<Array<Record<string,unknown>>>("usuario?select=id,nome,telefone,foto_url&papel=eq.staff&ativo=is.true&order=nome.asc&limit=1000",s.accessToken),
+ consultar<Array<Record<string,unknown>>>(`usuario?select=id,nome,telefone,foto_url,teste_operacional&papel=eq.staff&ativo=is.true${eventoTeste?"":"&teste_operacional=is.false"}&order=nome.asc&limit=1000`,s.accessToken),
  consultar<Array<{usuario_id:string;nota_media:number;quantidade:number}>>("vw_notas_montagem?select=usuario_id,nota_media,quantidade&limit=1000",s.accessToken),
  consultar<Array<{usuario_id:string}>>(`bloqueio_equipe?select=usuario_id&encerrado_em=is.null&bloqueado_ate=gt.${encodeURIComponent(new Date().toISOString())}&limit=1000`,s.accessToken),
  consultar<Array<Record<string,unknown>>>(`planejamento_equipe?select=*&evento_id=eq.${evento}`,s.accessToken),

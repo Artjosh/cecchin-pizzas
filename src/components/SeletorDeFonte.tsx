@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Database, FlaskConical, Loader2 } from "lucide-react";
 import { cn } from "../lib/utils";
+import { usePathname } from "next/navigation";
 
 /**
  * Troca entre o desenho e o banco.
@@ -20,6 +21,7 @@ import { cn } from "../lib/utils";
 const COOKIE = "cecchin_fonte";
 
 export function SeletorDeFonte() {
+  const caminho = usePathname();
   const [fonte, setFonte] = useState<"mock" | "real" | null>(null);
   const [trocando, setTrocando] = useState(false);
 
@@ -44,7 +46,7 @@ export function SeletorDeFonte() {
 
   // Enquanto não leu o cookie, não desenha: um estado provisório piscando
   // "mock" e virando "real" é pior do que meio segundo de nada.
-  if (fonte === null) return null;
+  if (fonte === null || caminho === "/operacional/whatsapp") return null;
 
   return (
     <div

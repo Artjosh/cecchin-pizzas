@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { PrecosReserva } from "../../components/pagamentos/ConfigurarPrecosReserva";
 import { QG_CECCHIN } from "../../lib/operacao";
 
 export type TipoLocal = "casa" | "salao" | "cobertura" | "chacara";
@@ -41,8 +42,8 @@ const FAIXAS_DESLOCAMENTO: ReadonlyArray<{ km: number; taxa: number }> = [
   { km: 78, taxa: 220 },
 ];
 
-export function taxaPorDistancia(km: number): number {
-  const faixas = FAIXAS_DESLOCAMENTO;
+export function taxaPorDistancia(km: number, precos?: PrecosReserva): number {
+  const faixas = precos ? [11,14,22,78].map(km => ({ km, taxa: precos[`taxa_${km}_centavos` as keyof PrecosReserva] / 100 })) : FAIXAS_DESLOCAMENTO;
   const primeira = faixas[0];
   const ultima = faixas[faixas.length - 1];
 
@@ -54,7 +55,7 @@ export function taxaPorDistancia(km: number): number {
     const b = faixas[i + 1];
     if (km <= b.km) {
       const fracao = (km - a.km) / (b.km - a.km);
-      return Math.round(a.taxa + fracao * (b.taxa - a.taxa));
+      return Math.round((a.taxa + fracao * (b.taxa - a.taxa)) * 100) / 100;
     }
   }
   return ultima.taxa;
@@ -80,7 +81,7 @@ export const PASSOS = [
   { num: 1, titulo: "Local & Data", desc: "Endereço e horário" },
   { num: 2, titulo: "Convidados", desc: "Adultos e crianças" },
   { num: 3, titulo: "Forno & Cardápio", desc: "Equipamento e sabores" },
-  { num: 4, titulo: "Resumo & Sinal", desc: "Garantia via PIX" },
+  { num: 4, titulo: "Resumo & Sinal", desc: "Pagamento e análise" },
 ] as const;
 
 /*
@@ -138,6 +139,8 @@ interface Reserva {
   setAceitouTermos: (v: boolean) => void;
 
   // derivados
+  minimoAdultos: number;
+  sinalPercentual: number;
   adultPrice: number;
   childPrice: number;
   adultsTotal: number;
@@ -168,7 +171,9 @@ export function useReserva(): Reserva {
   return contexto;
 }
 
-export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
+export function ProvedorReserva({ children: filhos, precos }: { children: ReactNode; precos?: PrecosReserva }) {
+  const minimo = precos?.minimo_adultos ?? MINIMO_ADULTOS;
+  const percentual = precos?.sinal_percentual ?? 40;
   const [passoBruto, setPassoBruto] = useState(1);
 
   const [address, setAddress] = useState("");
@@ -180,7 +185,7 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
   const [hora, setHora] = useState("");
   const [occasion, setOccasion] = useState("");
 
-  const [adults, setAdults] = useState(MINIMO_ADULTOS);
+  const [adults, setAdults] = useState(minimo);
   const [children, setChildren] = useState(0);
   const [toddlers, setToddlers] = useState(0);
 
@@ -194,9 +199,9 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
       setAddress(local.address);
       setCoordenada({ lat: local.lat, lng: local.lng });
       setDistanceKm(Math.round(km));
-      setLogisticsFee(taxaPorDistancia(km));
+      setLogisticsFee(taxaPorDistancia(km, precos));
     },
-    [],
+    [precos, minimo],
   );
 
   const escolherSugestao = useCallback(
@@ -204,15 +209,15 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
       setAddress(s.addr);
       setCoordenada({ lat: s.lat, lng: s.lng });
       setDistanceKm(s.km);
-      setLogisticsFee(s.fee);
+      setLogisticsFee(taxaPorDistancia(distanciaKm(BASE_OPERACIONAL, s), precos));
     },
-    [],
+    [precos, minimo],
   );
 
   const adjustGuests = useCallback(
     (tipo: "adults" | "children" | "toddlers", delta: number) => {
       if (tipo === "adults") {
-        setAdults((anterior) => Math.max(MINIMO_ADULTOS, anterior + delta));
+        setAdults((anterior) => Math.max(minimo, anterior + delta));
       }
       if (tipo === "children") {
         setChildren((anterior) => Math.max(0, anterior + delta));
@@ -221,12 +226,12 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
         setToddlers((anterior) => Math.max(0, anterior + delta));
       }
     },
-    [],
+    [precos, minimo],
   );
 
 
-  const adultsTotal = adults * PRECO_ADULTO;
-  const childrenTotal = children * PRECO_CRIANCA;
+  const adultsTotal = adults * (precos ? precos.adulto_centavos / 100 : PRECO_ADULTO);
+  const childrenTotal = children * (precos ? precos.crianca_centavos / 100 : PRECO_CRIANCA);
   const grandTotal = adultsTotal + childrenTotal + logisticsFee;
 
   const pendencias = useCallback(
@@ -240,15 +245,15 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
         if (!hora) faltando.push("horário de início");
         if (!occasion) faltando.push("ocasião");
       }
-      if (passo === 2 && adults < MINIMO_ADULTOS) {
-        faltando.push("mínimo de " + MINIMO_ADULTOS + " adultos");
+      if (passo === 2 && adults < minimo) {
+        faltando.push("mínimo de " + minimo + " adultos");
       }
       if (passo === 4 && !aceitouTermos) {
         faltando.push("aceite da política de reserva");
       }
       return faltando;
     },
-    [address, tipoLocal, data, hora, occasion, adults, aceitouTermos],
+    [address, tipoLocal, data, hora, occasion, adults, aceitouTermos, minimo],
   );
 
   /**
@@ -267,7 +272,7 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
 
   const irPara = useCallback(
     (n: number) => setPassoBruto(Math.min(Math.max(n, 1), PASSOS.length)),
-    [],
+    [precos, minimo],
   );
 
   const valor = useMemo<Reserva>(
@@ -302,13 +307,15 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
       aceitouTermos,
       setAceitouTermos,
 
-      adultPrice: PRECO_ADULTO,
-      childPrice: PRECO_CRIANCA,
+      minimoAdultos: minimo,
+      sinalPercentual: percentual,
+      adultPrice: precos ? precos.adulto_centavos / 100 : PRECO_ADULTO,
+      childPrice: precos ? precos.crianca_centavos / 100 : PRECO_CRIANCA,
       adultsTotal,
       childrenTotal,
       grandTotal,
-      depositVal: grandTotal * 0.4,
-      balanceVal: grandTotal * 0.6,
+      depositVal: Math.round(grandTotal * percentual) / 100,
+      balanceVal: grandTotal - Math.round(grandTotal * percentual) / 100,
       totalGuests: adults + children + toddlers,
       formatBRL,
 
@@ -320,6 +327,7 @@ export function ProvedorReserva({ children: filhos }: { children: ReactNode }) {
       pendencias,
     }),
     [
+      precos, minimo, percentual,
       address,
       coordenada,
       distanceKm,

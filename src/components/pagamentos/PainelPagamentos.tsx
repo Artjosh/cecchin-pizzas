@@ -1,4 +1,7 @@
 "use client";
+import { CardReservaPagamento } from "./CardReservaPagamento";
+import s from "./Pagamentos.module.css";
+
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,7 +10,7 @@ import { centavosDoTexto, checkoutPermitido, ESTADOS_COBRANCA, type CobrancaInfi
 import { formatBRL } from "../../lib/moeda";
 import { GerenciarSolicitacaoReserva } from "../GerenciarSolicitacaoReserva";
 
-export type ReservaParaCobrar = { canal: "site" | "whatsapp"; nome_contato: string | null; telefone_contato: string | null; id: string; data_evento: string; horario: string; endereco: string; status: string; valor_estimado: string | number; sinal_estimado: string | number; adultos: number; criancas: number };
+export type ReservaParaCobrar = { teste_centavo?: boolean; canal: "site" | "whatsapp"; nome_contato: string | null; telefone_contato: string | null; id: string; data_evento: string; horario: string; endereco: string; status: string; valor_estimado: string | number; sinal_estimado: string | number; adultos: number; criancas: number };
 const campo = "rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 w-full";
 const botao = "rounded-lg bg-primary px-4 py-2 font-semibold text-on-primary disabled:opacity-50";
 
@@ -39,25 +42,20 @@ export function ConfigurarInfinitePay({ inicial, admin, ambiente }: { inicial: {
 export function AprovarCobranca({ reserva, habilitado }: { reserva: ReservaParaCobrar; habilitado: boolean }) {
   const router = useRouter(); const [total, setTotal] = useState(String(reserva.valor_estimado)); const [sinal, setSinal] = useState(String(reserva.sinal_estimado));
   const [confirmado, setConfirmado] = useState(false); const [ocupado, setOcupado] = useState(false); const [erro, setErro] = useState("");
-  return <article className="rounded-xl bg-surface-container-lowest p-4 space-y-3 border border-outline-variant/40">
-    <h3 className="font-bold">{reserva.data_evento.split("-").reverse().join("/")} · {reserva.horario.slice(0, 5)}</h3>
-    {reserva.canal === "whatsapp" && <p className="text-sm text-on-surface-variant">WhatsApp · {reserva.nome_contato} · {reserva.telefone_contato}</p>}
-    <p>{reserva.endereco} · {reserva.adultos} adultos · {reserva.criancas} crianças</p>
-    <form className="space-y-3" onSubmit={async e => {
+  return <CardReservaPagamento reserva={reserva} acoes={<div className="flex flex-wrap items-center justify-between gap-3"><button form={`cobrar-${reserva.id}`} className={s.principal} disabled={!habilitado || !confirmado || ocupado}>{ocupado ? "Liberando…" : "Gerar cobrança do sinal"}</button><GerenciarSolicitacaoReserva solicitacao={reserva.id} status={reserva.status} esconderPagamento /></div>}>
+    <form id={`cobrar-${reserva.id}`} className="space-y-3" onSubmit={async e => {
       e.preventDefault(); const vTotal = centavosDoTexto(total); const vSinal = centavosDoTexto(sinal);
       if (!confirmado || !vTotal || !vSinal || vSinal > vTotal) { setErro("Confira disponibilidade, total e sinal."); return; }
       setOcupado(true); setErro("");
       try { await acaoPagamento({ acao: "liberar", solicitacao: reserva.id, total: vTotal, sinal: vSinal }); router.refresh(); }
       catch (err) { setErro(err instanceof Error ? err.message : "Erro na liberação."); } finally { setOcupado(false); }
     }}>
-      <div className="grid sm:grid-cols-2 gap-3"><label>Total aprovado (R$)<input className={campo} value={total} inputMode="decimal" onChange={e => setTotal(e.target.value)} required disabled={ocupado} /></label><label>Sinal a cobrar (R$)<input className={campo} value={sinal} inputMode="decimal" onChange={e => setSinal(e.target.value)} required disabled={ocupado} /></label></div>
-      <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmado} onChange={e => setConfirmado(e.target.checked)} required disabled={ocupado} />Conferi a disponibilidade da equipe e aprovo estes valores. O pagamento confirmado contratará o evento.</label>
-      <button className={botao} disabled={!habilitado || !confirmado || ocupado}>{ocupado ? "Liberando…" : "Gerar cobrança do sinal"}</button>
+      <div className={s.valores}><label>Total do evento (R$)<input className={campo} value={total} inputMode="decimal" onChange={e => setTotal(e.target.value)} required disabled={ocupado} /></label><label>Sinal a cobrar (R$)<input className={campo} value={sinal} inputMode="decimal" onChange={e => setSinal(e.target.value)} required disabled={ocupado} /></label></div>
+      <label className={s.aceite}><input type="checkbox" checked={confirmado} onChange={e => setConfirmado(e.target.checked)} required disabled={ocupado} />Conferi a disponibilidade da equipe e aprovo estes valores. O pagamento confirmado contratará o evento.</label>
       {!habilitado && <p className="text-sm">Configure e habilite a integração para gerar cobranças.</p>}
       {erro && <p role="alert" className="text-error">{erro}</p>}
     </form>
-    <GerenciarSolicitacaoReserva solicitacao={reserva.id} status={reserva.status} esconderPagamento />
-  </article>;
+  </CardReservaPagamento>;
 }
 
 export function AcompanharCobranca({ cobranca }: { cobranca: CobrancaInfinitePay }) {
@@ -77,11 +75,12 @@ export function AcompanharCobranca({ cobranca }: { cobranca: CobrancaInfinitePay
   }
   async function executar(body: object) { setOcupado(true); setErro(""); try { await acaoPagamento(body); setErro("Registrado. Acompanhe a confirmação."); router.refresh(); } catch (e) { setErro(e instanceof Error ? e.message : "Falha ao registrar."); } finally { setOcupado(false); } }
   const link = cobranca.status === "aberta" ? checkoutPermitido(cobranca.checkout_url) : null;
-  return <article className="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3">
+  return <article className={`${s.card} ${s.financeiro}`}>
     <div className="flex flex-wrap justify-between gap-2"><strong>{ESTADOS_COBRANCA[cobranca.status]}</strong><span>{formatBRL(Number(cobranca.valor_centavos) / 100)}</span></div>
     <p className="text-sm text-on-surface-variant break-all">Pedido {cobranca.id}</p>
     <button type="button" className="text-primary underline" onClick={() => router.refresh()}>Atualizar situação</button>
     {!!cobranca.avisos_pendentes && <p className="text-sm">{cobranca.avisos_pendentes} aviso(s) aguardando conferência{cobranca.ultima_falha ? ` · ${cobranca.ultima_falha.replaceAll("_", " ")}` : ""}. <button type="button" disabled={ocupado} className="text-primary underline" onClick={() => void executar({ acao: "reverificar", pedido: cobranca.id })}>Conferir novamente</button></p>}
+    {cobranca.erro_codigo === "checkout_nao_habilitado" && <p role="alert">Habilite o Checkout Integrado no app InfinitePay: Vendas → Checkout → Configurações. A conta recebedora ainda não permite criar links de pagamento.</p>}
     {link && <a href={link} target="_blank" rel="noreferrer" className="text-primary underline">Abrir checkout</a>}
     {cobranca.evento_id && <Link className="block text-primary underline" href={`/operacional/eventos/${cobranca.evento_id}`}>Ver evento</Link>}
     {cobranca.status === "revisao" && <p>Recebimento registrado para revisão. Confira eventual pagamento duplicado ou cancelamento antes de tratar com o cliente.</p>}

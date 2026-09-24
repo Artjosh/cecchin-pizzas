@@ -1,6 +1,8 @@
 "use client";
 
-import { useHistoricoConversa,type Mensagem } from "./useHistoricoConversa";
+import { useHistoricoConversa,type Mensagem,type Etiqueta } from "./useHistoricoConversa";
+import { EditorConversaWhatsapp } from "./EditorConversaWhatsapp";
+import css from "./WhatsApp.module.css";
 import estilos from "./HistoricoConversa.module.css";
 import { Paginacao } from "../painel/Paginacao";
 
@@ -8,17 +10,40 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ModoConversaWhatsapp } from "../ModoConversaWhatsapp";
 import { EnviarMensagemWhatsapp } from "../EnviarMensagemWhatsapp";
-import { ArrowDown, Trash2, Clock3, LoaderCircle, CircleAlert } from "lucide-react";
-import { SomAtendimento } from "./SomAtendimento";
-import { comoTelefone } from "../../lib/formato";
+import { ArrowDown, ArrowLeft, Trash2, Clock3, LoaderCircle, CircleAlert, Search, MessageCircle, MessageSquarePlus, UserRound, Check, CheckCheck, Tags, Pencil } from "lucide-react";
+import { formatarTelefoneWhatsApp as comoTelefone } from "../../lib/telefone-whatsapp";
 
-function texto(conteudo: Record<string, unknown>, tipo = "") {
-  if (typeof conteudo.texto === "string") return conteudo.texto;
-  if (typeof conteudo.text === "string") return conteudo.text;
+function FotoContato({ conta, telefone, destaque = false }: { conta: string; telefone: string; destaque?: boolean }) {
+  const [falhou, setFalhou] = useState(false);
+  const [carregou, setCarregou] = useState(false);
+  return <span className={css.avatar}>
+    {!falhou && <img src={`/api/operacao/whatsapp?conta=${encodeURIComponent(conta)}&foto=${telefone}`} alt="" loading={destaque ? "eager" : "lazy"} onLoad={() => setCarregou(true)} onError={() => setFalhou(true)} style={{ opacity: carregou ? 1 : 0 }} />}
+    {!carregou && <UserRound size={destaque ? 25 : 23} className={falhou ? undefined : css.avatarPendente} />}
+  </span>;
+}
+
+export function opcoesDaMensagem(conteudo: Record<string, unknown>): Array<{ id: string; titulo: string }> {
+  const diretas = Array.isArray(conteudo.opcoes_bot) ? conteudo.opcoes_bot : [];
+  const interativo = conteudo.interactive as { action?: { buttons?: Array<{ reply?: { id?: string; title?: string; titulo?: string } }>; sections?: Array<{ rows?: Array<{ id?: string; title?: string }> }> } } | undefined;
+  return [...diretas, ...(interativo?.action?.buttons?.map(item => item.reply) ?? []), ...(interativo?.action?.sections?.flatMap(item => item.rows ?? []) ?? [])]
+    .filter((item): item is { id: string; titulo: string; title?: string } => !!item && typeof item.id === "string" && (typeof item.titulo === "string" || typeof item.title === "string"))
+    .map(item => ({ id: item.id, titulo: item.titulo ?? item.title ?? item.id }));
+}
+
+function rotuloDaOpcao(id: string, opcoes: Map<string, string>): string {
+  const conhecido = opcoes.get(id);
+  if (conhecido) return `Opção escolhida: ${conhecido}`;
+  const simples: Record<string, string> = { "bot:contratar": "Contratar evento", "bot:escala": "Minha escala", "bot:atendimento": "Atendimento", "bot:ajuda": "Ajuda", "bot:reserva": "Minha reserva", "disp:todo": "Dia todo", "disp:folga": "Folga", "disp:custom": "Definir horário", "disp:revisar": "Revisar semana", "disp:salvar": "Confirmar horários", "disp:dias": "Alterar dias", "disp:cancelar": "Cancelar", "disp:hora:ok": "Confirmar horário", "disp:mais": "Mais opções" };
+  const rotulo = simples[id] ?? (/^disp:dia:[0-6]$/.test(id) ? "Selecionar dia" : null);
+  return rotulo ? `Opção escolhida: ${rotulo}` : id;
+}
+
+export function texto(conteudo: Record<string, unknown>, tipo = "", opcoes = new Map<string, string>()) {
+  if (typeof conteudo.texto === "string") return rotuloDaOpcao(conteudo.texto, opcoes);
+  if (typeof conteudo.text === "string") return rotuloDaOpcao(conteudo.text, opcoes);
   const corpo = conteudo.text as { body?: unknown } | undefined;
   if (typeof corpo?.body === "string") {
-    const acoes: Record<string, string> = { "bot:contratar": "Contratar evento", "bot:escala": "Minha escala", "bot:atendimento": "Atendimento", "bot:ajuda": "Ajuda", "bot:reserva": "Minha reserva" };
-    return acoes[corpo.body] ? `Opção escolhida: ${acoes[corpo.body]}` : corpo.body;
+    return rotuloDaOpcao(corpo.body, opcoes);
   }
   const interativo = conteudo.interactive as { body?: { text?: unknown }; action?: { buttons?: Array<{ reply?: { titulo?: string; title?: string } }> }; button_reply?: { title?: unknown }; list_reply?: { title?: unknown } } | undefined;
   const textoInterativo = interativo?.body?.text ?? interativo?.button_reply?.title ?? interativo?.list_reply?.title;
@@ -27,6 +52,16 @@ function texto(conteudo: Record<string, unknown>, tipo = "") {
     return [textoInterativo, ...opcoes].join("\n");
   }
   return `Mensagem ${tipo || "sem texto disponível"}`;
+}
+
+function ContatosDaMensagem({ conteudo }: { conteudo: Record<string, unknown> }) {
+  const contatos = Array.isArray(conteudo.contacts) ? conteudo.contacts : [];
+  return <div className={css.contatosMensagem}>{contatos.map((valor, indice) => {
+    const contato = valor as { name?: string | { formatted_name?: string }; vcard?: string; phones?: Array<{ phone?: string; wa_id?: string }> };
+    const nome = typeof contato.name === "string" ? contato.name : contato.name?.formatted_name ?? "Contato";
+    const telefone = contato.phones?.[0]?.phone ?? contato.phones?.[0]?.wa_id ?? contato.vcard?.match(/(?:^|\n)TEL[^:]*:([^\r\n]+)/i)?.[1];
+    return <div key={indice} className={css.cartaoContato}><UserRound size={21} /><span><strong>{nome}</strong>{telefone && <small>{telefone.trim()}</small>}</span></div>;
+  })}</div>;
 }
 
 function AnexoDaMensagem({ mensagem }: { mensagem: Mensagem }) {
@@ -44,9 +79,11 @@ function AnexoDaMensagem({ mensagem }: { mensagem: Mensagem }) {
   </div>;
 }
 
-export function ConversaReal({ telefones }: { telefones: string[] }) {
+export function ConversaReal({ telefones, conta = "principal", ativa = true }: { telefones: string[]; conta?: string; ativa?: boolean }) {
   const parametros = useSearchParams();
-  const telefoneInicial = parametros.get("telefone") ?? "";
+  const telefoneInicial = (parametros.get("conta") ?? "principal") === conta ? parametros.get("telefone") ?? "" : "";
+  const [busca, setBusca] = useState("");
+  const [nova, setNova] = useState(false);
   const filtroInicial = parametros.get("aguardando") === "1";
   const [aguardando, setAguardando] = useState(filtroInicial);
   const [carregandoLista, setCarregandoLista] = useState(true);
@@ -54,6 +91,10 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
   const [numero, setNumero] = useState("");
   const [antigas, setAntigas] = useState(false);
   const [revisao, setRevisao] = useState(0);
+  const [revisaoEtiquetas, setRevisaoEtiquetas] = useState(0);
+  const [etiquetas, setEtiquetas] = useState<Etiqueta[]>([]);
+  const [etiquetaFiltro, setEtiquetaFiltro] = useState("");
+  const [editor, setEditor] = useState<"conversa" | "etiquetas" | null>(null);
   const [revisaoConversa, setRevisaoConversa] = useState(0);
   const atualizarConversa = () => { setRevisaoConversa(v => v + 1); setRevisao(v => v + 1); };
   const [ocupado, setOcupado] = useState(false);
@@ -62,8 +103,9 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
   const modal = useRef<HTMLDialogElement>(null);
   useEffect(() => { if (excluir) modal.current?.showModal(); else modal.current?.close(); }, [excluir]);
   const [atencao, setAtencao] = useState<string[]>([]);
-  const {dados,setDados,erro,carregandoMais,longeDoFim,novas,listaMensagens,conteudo,aoRolar,descer,carregarMais}=useHistoricoConversa(telefone,antigas,revisaoConversa);
+  const {dados,setDados,erro,carregandoMais,longeDoFim,novas,listaMensagens,conteudo,aoRolar,descer,carregarMais}=useHistoricoConversa(telefone,antigas,revisaoConversa,conta,ativa);
   const [lista, setLista] = useState(telefones);
+  const [resumos, setResumos] = useState<Record<string, { nome_contato?: string | null; etiquetas?: Etiqueta[]; ultima_mensagem?: string; ultima_em?: string; ultima_direcao?: string }>>({});
   const [paginaLista, setPaginaLista] = useState(0);
   const [totalConversas, setTotalConversas] = useState(0);
   const [erroLista, setErroLista] = useState("");
@@ -77,14 +119,30 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
   }, [filtroInicial]);
 
   useEffect(() => {
+    if (!ativa) return;
+    const controller = new AbortController();
+    async function carregarEtiquetas() {
+      try {
+        const r = await fetch(`/api/operacao/whatsapp/etiquetas?conta=${encodeURIComponent(conta)}`, { cache: "no-store", signal: controller.signal });
+        if (!r.ok) return;
+        const d = await r.json() as { etiquetas: Etiqueta[] };
+        if (!controller.signal.aborted) { setEtiquetas(d.etiquetas); setEtiquetaFiltro(atual => atual && !d.etiquetas.some(item => item.id === atual) ? "" : atual); }
+      } catch { /* A lista de conversas continua disponível sem as etiquetas. */ }
+    }
+    void carregarEtiquetas();
+    return () => controller.abort();
+  }, [conta, ativa, revisaoEtiquetas]);
+
+  useEffect(() => {
+    if (!ativa) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     async function carregarLista() {
       try {
-        const resposta = await fetch(`/api/operacao/whatsapp?pagina=${paginaLista}&aguardando=${aguardando ? "1" : "0"}`, { cache: "no-store", signal: controller.signal });
+        const resposta = await fetch(`/api/operacao/whatsapp?conta=${conta}&busca=${encodeURIComponent(busca)}&pagina=${paginaLista}&aguardando=${aguardando ? "1" : "0"}&etiqueta=${etiquetaFiltro}`, { cache: "no-store", signal: controller.signal });
         const resultado = await resposta.json();
         if (!resposta.ok) throw new Error(resultado.mensagem ?? "Falha ao carregar conversas.");
-        if (!controller.signal.aborted) { setLista(resultado.telefones); setAtencao((resultado.conversas ?? []).filter((c: { modo: string; atendente_id: string | null }) => c.modo === "atendimento_humano" && !c.atendente_id).map((c: { telefone: string }) => c.telefone)); setTotalConversas(resultado.total); setErroLista(""); }
+        if (!controller.signal.aborted) { setLista(resultado.telefones); setResumos(Object.fromEntries((resultado.conversas ?? []).map((c: { telefone: string }) => [c.telefone, c]))); setAtencao((resultado.conversas ?? []).filter((c: { modo: string; atendente_id: string | null }) => c.modo === "atendimento_humano" && !c.atendente_id).map((c: { telefone: string }) => c.telefone)); setTotalConversas(resultado.total); setErroLista(""); }
       } catch (causa) {
         if (!controller.signal.aborted) setErroLista(causa instanceof Error ? causa.message : "Falha ao carregar conversas.");
       } finally {
@@ -94,7 +152,7 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
     }
     void carregarLista();
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [paginaLista, aguardando, revisao]);
+  }, [conta, ativa, busca, paginaLista, aguardando, etiquetaFiltro, revisao]);
 
   useEffect(() => {
     if (/^\d{10,15}$/.test(telefoneInicial)) { void selecionar(telefoneInicial); setNumero(telefoneInicial); }
@@ -104,7 +162,7 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
     const pedido = ++abertura.current;
     setErroLista("");
     try {
-      const r = await fetch("/api/operacao/whatsapp", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ telefone: valor, acao: "abrir" }) });
+      const r = await fetch("/api/operacao/whatsapp", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ conta, telefone: valor, acao: "abrir" }) });
       if (!r.ok) throw new Error("Não foi possível abrir a conversa.");
       if (pedido !== abertura.current) return;
       if (valor !== telefone) setDados(null);
@@ -115,7 +173,7 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
     if (!excluir || ocupado) return;
     setOcupado(true); setErroExclusao("");
     try {
-      const r = await fetch("/api/operacao/whatsapp", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ telefone: excluir, acao: "remover" }) });
+      const r = await fetch("/api/operacao/whatsapp", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ conta, telefone: excluir, acao: "remover" }) });
       if (!r.ok) throw new Error("Não foi possível remover da Central.");
       setLista(itens => itens.filter(item => item !== excluir));
       if (telefone === excluir) { setTelefone(""); setDados(null); }
@@ -124,70 +182,68 @@ export function ConversaReal({ telefones }: { telefones: string[] }) {
     finally { setOcupado(false); }
   }
 
-  return <section className="grid h-full min-h-0 min-w-0 gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-    <aside className={`min-h-0 overflow-y-auto rounded-xl bg-surface-container-low p-4 ${telefone ? "hidden lg:block" : ""}`}>
-      <h2 className="font-bold">Conversas</h2>
-      <SomAtendimento />
-      <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={aguardando} onChange={(event) => { setAguardando(event.target.checked); setPaginaLista(0); setLista([]); setCarregandoLista(true); }} />Aguardando atendimento</label>
-      {carregandoLista && <p role="status" className="mt-2 text-sm">Carregando conversas…</p>}
-      {!carregandoLista && !erroLista && lista.length === 0 && <p className="mt-2 text-sm">{aguardando ? "Nenhuma conversa aguardando atendimento." : "Nenhuma conversa registrada."}</p>}
-      <form className="my-3 flex flex-col gap-2" onSubmit={(event) => { event.preventDefault(); selecionar(numero.replace(/\D/g, "")); }}>
-        <label className="text-sm">Número com código do país<input aria-label="Número da conversa" required pattern="[0-9+ ()-]{10,20}" value={numero} onChange={(event) => setNumero(event.target.value)} className="mt-1 w-full rounded-lg bg-surface p-2" inputMode="tel" /></label>
-        <button className="rounded-lg bg-primary p-2 text-on-primary">Abrir conversa</button>
-      </form>
-      {erroLista && <p role="alert" className="text-sm text-error">{erroLista}</p>}
-      <div className="max-h-80 space-y-1 overflow-y-auto">{lista.map((item) => <div key={item} className={`flex items-center rounded-lg ${atencao.includes(item) ? "border-l-4 border-amber-500 bg-amber-100 text-amber-950" : telefone === item ? "bg-surface-container-highest" : "hover:bg-surface-container"}`}>
-        <button onClick={() => selecionar(item)} aria-pressed={telefone === item} className="min-w-0 flex-1 rounded-lg p-3 text-left"><span className="block break-all">{comoTelefone(item)}</span>{atencao.includes(item) && <span className="block text-xs font-semibold">Aguardando atendimento</span>}</button>
-        <button type="button" disabled={ocupado} onClick={() => { setErroExclusao(""); setExcluir(item); }} aria-label={`Remover conversa ${comoTelefone(item)}`} title="Remover da Central" className="mr-1 shrink-0 rounded-lg p-2 text-error hover:bg-error/10 focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50"><Trash2 size={17} /></button>
-      </div>)}</div>
-      <Paginacao pagina={paginaLista + 1} total={totalConversas} porPagina={50} onPagina={valor => setPaginaLista(valor - 1)} rotulo="Páginas de conversas" />
+  const mensagens = [...(dados?.mensagens ?? [])].reverse();
+  const rotulosPorMensagem = new Map<string, Map<string, string>>();
+  const opcoesConhecidas = new Map<string, string>();
+  for (const mensagem of mensagens) {
+    rotulosPorMensagem.set(mensagem.id, new Map(opcoesConhecidas));
+    for (const opcao of opcoesDaMensagem(mensagem.conteudo)) opcoesConhecidas.set(opcao.id, opcao.titulo);
+  }
+  return <section className={css.conversas}>
+    <aside className={css.lateral} data-aberta={!!telefone}>
+      <div className={css.tituloLista}><h2>Conversas</h2><button type="button" aria-label="Nova conversa" title="Nova conversa" onClick={() => setNova(v => !v)}><MessageSquarePlus size={22} /></button></div>
+      <label className={css.busca}><Search size={18} /><input aria-label="Pesquisar conversas por número" placeholder="Pesquisar ou começar uma conversa" value={busca} onChange={e => { setBusca(e.target.value); setPaginaLista(0); }} /></label>
+      <div className={css.filtros}><button type="button" aria-pressed={!aguardando} onClick={() => { setAguardando(false); setPaginaLista(0); }}>Todas</button><button type="button" aria-pressed={aguardando} onClick={() => { setAguardando(true); setPaginaLista(0); }}>Aguardando atendimento</button></div>
+      {nova && <form className={css.novo} onSubmit={e => { e.preventDefault(); void selecionar(numero.replace(/\D/g, "")); setNova(false); }}><label>Número com código do país<input aria-label="Número da conversa" autoFocus required pattern="[0-9+ ()-]{10,20}" value={numero} onChange={e => setNumero(e.target.value)} inputMode="tel" placeholder="55 11 99999-9999" /></label><button type="submit">Abrir conversa</button></form>}
+      {carregandoLista && <p role="status" className={css.aviso}>Carregando conversas…</p>}
+      {erroLista && <p role="alert" className={css.aviso}>{erroLista}</p>}
+      <div className={css.filtrosEtiquetas} aria-label="Filtrar por etiqueta"><button type="button" title="Gerenciar etiquetas" aria-label="Gerenciar etiquetas" onClick={() => setEditor("etiquetas")}><Tags size={16} /> Etiquetas</button>{etiquetas.map(item => <button type="button" key={item.id} aria-pressed={etiquetaFiltro === item.id} onClick={() => { setEtiquetaFiltro(atual => atual === item.id ? "" : item.id); setPaginaLista(0); }}><span className={css.corEtiqueta} style={{ backgroundColor: item.cor }} />{item.nome}</button>)}</div>
+      <div className={css.lista}>
+        {!carregandoLista && !erroLista && !lista.length && <p className={css.aviso}>{busca ? "Nenhuma conversa encontrada." : aguardando ? "Nenhuma conversa aguardando atendimento." : "Suas conversas aparecerão aqui."}</p>}
+        {lista.map(item => <div key={item} className={css.linha} data-selecionada={telefone === item}>
+          <button type="button" onClick={() => selecionar(item)} aria-pressed={telefone === item}><FotoContato conta={conta} telefone={item} /><span className={css.contato}><strong>{resumos[item]?.nome_contato || comoTelefone(item)}{resumos[item]?.ultima_em && <time className={css.horaLista}>{new Date(resumos[item].ultima_em!).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</time>}</strong><small data-atencao={atencao.includes(item)}>{resumos[item]?.nome_contato ? `${comoTelefone(item)} \u00b7 ` : ""}{atencao.includes(item) ? "Aguardando atendimento" : resumos[item]?.ultima_mensagem ? `${resumos[item].ultima_direcao === "saida" ? "Você: " : ""}${rotuloDaOpcao(resumos[item].ultima_mensagem!, new Map())}` : "Abrir histórico da conversa"}</small>{!!resumos[item]?.etiquetas?.length && <span className={css.etiquetasNaLista}>{resumos[item].etiquetas!.slice(0, 2).map(tag => <span key={tag.id} style={{ borderColor: tag.cor, color: tag.cor }}>{tag.nome}</span>)}{resumos[item].etiquetas!.length > 2 && <span>+{resumos[item].etiquetas!.length - 2}</span>}</span>}</span></button>
+          <button type="button" disabled={ocupado} onClick={() => { setErroExclusao(""); setExcluir(item); }} aria-label={`Remover conversa ${comoTelefone(item)}`} title="Remover da Central"><Trash2 size={15} /></button>
+        </div>)}
+      </div>
+      {totalConversas > 50 && <Paginacao pagina={paginaLista + 1} total={totalConversas} porPagina={50} onPagina={v => setPaginaLista(v - 1)} rotulo="Páginas de conversas" />}
     </aside>
-    <div className={`min-h-0 min-w-0 overflow-hidden rounded-xl bg-surface-container-lowest p-4 ${telefone ? "flex h-full flex-col" : ""}`}>
-      {!telefone ? <p>Selecione uma conversa ou informe um número para começar.</p> : <>
-        <button onClick={() => setTelefone("")} className="mb-3 text-sm text-primary lg:hidden">← Todas as conversas</button>
-        <header className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="font-bold">{comoTelefone(telefone)}</h2>{dados && <ModoConversaWhatsapp key={`${telefone}-${dados.modo}-${dados.assumida}`} telefone={telefone} modo={dados.modo} assumida={dados.assumida} aoAtualizar={atualizarConversa} />}{!dados && <div className="h-8 w-44 animate-pulse rounded-full bg-surface-container" />}</header>
-        {erro && <p role="alert" className="mb-3 text-error">{erro}</p>}
-        {!dados && <div className="flex min-h-0 flex-1 flex-col">
-          <div className="mb-3 h-5 w-36 animate-pulse rounded bg-surface-container" />
-          <div role="status" aria-label="Carregando conversa" className="flex min-h-0 flex-1 flex-col gap-3 rounded-lg bg-surface-container-low p-3">
-            <span className="sr-only">Carregando conversa...</span>
-            <div className="h-16 w-2/5 animate-pulse rounded-xl bg-surface" />
-            <div className="h-20 w-3/5 animate-pulse self-end rounded-xl bg-surface-container" />
+    <div className={css.chat} data-aberta={!!telefone}>
+      {!telefone ? <div className={css.vazio}><MessageCircle size={76} strokeWidth={1} /><h2>WhatsApp da equipe</h2><p>Selecione uma conversa para começar.<br />Alterne entre seus números nas abas acima.</p></div> : <>
+        <header className={css.cabecalhoChat}><button type="button" onClick={() => setTelefone("")} className={css.voltar} aria-label="Voltar às conversas"><ArrowLeft size={22} /></button><FotoContato key={`${conta}:${telefone}`} conta={conta} telefone={telefone} destaque /><div className={css.identidadeChat}><h2>{dados?.nomeContato || resumos[telefone]?.nome_contato || comoTelefone(telefone)}</h2>{(dados?.nomeContato || resumos[telefone]?.nome_contato) && <small>{comoTelefone(telefone)}</small>}</div><button type="button" className={css.editarConversa} onClick={() => setEditor("conversa")} aria-label="Editar nome e etiquetas" title="Editar nome e etiquetas"><Pencil size={16} /></button>{dados && <ModoConversaWhatsapp conta={conta} key={`${telefone}-${dados.modo}-${dados.assumida}`} telefone={telefone} modo={dados.modo} assumida={dados.assumida} aoAtualizar={atualizarConversa} />}</header>
+        {erro && <p role="alert" className={css.aviso}>{erro}</p>}
+        {!dados && <div className={css.vazio} role="status"><LoaderCircle className="animate-spin" size={26} />Carregando conversa…</div>}
+        {dados && <div className={css.historico}>
+          <div ref={listaMensagens} onScroll={aoRolar} aria-label="Histórico da conversa" className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:none] [scrollbar-gutter:stable]">
+            <ol ref={conteudo} className={css.mensagens}>
+              {carregandoMais && <li role="status" className={css.dia}>Carregando mensagens anteriores…</li>}
+              {dados.temMais && !carregandoMais && <li className={css.dia}><button type="button" onClick={carregarMais}>Carregar mensagens anteriores</button></li>}
+              {dados.historicoOculto && <li className={css.dia}><button type="button" onClick={() => setAntigas(true)}>Mostrar histórico anterior</button></li>}
+              {mensagens.map((m, i) => {
+                const dia = new Date(m.criado_em).toLocaleDateString("pt-BR");
+                const novoDia = !i || new Date(mensagens[i - 1].criado_em).toLocaleDateString("pt-BR") !== dia;
+                return <li key={m.id} className="contents">
+                  {novoDia && <div className={css.dia}>{dia}</div>}
+                  <article data-mensagem={m.id} className={css.bolha} data-saida={m.direcao === "saida"}>
+                    {(m.tipo === "contact" || m.tipo === "contacts") ? <ContatosDaMensagem conteudo={m.conteudo} /> : !(m.conteudo.media) && <p>{texto(m.conteudo, m.tipo, rotulosPorMensagem.get(m.id))}</p>}<AnexoDaMensagem mensagem={m} />
+                    {m.direcao === "saida" && Array.isArray(m.conteudo.opcoes_bot) && <div className={css.opcoesMensagem}>{opcoesDaMensagem(m.conteudo).map(opcao => <span key={opcao.id}>{opcao.titulo}</span>)}</div>}
+                    <div className={css.meta}><time dateTime={m.criado_em}>{new Date(m.criado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</time>{m.direcao === "saida" && <span aria-label={m.status} title={m.status}>{m.status === "lida" || m.status === "entregue" ? <CheckCheck size={16} data-lida={m.status === "lida"} /> : m.status === "falha" ? <CircleAlert size={14} /> : <Check size={16} />}</span>}</div>
+                  </article>
+                </li>;
+              })}
+              {dados.fila.map(m => <li key={m.id} className={css.bolha} data-saida="true"><p>{texto(m.conteudo)}</p><span className={css.meta}>{m.status === "falha" ? <CircleAlert size={13} /> : <Clock3 size={13} />}{m.status === "falha" ? "Falha · aguardando nova tentativa" : "Na fila de envio"}</span></li>)}
+              {!mensagens.length && !dados.fila.length && <li className={css.dia}>Nenhuma mensagem registrada nesta conversa.</li>}
+            </ol>
           </div>
+          {longeDoFim && <button type="button" onClick={descer} aria-label="Ir para mensagens recentes" className={`${novas ? estilos.novas : ""} absolute bottom-4 right-4 z-10 flex items-center gap-2 rounded-full bg-surface-container-lowest p-3 shadow-lg`}><ArrowDown size={21} />{novas > 0 && <span>{novas}</span>}</button>}
         </div>}
-        {dados && <>
-          <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg bg-surface-container-low">
-          <div ref={listaMensagens} onScroll={aoRolar} aria-label="Histórico da conversa" className="absolute inset-0 overflow-y-auto overscroll-contain [overflow-anchor:none] [scrollbar-gutter:stable]">
-          <ol ref={conteudo} className="flex min-h-full flex-col gap-3 p-3">
-            {carregandoMais&&<li role="status" className="flex shrink-0 items-center justify-center gap-2 py-2 text-xs text-on-surface-variant"><LoaderCircle size={14} className="animate-spin"/>Carregando mensagens anteriores…</li>}
-            {erro&&dados.temMais&&<li className="text-center"><button onClick={carregarMais} className="rounded-lg bg-surface-container px-3 py-2 text-xs">Tentar carregar anteriores</button></li>}
-            {dados.historicoOculto&&!dados.temMais&&<li className="text-center"><button onClick={()=>setAntigas(true)} className="rounded-full bg-surface-container px-3 py-2 text-xs text-primary">Carregar mensagens antigas</button></li>}
-            {[...dados.mensagens].reverse().map((mensagem) => <li key={mensagem.id} data-mensagem={mensagem.id} className={`shrink-0 max-w-[90%] rounded-xl p-3 ${mensagem.direcao === "saida" ? "self-end bg-primary-container text-on-primary-container" : "self-start bg-surface"}`}><p className="whitespace-pre-wrap break-words">{texto(mensagem.conteudo, mensagem.tipo)}</p><AnexoDaMensagem mensagem={mensagem} /><p className="mt-1 text-xs opacity-75">{new Date(mensagem.criado_em).toLocaleString("pt-BR")} · {mensagem.status === "enviada" ? "Envio aceito pela ponte; entrega ainda não confirmada" : mensagem.status === "entregue" ? "Entregue no WhatsApp" : mensagem.status === "lida" ? "Lida no WhatsApp" : mensagem.status}</p></li>)}
-            {[...dados.fila].reverse().map(item => <li key={`fila-${item.id}`} data-mensagem={`fila-${item.id}`} className={`shrink-0 max-w-[90%] self-end rounded-xl border px-4 py-3 ${item.status === "falha" ? "border-error/30 bg-error/5" : "border-on-surface/15 bg-surface"}`}>
-              <p className="whitespace-pre-wrap break-words">{texto(item.conteudo)}</p>
-              <div className={`mt-2 flex items-center justify-end gap-1.5 text-xs font-medium ${item.status === "falha" ? "text-error" : "text-on-surface-variant"}`}>
-                {item.status === "enviando" ? <LoaderCircle size={14} className="animate-spin" /> : item.status === "falha" ? <CircleAlert size={14} /> : <Clock3 size={14} />}
-                <span>{item.status === "enviando" ? "Enviando mensagem" : item.status === "falha" ? "Falha no envio" : "Na fila de envio"}</span>
-              </div>
-            </li>)}
-            {!dados.mensagens.length && !dados.fila.length && <li>Nenhuma mensagem registrada nesta conversa.</li>}
-          </ol>
-          </div>
-          {longeDoFim&&<button type="button" onClick={descer} aria-label={novas?`Ir para mensagens recentes: ${novas} novas mensagens`:"Ir para mensagens recentes"} title="Ir para o fim da conversa" className={`${novas?estilos.novas:""} absolute bottom-4 right-4 z-10 flex cursor-pointer items-center gap-2 rounded-full border border-primary/20 bg-primary px-3 py-3 text-on-primary shadow-lg transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`}><ArrowDown size={21}/>{novas>0&&<span className="text-xs font-semibold">{novas>99?"99+":novas}</span>}</button>}
-          </div>
-
-        </>}
-        <div className="mt-4"><EnviarMensagemWhatsapp key={telefone} telefones={[telefone]} fixarTelefone aoEnviar={() => { setDados(anterior => anterior ? { ...anterior, modo: "atendimento_humano", assumida: true } : anterior); atualizarConversa(); }} /></div>
+        <div className={css.compositor}><EnviarMensagemWhatsapp conta={conta} key={telefone} telefones={[telefone]} fixarTelefone aoEnviar={(id, mensagem) => { setDados(anterior => anterior ? { ...anterior, modo: "atendimento_humano", assumida: true, fila: id ? [...anterior.fila.filter(item => item.id !== id), { id, status: "pendente", conteudo: { texto: mensagem } }] : anterior.fila } : anterior); atualizarConversa(); }} /></div>
       </>}
     </div>
-    <dialog ref={modal} aria-labelledby="excluir-conversa-titulo" onCancel={event => { event.preventDefault(); if (!ocupado) setExcluir(""); }} className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-md rounded-2xl bg-surface-container-lowest p-6 text-on-surface shadow-xl backdrop:bg-black/50">
-      <h2 id="excluir-conversa-titulo" className="text-lg font-bold">Remover conversa da Central?</h2>
-      <p className="mt-3 break-words text-sm">A conversa com <strong>{comoTelefone(excluir)}</strong> sairá da lista. O histórico fica salvo e poderá ser carregado quando a conversa for reaberta.</p>
-      {erroExclusao && <p role="alert" className="mt-3 text-sm text-error">{erroExclusao}</p>}
-      <div className="mt-6 flex justify-end gap-3">
-        <button type="button" autoFocus disabled={ocupado} onClick={() => setExcluir("")} className="rounded-lg bg-surface-container px-4 py-2 disabled:opacity-50">Cancelar</button>
-        <button type="button" disabled={ocupado} onClick={remover} className="rounded-lg bg-error px-4 py-2 text-on-error disabled:opacity-50">{ocupado ? "Removendo…" : "Remover conversa"}</button>
-      </div>
+    <dialog ref={modal} aria-labelledby={`excluir-${conta}`} onCancel={e => { e.preventDefault(); if (!ocupado) setExcluir(""); }} className={css.modal}>
+      <header><h2 id={`excluir-${conta}`}>Remover conversa da Central?</h2></header><p>A conversa com <strong>{comoTelefone(excluir)}</strong> sairá da lista. O histórico será preservado.</p>
+      {erroExclusao && <p role="alert">{erroExclusao}</p>}
+      <div className="mt-6 flex justify-end gap-4"><button type="button" autoFocus disabled={ocupado} onClick={() => setExcluir("")}>Cancelar</button><button type="button" disabled={ocupado} onClick={remover} className={css.primario}>{ocupado ? "Removendo…" : "Remover conversa"}</button></div>
     </dialog>
+    {editor && <EditorConversaWhatsapp key={`${conta}:${telefone}:${editor}`} conta={conta} telefone={editor === "conversa" ? telefone : undefined} nomeAtual={dados?.nomeContato ?? resumos[telefone]?.nome_contato} etiquetas={etiquetas} aplicadas={dados?.etiquetas ?? resumos[telefone]?.etiquetas ?? []} aoFechar={() => setEditor(null)} aoAtualizar={mudaram => { if (mudaram) setRevisaoEtiquetas(v => v + 1); atualizarConversa(); }} />}
   </section>;
 }

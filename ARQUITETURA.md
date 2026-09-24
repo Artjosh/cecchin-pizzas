@@ -93,10 +93,10 @@ Central mantém atendimento humano/bot, fila de envio, mídias autorizadas e ocu
 
 `TabelasOperacionais` recebe DTOs compactos para evitar repetir a árvore server de cada célula. Consulta e autorização continuam no servidor. Isso troca parte do payload RSC por código de apresentação no cliente; meça ambas as parcelas. Avatares/conteúdo de cards e opções de sugestão têm memoização; resize do mapa não deve reajustar enquadramento durante arraste.
 
-Medição de desenvolvimento de 15/09 reduziu Pendências de aproximadamente 572 KB/3968 linhas para 29 KB/182 linhas. Não é garantia de latência nem teto global de linhas. [Relatório e método](skills/verificar-tela/PERFORMANCE_2026-09-15.md). Não houve comparação nova de build de produção nesta revisão documental.
+A redução do payload RSC deve ser medida por bytes, latência e custo no cliente; não há teto útil de linhas. Não foi medida uma comparação de build de produção para esta revisão.
 
 ## Limites atuais
 
-Frota física, upload de foto/Storage e emissão de GPS continuam ausentes. A integração InfinitePay tem BFF, aprovação em `/admin/pagamentos`, checkout hospedado e acompanhamento pelo cliente escritos; continua desabilitada, depende da migration 044 e da configuração da API/worker, e ainda não foi validada por execução de testes. Consulte [o contrato no backend](../cecchin-pizzas-backend/infra/INFINITEPAY.md). Ativação de login social e deploy dependem do ambiente. Banco e Desenho têm equivalência de componentes de equipe, mas volume e dados disponíveis diferem; nunca preencha lacunas reais com mocks.
+Frota física, upload de foto/Storage e emissão de GPS continuam ausentes. Checkout hospedado da InfinitePay, aprovação manual e devolução registrada estão implementados localmente. A disponibilidade de cobrança real depende da configuração e do serviço em execução no ambiente; consulte o [contrato de pagamentos](../cecchin-pizzas-backend/infra/INFINITEPAY.md). Banco e Desenho compartilham componentes de equipe, mas o volume e os dados disponíveis diferem.
 
-Veja a [matriz auditada](skills/verificar-tela/AUDITORIA_BANCO_2026-09-15.md), os [procedimentos de verificação](TESTES.md) e o [backend](../cecchin-pizzas-backend/README.md).
+Veja os [procedimentos de verificação](TESTES.md) e o [backend](../cecchin-pizzas-backend/README.md).

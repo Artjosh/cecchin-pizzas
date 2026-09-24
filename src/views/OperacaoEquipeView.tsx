@@ -1,3 +1,4 @@
+import {PreCadastrosEquipe} from "../components/equipe/PreCadastrosEquipe";
 import Link from "next/link";
 import {EquipeOperacao} from "../components/equipe/EquipeOperacao";
 import {fonteDeDados} from "../servidor/fonte";
@@ -170,4 +171,4 @@ async function VinculosOperacao() {
   );
 }
 
-export async function OperacaoEquipeView({vinculos=false}:{vinculos?:boolean}={}){await exigirPapel(["gestao"]);const demo=(await fonteDeDados())==="mock";if(vinculos&&!demo)return <div className="space-y-4"><Link href="/admin/operacao" className="text-sm text-primary">Voltar aos integrantes</Link><VinculosOperacao/></div>;return <EquipeOperacao demo={demo}/>;}
+export async function OperacaoEquipeView({vinculos=false}:{vinculos?:boolean}={}){await exigirPapel(["gestao"]);const demo=(await fonteDeDados())==="mock";if(vinculos&&!demo)return <div className="space-y-4"><Link href="/admin/operacao" className="text-sm text-primary">Voltar aos integrantes</Link><PreCadastrosEquipe/><VinculosOperacao/></div>;return <EquipeOperacao demo={demo}/>;}

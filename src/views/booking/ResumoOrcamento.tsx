@@ -12,6 +12,7 @@ import { useReserva } from "./contexto";
 
 export function ResumoOrcamento() {
   const {
+    sinalPercentual,
     adults,
     children,
     toddlers,
@@ -33,14 +34,14 @@ export function ResumoOrcamento() {
       <div className="flex items-center justify-between pb-space-sm">
         <div className="flex flex-col">
           <span className="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">
-            Orçamento Oficial
+            Orçamento estimado
           </span>
           <span className="font-headline-sm text-headline-sm text-on-surface">
             Resumo da Contratação
           </span>
         </div>
         <span className="px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm font-mono">
-          #CP-2025-0842
+          Pré-agendamento
         </span>
       </div>
       <div className="flex items-center gap-2 flex-wrap text-body-sm text-on-surface-variant bg-surface-container-low p-space-sm rounded-xl">
@@ -115,21 +116,21 @@ export function ResumoOrcamento() {
             <div className="flex items-center gap-1 text-primary">
               <Timer className="w-4 h-4" />
               <span className="font-label-sm text-label-sm font-bold uppercase">
-                Sinal (40%)
+                Sinal ({sinalPercentual}%)
               </span>
             </div>
             <span className="font-headline-sm text-headline-sm text-primary font-bold mt-0.5">
               {formatBRL(depositVal)}
             </span>
             <span className="text-[11px] text-on-surface-variant leading-tight">
-              Garante a reserva da data
+              Data sujeita à aprovação
             </span>
           </div>
           <div className="flex flex-col p-space-sm rounded-lg bg-surface-container-lowest">
             <div className="flex items-center gap-1 text-on-surface-variant">
               <BadgeCheck className="w-4 h-4" />
               <span className="font-label-sm text-label-sm font-bold uppercase">
-                Saldo (60%)
+                Saldo ({100 - sinalPercentual}%)
               </span>
             </div>
             <span className="font-headline-sm text-headline-sm text-on-surface font-bold mt-0.5">
@@ -144,7 +145,7 @@ export function ResumoOrcamento() {
       <div className="flex flex-col gap-space-xs pt-space-xs">
         <div className="flex items-center gap-space-xs text-body-sm text-on-surface-variant">
           <Timer className="w-[18px] h-[18px] text-tertiary" />
-          <span>Compromisso de Pontualidade: equipe no local 90 min antes</span>
+          <span>Compromisso de Pontualidade: equipe no local 15 min antes</span>
         </div>
         <div className="flex items-center gap-space-xs text-body-sm text-on-surface-variant">
           <Utensils className="w-[18px] h-[18px] text-tertiary" />

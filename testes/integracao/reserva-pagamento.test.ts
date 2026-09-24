@@ -5,7 +5,7 @@ const emails = ["reserva", "outro", "admin"].map(emailDeTeste);
 let cliente: Aparelho, outro: Aparelho, admin: Aparelho;
 let reserva: string, cobranca: string;
 const dados = {
-  endereco: "Rua de teste, 123", tipoLocal: "casa",
+  endereco: "Rua de teste, 123", tipoLocal: "casa", latitude: -30.01, longitude: -51.18,
   data: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10), horario: "19:00",
   ocasiao: "Aniversário de teste", tipoForno: "gas", formaPagamento: "pix",
   adultos: 30, criancas: 3, criancasCortesia: 1, valorEstimado: 1, sinalEstimado: 1,
@@ -39,12 +39,15 @@ describe("reserva e checkout pelo BFF real", () => {
     }
   });
 
-  it("persiste o solicitante da sessão, sem aceitar identidade enviada pelo cliente", async () => {
+  it("ambiente desabilitado impede novo pré-agendamento; prepara pedido legado para testar leitura", async () => {
     const alheio = sql(`select id from usuario where email='${emails[1]}'`);
     const r = await cliente.pedir("/api/cliente/reserva", { corpo: { ...dados, usuario_id: alheio, canal: "whatsapp" } });
-    expect(r.status).toBe(201);
-    reserva = r.corpo.solicitacao;
-    expect(sql(`select u.email||':'||s.canal from solicitacao_reserva s join usuario u on u.id=s.usuario_id where s.id='${reserva}'`)).toBe(`${emails[0]}:site`);
+    expect(r.status).toBe(503);
+    // Pedido legado sintético: esta suíte roda com cobrança desabilitada.
+    // O novo fluxo pago é exercitado no teste SQL 17 e integração Nest/WhatsApp.
+    reserva = sql(`insert into solicitacao_reserva(organizacao_id,usuario_id,endereco,tipo_local,data_evento,horario,ocasiao,adultos,criancas,criancas_cortesia,tipo_forno,forma_pagamento,valor_estimado,sinal_estimado)
+      select organizacao_id,id,'Rua de teste, 123','casa',current_date+30,'19:00','Teste',30,3,1,'gas','pix',1,1 from usuario where email='${emails[0]}' returning id`).split(/\r?\n/)[0];
+
   });
 
   it("cliente não aprova valores, gestão não usa a antiga transição para pular o checkout", async () => {

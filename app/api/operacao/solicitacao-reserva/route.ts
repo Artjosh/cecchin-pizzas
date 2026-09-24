@@ -16,8 +16,8 @@ export async function PATCH(request: NextRequest) {
     corpo = dados as Record<string, unknown>;
   } catch { return NextResponse.json({ mensagem: "JSON inválido." }, { status: 400 }); }
   const solicitacao = typeof corpo.solicitacao === "string" ? corpo.solicitacao : "";
-  const status = corpo.status === "em_analise" || corpo.status === "recusada" || corpo.status === "cancelada" ? corpo.status : "";
+  const status = corpo.status === "aprovada" || corpo.status === "em_analise" || corpo.status === "recusada" || corpo.status === "cancelada" ? corpo.status : "";
   if (!UUID_PAGAMENTO.test(solicitacao) || !status) return NextResponse.json({ mensagem: "Solicitação ou estado inválido." }, { status: 400 });
-  const r = await chamarFuncao("atualizar_solicitacao_reserva", { p_solicitacao: solicitacao, p_status: status }, sessao.accessToken);
+  const r = status === "aprovada" ? await chamarFuncao("aprovar_reserva_paga", { p_solicitacao: solicitacao }, sessao.accessToken) : await chamarFuncao("atualizar_solicitacao_reserva", { p_solicitacao: solicitacao, p_status: status }, sessao.accessToken);
   return r.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ mensagem: "Não foi possível atualizar a solicitação." }, { status: r.status === 0 ? 502 : 403 });
 }

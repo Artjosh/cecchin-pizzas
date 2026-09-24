@@ -1,5 +1,6 @@
 "use client";
 
+import { AvisoDisponibilidade } from "../DisponibilidadeSemanal";
 import Link from "next/link";
 import {ContextoTitulo,type TituloRegistrado} from "./TituloNoHeader";
 import {VoltarDinamico,registrarOrigem} from "./VoltarDinamico";
@@ -392,7 +393,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
           Sai junto com o interruptor, quando a última tela estiver ligada.
         */}
         <main className={pathname === "/operacional/whatsapp" ? "h-[calc(100dvh-4rem)] min-h-0 min-w-0 overflow-hidden bg-surface p-3 md:p-4" : "flex-1 bg-surface px-space-md py-3 md:px-space-lg pb-24 min-w-0"}>
-          {children}
+          {pathname !== "/operacional/whatsapp" && <AvisoDisponibilidade />}{children}
         </main>
       </div>
     </div></ContextoTitulo.Provider>

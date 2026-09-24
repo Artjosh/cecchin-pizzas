@@ -5,7 +5,7 @@ import { checkoutPermitido, UUID_PAGAMENTO, type CobrancaInfinitePay } from "@/s
 
 export const dynamic = "force-dynamic";
 const responder = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
-const colunas = "id,solicitacao_id,status,checkout_url,total_aprovado_centavos,valor_centavos,evento_id,erro_codigo,criado_em";
+const colunas = "id,solicitacao_id,status,checkout_url,total_aprovado_centavos,valor_centavos,evento_id,erro_codigo,criado_em,solicitacao_reserva(status)";
 
 export async function GET(request: NextRequest) {
   const sessao = await sessaoAtual();
@@ -61,6 +61,12 @@ export async function POST(request: NextRequest) {
     funcao = "informar_retorno_infinitepay"; args = { p_cobranca: corpo.pedido, p_transacao: corpo.transacao, p_fatura: corpo.fatura };
   } else return responder({ mensagem: "Ação inválida." }, 400);
   const r = await chamarFuncao<string>(funcao, args, sessao.accessToken);
-  if (!r.ok) return responder({ mensagem: "Não foi possível concluir. Confira a configuração, o estado da solicitação e os valores; se já houver cobrança, use o mesmo pedido." }, r.status === 401 || r.status === 403 ? 403 : r.status === 0 ? 503 : 409);
+  if (!r.ok) {
+    const indisponivel = r.status === 0 || r.status >= 500;
+    return responder({ mensagem: indisponivel
+      ? "Serviço temporariamente indisponível. Tente novamente usando o mesmo pedido."
+      : "Não foi possível concluir. Confira a configuração, o estado da solicitação e os valores; se já houver cobrança, use o mesmo pedido." },
+      r.status === 401 || r.status === 403 ? 403 : indisponivel ? 503 : 409);
+  }
   return responder({ ok: true, pedido: corpo.acao === "liberar" ? r.dados : undefined });
 }

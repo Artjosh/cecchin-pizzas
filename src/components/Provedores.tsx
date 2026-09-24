@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from "react";
 import { AuthProvider, type Usuario } from "../contexts/AuthContext";
 import { SeletorDeFonte } from "./SeletorDeFonte";
 import { ProvedorTema } from "../contexts/TemaContext";
+import type { Tema } from "../contexts/TemaContext";
 import { ProvedorSomAtendimento } from "./whatsapp/SomAtendimento";
 
 /**
@@ -21,9 +22,11 @@ import { ProvedorSomAtendimento } from "./whatsapp/SomAtendimento";
  */
 export function Provedores({
   usuario,
+  temaInicial,
   children,
 }: {
   usuario: Usuario | null;
+  temaInicial: Tema | null;
   children: ReactNode;
 }) {
   useEffect(() => {
@@ -49,7 +52,7 @@ export function Provedores({
   }, []);
 
   return (
-    <ProvedorTema><AuthProvider usuario={usuario}>
+    <ProvedorTema temaInicial={temaInicial}><AuthProvider usuario={usuario}>
       <ProvedorSomAtendimento>{children}</ProvedorSomAtendimento>
       {/* Enquanto mock e banco convivem. Some junto com o último mock. */}
       <SeletorDeFonte />

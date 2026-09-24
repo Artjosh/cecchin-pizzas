@@ -12,6 +12,16 @@ function sessao(papel = "gestao") { return { accessToken: "sessao-ficticia", usu
 function post(body: object, origin = "https://app.example") { return new NextRequest("https://app.example/api/pagamentos/infinitepay", { method: "POST", headers: { "Content-Type": "application/json", origin }, body: JSON.stringify(body) }); }
 
 describe("BFF InfinitePay", () => {
+  it.each([0, 500, 502, 503, 504])("indisponibilidade %s preserva pedido e nao vira conflito de negocio", async (status) => {
+    mocks.rpc.mockResolvedValue({ ok: false, status, erro: "detalhes internos privados" });
+    const r = await POST(post({ acao: "retorno", pedido, transacao: "t", fatura: "f" }));
+    expect(r.status).toBe(503);
+    expect(r.headers.get("cache-control")).toBe("no-store");
+    const body = await r.text();
+    expect(body).toContain("mesmo pedido");
+    expect(body).not.toContain("detalhes internos privados");
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+  });
   afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => { vi.resetAllMocks(); mocks.sessao.mockResolvedValue(sessao()); mocks.rpc.mockResolvedValue({ ok: true, dados: pedido }); vi.stubEnv("INFINITEPAY_ENABLED", "true"); });
   it("exige sessão e mesma origem", async () => {

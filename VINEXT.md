@@ -32,7 +32,7 @@ Módulos dev usam `Cache-Control: no-store`; existe tratamento para módulo obso
 
 RSC de desenvolvimento inclui metadados, referências e stacks. Conte linhas apenas como diagnóstico auxiliar. Meça bytes, TTFB, tempo total, consultas, render/hidratação e arraste. Build de produção deve ser medido separadamente, quando autorizado; não prometa um ganho percentual sem execução.
 
-O projeto reduziu árvores repetitivas usando DTOs e componentes client de tabela, além de paginação e memoização. [Evidência datada](skills/verificar-tela/PERFORMANCE_2026-09-15.md). Fazer dez requests sequenciais para substituir uma resposta pode somar latência; não é uma otimização automática.
+O projeto reduziu árvores repetitivas usando DTOs e componentes client de tabela, além de paginação e memoização. Fazer dez requests sequenciais para substituir uma resposta pode somar latência; não é uma otimização automática.
 
 ## Antes de publicar
 

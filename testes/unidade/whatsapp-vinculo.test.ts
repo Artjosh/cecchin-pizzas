@@ -1,0 +1,14 @@
+import {beforeEach,expect,it,vi} from "vitest";
+import {NextRequest} from "next/server";
+const m=vi.hoisted(()=>({sessao:vi.fn(),rpc:vi.fn()}));
+vi.mock("@/src/servidor/auth/sessao-atual",()=>({sessaoAtual:m.sessao}));
+vi.mock("@/src/servidor/supabase",()=>({chamarFuncao:m.rpc}));
+import {POST,GET} from "@/app/api/cliente/whatsapp/route";
+const id='12345678-1234-4234-8234-123456789012';
+const req=(body:unknown,origin='https://app.example')=>new NextRequest('https://app.example/api/cliente/whatsapp',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(body)});
+beforeEach(()=>{vi.resetAllMocks();m.sessao.mockResolvedValue({accessToken:'privado',usuario:{id,papel:'cliente'}});m.rpc.mockResolvedValue({ok:true,dados:id});});
+it('exige origem e sessão',async()=>{expect((await POST(req({acao:'solicitar',telefone:'51999990000'},'https://outro.example'))).status).toBe(403);m.sessao.mockResolvedValue(null);expect((await POST(req({acao:'solicitar',telefone:'51999990000'}))).status).toBe(401);expect(m.rpc).not.toHaveBeenCalled();});
+it('identidade vem da sessão e não do corpo',async()=>{const r=await POST(req({acao:'solicitar',telefone:'51999990000',usuario_id:'outra-pessoa'}));expect(m.rpc).toHaveBeenCalledWith('solicitar_otp_whatsapp',{p_telefone:'51999990000'},'privado');expect(await r.text()).not.toContain('privado');expect(r.headers.get('cache-control')).toBe('no-store');});
+it('confirma só código e desafio válidos',async()=>{expect((await POST(req({acao:'confirmar',pedido:id,codigo:'123'}))).status).toBe(400);expect(m.rpc).not.toHaveBeenCalled();await POST(req({acao:'confirmar',pedido:id,codigo:'123456'}));expect(m.rpc).toHaveBeenCalledWith('confirmar_otp_whatsapp',{p_id:id,p_codigo:'123456'},'privado');});
+it('limite mantém 429 sem expor erro do banco',async()=>{m.rpc.mockResolvedValue({ok:false,status:429,erro:'segredo interno'});const r=await POST(req({acao:'solicitar',telefone:'51999990000'}));expect(r.status).toBe(429);expect(await r.text()).not.toContain('segredo');});
+it('consulta só via RPC autenticada',async()=>{await GET(new NextRequest('https://app.example/api/cliente/whatsapp?pedido='+id));expect(m.rpc).toHaveBeenCalledWith('estado_otp_whatsapp',{p_id:id},'privado');});

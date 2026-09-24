@@ -6,7 +6,7 @@ Revisado em 16/09/2026. Leia [README](README.md), [arquitetura](ARQUITETURA.md) 
 
 Consulte [coordenação do workspace](../AGENTES.md), quando disponível, e preserve alterações existentes. Registre o escopo e o resultado; não transforme entradas antigas em bloqueios permanentes. Instruções do usuário prevalecem sobre estes procedimentos. Não execute typecheck, lint, testes, build ou reinícios quando estiverem proibidos na sessão.
 
-Scripts e evidências ficam em `skills/<assunto>/`; capturas em `skills/verificar-tela/capturas/`, ignoradas pelo Git. Não crie uma pasta paralela `.claude`. Consulte a [lista de skills](skills/README.md) para o procedimento pertinente.
+Scripts e evidências ficam em `skills/<assunto>/`; capturas em `skills/verificar-tela/capturas/`, ignoradas pelo Git. Não crie uma pasta paralela `.claude`. Consulte o `SKILL.md` pertinente antes de usar o procedimento.
 
 ## Contratos que devem ser preservados
 
@@ -24,7 +24,7 @@ Páginas e guards permanecem no servidor. Extraia componentes client para intera
 
 Não importe MapLibre no topo de um módulo executado no SSR; siga o carregamento existente no navegador. Use `motion/react`. Evite datas aleatórias/relógio local divergentes no primeiro render hidratado: passe um valor estável do servidor ou atualize em efeito. Isso não proíbe `new Date()` no servidor.
 
-Meça bytes, duração, consultas e fluidez de interação. Quantidade de linhas de `_rsc` em desenvolvimento não é um limite de produto. Não divida uma leitura em muitas chamadas sequenciais sem medir. Preserve paginação, filtros e RLS; veja [performance](skills/verificar-tela/PERFORMANCE_2026-09-15.md).
+Meça bytes, duração, consultas e fluidez de interação. Quantidade de linhas de `_rsc` em desenvolvimento não é um limite de produto. Não divida uma leitura em muitas chamadas sequenciais sem medir. Preserve paginação, filtros e RLS.
 
 ## Interface
 

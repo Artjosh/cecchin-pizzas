@@ -18,6 +18,10 @@ interface PainelPassosProps {
   aoAbrir: (aberto: boolean) => void;
   aoConfirmar: () => Promise<void>;
   confirmando?: boolean;
+  pagamentoAtivo?: boolean;
+  edicaoBloqueada?: boolean;
+  rotuloConfirmar?: string;
+  resumoRodape?: string;
   children: ReactNode;
 }
 
@@ -27,6 +31,10 @@ export function PainelPassos({
   aoAbrir,
   aoConfirmar,
   confirmando = false,
+  pagamentoAtivo = false,
+  edicaoBloqueada = false,
+  rotuloConfirmar = "Pagar sinal",
+  resumoRodape,
   children,
 }: PainelPassosProps) {
   const {
@@ -64,19 +72,19 @@ export function PainelPassos({
   return (
     <>
       {aberto && (
-        <div className="fixed inset-x-0 top-24 bottom-28 z-30 pointer-events-none px-3 sm:px-6">
+        <div className="fixed inset-x-0 top-24 bottom-20 z-30 pointer-events-none px-3 sm:px-6">
           <section
             role="dialog"
             aria-label={passoAtual.titulo}
             className={cn(
-              "pointer-events-auto absolute flex max-h-full flex-col overflow-hidden rounded-2xl bg-surface-container-lowest shadow-2xl ring-1 ring-on-surface/10",
+              "pointer-events-auto absolute flex max-h-[58dvh] flex-col overflow-hidden rounded-2xl bg-surface-container-lowest shadow-2xl ring-1 ring-on-surface/10 sm:max-h-full",
               currentStep === 4
-                ? "inset-x-3 top-1/2 -translate-y-1/2 sm:left-1/2 sm:right-auto sm:w-[min(44rem,calc(100vw-3rem))] sm:-translate-x-1/2"
+                ? "inset-x-3 bottom-0 max-h-full sm:left-1/2 sm:right-auto sm:w-[min(44rem,calc(100vw-3rem))] sm:-translate-x-1/2"
                 : currentStep === 2
-                  ? "inset-x-3 top-0 sm:left-auto sm:right-6 sm:w-[min(26rem,calc(100vw-3rem))]"
+                  ? "inset-x-3 bottom-0 sm:top-0 sm:bottom-auto sm:left-auto sm:right-6 sm:w-[min(26rem,calc(100vw-3rem))]"
                 : currentStep === 3
-                    ? "inset-x-3 top-0 sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-3rem))] sm:-translate-x-1/2"
-                    : "inset-x-3 top-0 sm:left-6 sm:right-auto sm:w-[min(28rem,calc(100vw-3rem))]",
+                    ? "inset-x-3 bottom-0 sm:top-0 sm:bottom-auto sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-3rem))] sm:-translate-x-1/2"
+                    : "inset-x-3 bottom-0 sm:top-0 sm:bottom-auto sm:left-6 sm:right-auto sm:w-[min(28rem,calc(100vw-3rem))]",
             )}
           >
             <header className="flex shrink-0 items-center justify-between gap-space-sm border-b border-outline-variant/30 px-space-md py-space-sm">
@@ -116,11 +124,11 @@ export function PainelPassos({
               )}
               <div className="flex items-center justify-between gap-space-sm">
                 <span className="min-w-0 font-body-sm text-body-sm text-on-surface-variant truncate">
-                  {orcamentoPronto
+                  {resumoRodape ?? (orcamentoPronto
                     ? formatBRL(grandTotal) + " · sinal " + formatBRL(depositVal)
-                    : "Orçamento calculado após local e data"}
+                    : "Orçamento calculado após local e data")}
                 </span>
-                <div className="flex shrink-0 items-center gap-space-xs">
+                {!pagamentoAtivo && <div className="flex shrink-0 items-center gap-space-xs">
                   {currentStep > 1 && (
                     <button
                       type="button"
@@ -143,9 +151,9 @@ export function PainelPassos({
                     )}
                   >
                     {ultimo ? <BadgeCheck className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-                    <span>{ultimo ? (confirmando ? "Enviando…" : "Enviar solicitação") : "Avançar"}</span>
+                    <span>{ultimo ? (confirmando ? "Preparando…" : rotuloConfirmar) : "Avançar"}</span>
                   </button>
-                </div>
+                </div>}
               </div>
             </footer>
           </section>
@@ -160,7 +168,7 @@ export function PainelPassos({
           {PASSOS.map((passo) => {
             const ativo = currentStep === passo.num;
             const concluido = passo.num < passoLiberado;
-            const bloqueado = passo.num > passoLiberado;
+            const bloqueado = passo.num > passoLiberado || (edicaoBloqueada && passo.num !== 4);
             return (
               <button
                 key={passo.num}

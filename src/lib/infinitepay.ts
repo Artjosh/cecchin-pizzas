@@ -2,6 +2,7 @@ export type CobrancaInfinitePay = {
   id: string; solicitacao_id: string; status: string; checkout_url: string | null;
   total_aprovado_centavos: number | string; valor_centavos: number | string;
   evento_id: string | null; erro_codigo: string | null; criado_em: string;
+  solicitacao_reserva?: { status: string } | null;
   avisos_pendentes?: number; ultima_falha?: string | null;
 };
 export const UUID_PAGAMENTO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

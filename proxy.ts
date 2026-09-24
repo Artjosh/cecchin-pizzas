@@ -35,7 +35,7 @@ const PUBLICAS = ["/entrar", "/api/auth", "/api/interno/notificacoes"];
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const publica = pathname === "/pagamento/retorno" || PUBLICAS.some(
+  const publica = (process.env.NODE_ENV === "development" && pathname === "/desenvolvimento/reserva") || pathname === "/pagamento/retorno" || PUBLICAS.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
 

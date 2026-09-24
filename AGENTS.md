@@ -12,4 +12,4 @@ Os procedimentos específicos e versionados vivem em `skills/`:
 Leia a skill aplicável antes de começar esse tipo de trabalho. O diretório fica
 na raiz para que Claude, Codex e outros agentes encontrem a mesma instrução.
 
-Consulte também o [README](README.md) para entrada no projeto e os [procedimentos](skills/README.md). Preserve mudanças locais de outras pessoas. Comandos de validação são opções, sujeitos às instruções da sessão; não executar reset, build ou reiniciar serviços por hábito.
+Consulte também o [README](README.md) para entrada no projeto. Preserve mudanças locais de outras pessoas. Comandos de validação são opções, sujeitos às instruções da sessão; não executar reset, build ou reiniciar serviços por hábito.

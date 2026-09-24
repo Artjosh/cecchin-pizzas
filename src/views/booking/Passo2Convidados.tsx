@@ -4,7 +4,7 @@ import { Badge, Users } from "lucide-react";
 import { useReserva } from "./contexto";
 
 export function Passo2Convidados() {
-  const { adults, children, toddlers, totalGuests, adjustGuests } =
+  const { adultPrice, childPrice, formatBRL, minimoAdultos, adults, children, toddlers, totalGuests, adjustGuests } =
     useReserva();
 
   return (
@@ -24,13 +24,13 @@ export function Passo2Convidados() {
         {[
           {
             title: "Adultos & Jovens",
-            desc: "A partir de 12 anos • R$ 74,00 por pessoa",
+            desc: `A partir de 12 anos • ${formatBRL(adultPrice)} por pessoa`,
             count: adults,
             type: "adults" as const,
           },
           {
             title: "Crianças (6 a 11 anos)",
-            desc: "50% do valor integral • R$ 37,00 por criança",
+            desc: `${formatBRL(childPrice)} por criança`,
             count: children,
             type: "children" as const,
           },

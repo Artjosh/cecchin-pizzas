@@ -76,8 +76,8 @@ const OCASIOES = [
   "Encontro de Amigos",
 ];
 
-/** A equipe chega 90 minutos antes do início do serviço. */
-const ANTECEDENCIA_MIN = 90;
+/** A equipe chega 15 minutos antes do início do serviço. */
+const ANTECEDENCIA_MIN = 15;
 
 function horaDeChegada(inicio: string): string | null {
   const [h, m] = inicio.split(":").map(Number);
@@ -212,7 +212,7 @@ export function Passo1Local() {
           <span className="font-label-md text-label-md text-on-surface font-semibold">
             {chegada
               ? "Equipe chega às " + chegada + " no local"
-              : "Equipe chega 1h30 antes do início"}
+              : "Equipe chega 15 minutos antes do início"}
           </span>
           <span
             id="dica-chegada-equipe"
