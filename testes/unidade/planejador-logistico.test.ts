@@ -1,11 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { planejarLogistica, type ConfiguracaoPlanejador, type EventoPlanejavel, type VeiculoPlanejavel } from "../../src/lib/logistica/planejador";
-import { janelasCarro, janelasPessoa } from "../../src/lib/logistica/janelasDisponibilidade";
+import { carroEMotoristaCoincidemNoDia, janelasCarro, janelasPessoa } from "../../src/lib/logistica/janelasDisponibilidade";
 
 const config: ConfiguracaoPlanejador = { minutosCarregar: 10, flexSaidaMinutos: 30, montagemPadraoMinutos: 60, montagemBebidaAntesMinutos: 120, fatorPicoPercentual: 135, custoFrotaCentavosKm: 70, materialCentavosKm: 175, pessoasCentavosKm: 150, minimoCentavos: 4000, adicionalMaterialCentavos: 3000, duracaoEventoMinutos: 240 };
 const evento: EventoPlanejavel = { id: "evento-a", inicioMs: Date.parse("2026-10-06T12:00:00-03:00"), convidados: 30, forno: "mini", bebida: "isopor_pequeno", bebidaAntes: false, pessoas: 3, rotaMinutos: 30, rotaKm: 20 };
 const empresa: VeiculoPlanejavel = { id: "empresa", modelo: "Kombi", placa: "ABC1234", proprietarioId: null, forno: "medio", bebida: "isopor_grande", lugares: 5, limiteLevar: 3, disponivel: true };
 const particular: VeiculoPlanejavel = { ...empresa, id: "particular", proprietarioId: "motorista" };
+
+it("conta carro particular apenas quando carro e dono coincidem no dia escolhido", () => {
+  const carro = janelasCarro("2026-10-05", [false, true, false, false, false, false, false]);
+  expect(carroEMotoristaCoincidemNoDia("2026-10-06", carro, janelasPessoa("2026-10-05", [null, "18:00", null, null, null, null, null]))).toBe(true);
+  expect(carroEMotoristaCoincidemNoDia("2026-10-06", carro, janelasPessoa("2026-10-05", [null, null, "08:00", null, null, null, null]))).toBe(false);
+  expect(carroEMotoristaCoincidemNoDia("2026-10-06", carro, janelasPessoa("2026-10-05", [null, { inicio: "10:00", fim: "12:00" }, null, null, null, null, null]))).toBe(true);
+  expect(carroEMotoristaCoincidemNoDia("2026-10-07", carro, janelasPessoa("2026-10-05", [null, "18:00", null, null, null, null, null]))).toBe(false);
+});
 
 it("exige carro e motorista disponiveis durante toda a viagem, inclusive ao atravessar a semana", () => {
   const disponivel = {

@@ -29,3 +29,10 @@ export function janelasPessoa(semana: string, dias: DiaPessoa[]): JanelaDisponib
     return Number.isFinite(inicioMs) && Number.isFinite(fimMs) && fimMs > inicioMs ? [{ inicioMs, fimMs }] : [];
   });
 }
+
+export function carroEMotoristaCoincidemNoDia(dia: string, carro: JanelaDisponibilidade[], motorista: JanelaDisponibilidade[]) {
+  const inicioDia = instante(dia, "00:00:00");
+  const proximoDia = dataDaSemana(dia, 1);
+  const fimDia = instante(proximoDia, "00:00:00");
+  return carro.some((a) => motorista.some((b) => Math.max(inicioDia, a.inicioMs, b.inicioMs) < Math.min(fimDia, a.fimMs, b.fimMs)));
+}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { planejarLogistica, type PropostaLogistica, type ResultadoPlanejador, type TipoBebida, type TipoForno } from "@/src/lib/logistica/planejador";
-import { janelasCarro, janelasPessoa, type DiaPessoa } from "@/src/lib/logistica/janelasDisponibilidade";
+import { useEffect, useMemo, useState } from "react";
+import { planejarLogistica, type PropostaLogistica, type ResultadoPlanejador, type TipoBebida, type TipoForno, type VeiculoPlanejavel } from "@/src/lib/logistica/planejador";
+import { carroEMotoristaCoincidemNoDia, janelasCarro, janelasPessoa, type DiaPessoa } from "@/src/lib/logistica/janelasDisponibilidade";
 
 type Evento = { id: string; cliente_nome: string; data_evento: string; horario: string; inteiros: number; meios: number };
 type Requisito = { evento_id: string; forno_necessario: string; bebida_necessaria: string; bebida_comeca_antes: boolean; pessoas_transportar: number };
@@ -36,8 +36,19 @@ function trechoAtual(dados: Dados, dupla: Duplo): TrechoDuplo | undefined {
 const ordemForno: TipoForno[] = ["nenhum", "mini", "mini_medio", "medio"];
 const ordemBebida: TipoBebida[] = ["nenhuma", "isopor_pequeno", "isopor_grande"];
 
-function propostasDoDia(dados: Dados, selecionados: Set<string> | null): ResultadoPlanejador {
-  if (!dados.configuracao || !dados.regra) return { propostas: [], pendencias: dados.eventos.map((evento) => ({ eventoId: evento.id, motivo: "Configure as regras de logística e de veículo particular antes de gerar sugestões." })), eventos: dados.eventos.length, carrosDisponiveis: 0 };
+function veiculosDoDia(dados: Dados, dia: string): VeiculoPlanejavel[] {
+  const carrosPorId = new Map<string, ReturnType<typeof janelasCarro>>();
+  for (const item of dados.disponibilidades) carrosPorId.set(item.veiculo_id, [...(carrosPorId.get(item.veiculo_id) ?? []), ...janelasCarro(item.semana, item.dias)]);
+  const pessoasPorId = new Map<string, ReturnType<typeof janelasPessoa>>();
+  for (const item of dados.disponibilidadesPessoas) pessoasPorId.set(item.usuario_id, [...(pessoasPorId.get(item.usuario_id) ?? []), ...janelasPessoa(item.semana, item.dias)]);
+  return dados.veiculos.map((carro) => {
+    const janelasDoCarro = carro.proprietario_id ? (carrosPorId.get(carro.id) ?? []).sort((a, b) => a.inicioMs - b.inicioMs) : undefined;
+    const janelasDoMotorista = carro.proprietario_id ? (pessoasPorId.get(carro.proprietario_id) ?? []).sort((a, b) => a.inicioMs - b.inicioMs) : undefined;
+    return { id: carro.id, modelo: carro.modelo, placa: carro.placa, proprietarioId: carro.proprietario_id, forno: carro.forno_maximo, bebida: carro.bebida_maxima, lugares: carro.lugares, limiteLevar: carro.limite_eventos_levar, disponivel: !carro.proprietario_id || carroEMotoristaCoincidemNoDia(dia, janelasDoCarro ?? [], janelasDoMotorista ?? []), janelasCarro: janelasDoCarro, janelasMotorista: janelasDoMotorista };
+  });
+}
+
+function propostasDoDia(dados: Dados, veiculos: VeiculoPlanejavel[]): ResultadoPlanejador {
   const pendenciasPreparacao: ResultadoPlanejador["pendencias"] = [];
   const eventos = dados.eventos.flatMap((evento) => {
     const requisito = dados.requisitos.find((item) => item.evento_id === evento.id);
@@ -60,11 +71,7 @@ function propostasDoDia(dados: Dados, selecionados: Set<string> | null): Resulta
     }
     return [{ ...base, forno: ordemForno[Math.max(ordemForno.indexOf(base.forno), ordemForno.indexOf(requisitoSegundo.forno_necessario as TipoForno))], bebida: ordemBebida[Math.max(ordemBebida.indexOf(base.bebida), ordemBebida.indexOf(requisitoSegundo.bebida_necessaria as TipoBebida))], pessoas: Math.max(base.pessoas, requisitoSegundo.pessoas_transportar), segundoEventoId: segundo.id, segundoInicioMs: Date.parse(`${segundo.data_evento}T${segundo.horario}-03:00`), segundoBebidaAntes: requisitoSegundo.bebida_comeca_antes, trechoSegundoMinutos: trecho.duracao_minutos, trechoSegundoKm: trecho.distancia_km, segundaRotaKm: rotaSegundo.distancia_km, segundaRotaMinutos: rotaSegundo.duracao_minutos }];
   });
-  const veiculos = dados.veiculos.map((carro) => {
-    const janelasDoCarro = carro.proprietario_id ? dados.disponibilidades.filter((item) => item.veiculo_id === carro.id).flatMap((item) => janelasCarro(item.semana, item.dias)).sort((a, b) => a.inicioMs - b.inicioMs) : undefined;
-    const janelasDoMotorista = carro.proprietario_id ? dados.disponibilidadesPessoas.filter((item) => item.usuario_id === carro.proprietario_id).flatMap((item) => janelasPessoa(item.semana, item.dias)).sort((a, b) => a.inicioMs - b.inicioMs) : undefined;
-    return { id: carro.id, modelo: carro.modelo, placa: carro.placa, proprietarioId: carro.proprietario_id, forno: carro.forno_maximo, bebida: carro.bebida_maxima, lugares: carro.lugares, limiteLevar: carro.limite_eventos_levar, disponivel: (selecionados === null || selecionados.has(carro.id)) && (!carro.proprietario_id || Boolean(janelasDoCarro?.length && janelasDoMotorista?.length)), janelasCarro: janelasDoCarro, janelasMotorista: janelasDoMotorista };
-  });
+  if (!dados.configuracao || !dados.regra) return { propostas: [], pendencias: dados.eventos.map((evento) => ({ eventoId: evento.id, motivo: "Configure as regras de logística e de veículo particular antes de gerar sugestões." })), eventos: dados.eventos.length, carrosDisponiveis: veiculos.filter((carro) => carro.disponivel).length };
   const c = dados.configuracao, r = dados.regra;
   const aprovadas = dados.planos.filter((plano) => plano.situacao === "aprovado").map((plano) => ({ veiculoId: plano.veiculo_id, saidaMs: Date.parse(plano.saida_prevista), retornoMs: Date.parse(plano.retorno_previsto) }));
   const resultado = planejarLogistica(eventos, veiculos, { minutosCarregar: c.minutos_carregar, flexSaidaMinutos: c.flex_saida_minutos, montagemPadraoMinutos: c.montagem_padrao_minutos, montagemBebidaAntesMinutos: c.montagem_bebida_antes_minutos, fatorPicoPercentual: c.fator_pico_percentual, custoFrotaCentavosKm: c.custo_frota_centavos_km, materialCentavosKm: r.material_centavos_km, pessoasCentavosKm: r.pessoas_centavos_km, minimoCentavos: r.minimo_centavos, adicionalMaterialCentavos: r.adicional_material_centavos, duracaoEventoMinutos: 240 }, aprovadas);
@@ -119,7 +126,10 @@ export function LogisticaPainel() {
     finally { setOcupado(""); }
   }
 
-  const planejamento = dados ? propostasDoDia(dados, selecionados) : { propostas: [], pendencias: [], eventos: 0, carrosDisponiveis: 0 };
+  const veiculosPlanejaveis = useMemo(() => dados ? veiculosDoDia(dados, dia) : [], [dados, dia]);
+  const carrosDisponiveisNoDia = veiculosPlanejaveis.filter((carro) => carro.disponivel).length;
+  const veiculosSelecionados = useMemo(() => veiculosPlanejaveis.map((carro) => ({ ...carro, disponivel: carro.disponivel && (selecionados === null || selecionados.has(carro.id)) })), [veiculosPlanejaveis, selecionados]);
+  const planejamento = useMemo(() => dados ? propostasDoDia(dados, veiculosSelecionados) : { propostas: [], pendencias: [], eventos: 0, carrosDisponiveis: 0 }, [dados, veiculosSelecionados]);
   const propostas = new Map<string, PropostaLogistica>(planejamento.propostas.map((proposta) => [proposta.eventoId, proposta]));
   const carroEscolhido = dados?.veiculos.find((carro) => carro.id === carroViagem);
   const eventosParaViagem = dados?.eventos.filter((evento) => dados.requisitos.some((requisito) => requisito.evento_id === evento.id) && dados.locais.some((local) => local.evento_id === evento.id) && !dados.duplos.some((dupla) => dupla.primeiro_evento_id === evento.id || dupla.segundo_evento_id === evento.id) && !dados.planos.some((plano) => plano.evento_id === evento.id && plano.situacao === "aprovado") && !dados.paradas.some((parada) => parada.evento_id === evento.id && dados.planos.some((plano) => plano.id === parada.plano_id && plano.situacao === "aprovado"))) ?? [];
@@ -129,7 +139,7 @@ export function LogisticaPainel() {
     {erro && <p role="alert" className="rounded-xl bg-error-container p-3 text-sm text-on-error-container">{erro}</p>}
     {!dados && !erro && <p role="status" className="text-sm text-on-surface-variant">Carregando eventos e veículos…</p>}
     {dados && <>
-      <div className="flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-surface-container px-3 py-1">{dados.eventos.length} eventos</span><span className="rounded-full bg-surface-container px-3 py-1">{dados.veiculos.length} carros ativos</span><span className="rounded-full bg-surface-container px-3 py-1">{dados.planos.filter((plano) => plano.situacao === "aprovado").length} planos aprovados</span></div>
+      <div className="flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-surface-container px-3 py-1">{dados.eventos.length} eventos</span><span className="rounded-full bg-surface-container px-3 py-1">{carrosDisponiveisNoDia} carros disponíveis no dia · {planejamento.carrosDisponiveis} selecionados</span><span className="rounded-full bg-surface-container px-3 py-1">{dados.planos.filter((plano) => plano.situacao === "aprovado").length} planos aprovados</span></div>
       {planejamento.pendencias.length > 0 && <div role="status" className="space-y-2 rounded-xl bg-primary/10 p-3 text-sm"><strong>Ajuda necessária em {planejamento.pendencias.length} {planejamento.pendencias.length === 1 ? "evento" : "eventos"}</strong><ul className="space-y-1">{planejamento.pendencias.map((pendencia) => <li key={pendencia.eventoId}><span className="font-semibold">{dados.eventos.find((evento) => evento.id === pendencia.eventoId)?.cliente_nome ?? "Evento"}:</span> {pendencia.motivo}</li>)}</ul></div>}
       <div className="space-y-2 rounded-xl bg-surface-container p-3 text-xs"><div className="flex flex-wrap items-center justify-between gap-2"><strong>Carros usados nas sugestões</strong><div className="flex gap-2"><button type="button" onClick={() => setSelecionados(null)} className="rounded-lg bg-surface-container-high px-2 py-1">Todos</button><button type="button" onClick={() => setSelecionados(new Set())} className="rounded-lg bg-surface-container-high px-2 py-1">Limpar</button></div></div><div className="flex flex-wrap gap-x-4 gap-y-2">{dados.veiculos.map((carro) => <label key={carro.id} className="flex items-center gap-1"><input type="checkbox" checked={selecionados === null || selecionados.has(carro.id)} onChange={(ev) => { const proximo = new Set(selecionados ?? dados.veiculos.map((item) => item.id)); if (ev.target.checked) proximo.add(carro.id); else proximo.delete(carro.id); setSelecionados(proximo); }} /><span>{carro.modelo} · {carro.placa} · {carro.proprietario_id ? "particular" : "empresa"}</span></label>)}</div></div>
       {eventosParaViagem.length >= 2 && <section className="space-y-3 rounded-2xl bg-surface-container p-4" aria-label="Viagem com várias paradas">
