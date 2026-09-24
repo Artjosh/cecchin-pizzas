@@ -27,6 +27,12 @@ export async function POST(request: NextRequest) {
     case "pagar_fatura":
       if (typeof corpo.cartao !== "string" || !uuid.test(corpo.cartao) || typeof corpo.competencia !== "string" || !data.test(corpo.competencia) || typeof corpo.data !== "string" || !data.test(corpo.data) || typeof corpo.valor !== "number" || !Number.isFinite(corpo.valor) || corpo.valor <= 0) return NextResponse.json({ mensagem: "Confira o pagamento da fatura" }, { status: 400 });
       funcao = "registrar_pagamento_fatura"; args = { p_cartao: corpo.cartao, p_competencia: corpo.competencia, p_data: corpo.data, p_valor: corpo.valor }; break;
+    case "registrar_uso_veiculo":
+      if (typeof corpo.plano !== "string" || !uuid.test(corpo.plano) || typeof corpo.km !== "number" || !Number.isFinite(corpo.km) || corpo.km < 0 || corpo.km > 3000 || typeof corpo.material !== "boolean" || ![null, "lavagem", "dinheiro"].includes(corpo.lavagem ?? null)) return NextResponse.json({ mensagem: "Confira os dados do uso do veículo" }, { status: 400 });
+      funcao = "registrar_uso_veiculo"; args = { p_plano: corpo.plano, p_km_rodados: corpo.km, p_material: corpo.material, p_lavagem: corpo.lavagem ?? null }; break;
+    case "quitar_uso_veiculo":
+      if (typeof corpo.id !== "string" || !uuid.test(corpo.id) || typeof corpo.data !== "string" || !data.test(corpo.data)) return NextResponse.json({ mensagem: "Confira o reembolso" }, { status: 400 });
+      funcao = "quitar_uso_veiculo"; args = { p_id: corpo.id, p_data: corpo.data }; break;
     default: return NextResponse.json({ mensagem: "Ação desconhecida" }, { status: 400 });
   }
   const resposta = await chamarFuncao(funcao, args, sessao.accessToken);

@@ -13,6 +13,7 @@ import {
 import { comoData } from "../lib/formato";
 import { formatBRL } from "../lib/moeda";
 import { GestaoFinanceira, type MovimentoHoje, type ResumoCaixa, type Acerto, type Cartao, type Fatura } from "../components/financeiro/GestaoFinanceira";
+import { ReembolsoVeiculos, type PlanoVeiculo, type VeiculoFinanceiro, type UsoVeiculo, type ResumoUsoVeiculo } from "../components/financeiro/ReembolsoVeiculos";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 import { comoLeitura } from "../servidor/fonte";
@@ -60,13 +61,17 @@ export async function FinanceiroView() {
   ]);
 
   const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-  const [caixaR, resumoR, acertosR, cartoesR, faturasR, pessoasR] = await Promise.all([
+  const [caixaR, resumoR, acertosR, cartoesR, faturasR, pessoasR, planosR, veiculosR, usosR, usosResumoR] = await Promise.all([
     consultar<MovimentoHoje[]>(`vw_caixa_hoje?select=origem_id,dia,natureza,descricao,valor&dia=eq.${hoje}&order=natureza.asc,descricao.asc,valor.asc,origem_id.asc&limit=50`, sessao.accessToken),
     consultar<ResumoCaixa[]>(`vw_caixa_resumo_dia?select=movimentos,entradas,saidas,saldo&dia=eq.${hoje}&limit=1`, sessao.accessToken),
     consultar<Acerto[]>("acerto_freelance?select=id,usuario_id,evento_id,valor,chave_pix_retrato,estado,criado_em,evento(data_evento,codigo_legado)&estado=eq.pendente&order=criado_em.asc&limit=100", sessao.accessToken),
     consultar<Cartao[]>("cartao_credito_empresa?select=id,nome,fechamento_dia,vencimento_dia&ativo=eq.true&order=nome.asc&limit=100", sessao.accessToken),
     consultar<Fatura[]>("vw_fatura_cartao?select=cartao_id,nome,competencia,vencimento,total,pago&order=competencia.desc&limit=100", sessao.accessToken),
     consultar<{ id: string; nome: string }[]>("usuario?select=id,nome&ativo=eq.true&limit=500", sessao.accessToken),
+    consultar<PlanoVeiculo[]>(`plano_logistico?select=id,evento_id,veiculo_id,motorista_id,distancia_km,retorno_previsto&situacao=eq.aprovado&retorno_previsto=lte.${new Date().toISOString()}&order=retorno_previsto.desc&limit=200`, sessao.accessToken),
+    consultar<VeiculoFinanceiro[]>("veiculo_operacional?select=id,proprietario_id,modelo,placa&proprietario_id=not.is.null&order=modelo.asc&limit=200", sessao.accessToken),
+    consultar<UsoVeiculo[]>("uso_veiculo_particular?select=id,plano_id,veiculo_id,motorista_id,numero_uso,km_rodados,transportou_material,lavagem_opcao,valor_deslocamento_centavos,valor_adicional_centavos,valor_lavagem_centavos,valor_bonus_centavos,estado&order=numero_uso.desc&limit=1000", sessao.accessToken),
+    consultar<ResumoUsoVeiculo[]>("vw_resumo_uso_veiculo?select=veiculo_id,ultimo_uso&limit=500", sessao.accessToken),
   ]);
 
   const conciliacao = comoLeitura(conciliacaoR);
@@ -91,6 +96,8 @@ export async function FinanceiroView() {
       />
 
       {caixaR.ok && resumoR.ok && acertosR.ok && cartoesR.ok && faturasR.ok && pessoasR.ok ? <GestaoFinanceira movimentos={caixaR.dados ?? []} resumo={resumoR.dados?.[0] ?? { movimentos: 0, entradas: 0, saidas: 0, saldo: 0 }} acertos={acertosR.dados ?? []} cartoes={cartoesR.dados ?? []} faturas={faturasR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Os novos módulos financeiros aguardam a migration da branch. Os lançamentos existentes continuam abaixo.</p>}
+
+      {planosR.ok && veiculosR.ok && usosR.ok && usosResumoR.ok && pessoasR.ok ? <ReembolsoVeiculos planos={planosR.dados ?? []} veiculos={veiculosR.dados ?? []} usos={usosR.dados ?? []} resumos={usosResumoR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Não foi possível carregar os reembolsos de veículos.</p>}
 
       {semLancamento && (
         <LacunaDeDados titulo="Nenhum lançamento financeiro disponível">
