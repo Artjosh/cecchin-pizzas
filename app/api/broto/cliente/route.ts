@@ -50,8 +50,9 @@ export async function POST(request: NextRequest) {
     return r.ok ? NextResponse.json({ id: r.dados }) : erro("Não foi possível salvar o cadastro. Confira CNPJ, CEP e endereço.", r.status >= 500 ? 503 : 400);
   }
   if (dados.acao === "pedido") {
-    if (!Array.isArray(dados.itens) || dados.itens.length < 1 || dados.itens.length > 100 || dados.itens.some((i: unknown) => !i || typeof i !== "object" || typeof (i as { produto_id?: unknown }).produto_id !== "string" || !Number.isInteger((i as { quantidade?: unknown }).quantidade)) || typeof dados.observacao !== "string" || dados.observacao.length > 1000) return erro("Confira os itens do pedido", 400);
-    const r = await chamarFuncao("criar_pedido_broto", { p_itens: dados.itens, p_observacao: dados.observacao }, sessao.accessToken);
+    if (!Array.isArray(dados.itens) || dados.itens.length < 1 || dados.itens.length > 100 || dados.itens.some((i: unknown) => !i || typeof i !== "object" || typeof (i as { produto_id?: unknown }).produto_id !== "string" || !Number.isInteger((i as { quantidade?: unknown }).quantidade)) || typeof dados.observacao !== "string" || dados.observacao.length > 1000 || !Number.isInteger(dados.total_centavos) || dados.total_centavos <= 0) return erro("Confira os itens e o total do pedido", 400);
+    const r = await chamarFuncao("criar_pedido_broto_verificado", { p_itens: dados.itens, p_observacao: dados.observacao, p_total_esperado: dados.total_centavos }, sessao.accessToken);
+    if (!r.ok && r.erro?.includes("Preco do pedido mudou")) return erro("O preço mudou. Confira o total atualizado e envie o pedido novamente.", 409);
     return r.ok ? NextResponse.json({ id: r.dados }) : erro("Não foi possível registrar o pedido. Atualize o catálogo e tente novamente.", r.status >= 500 ? 503 : 400);
   }
   return erro("Ação inválida", 400);
