@@ -13,7 +13,7 @@ import {
 import { comoData } from "../lib/formato";
 import { formatBRL } from "../lib/moeda";
 import { GestaoFinanceira, type MovimentoHoje, type ResumoCaixa, type Acerto, type EscalaFreelance, type Cartao, type Fatura } from "../components/financeiro/GestaoFinanceira";
-import { ReembolsoVeiculos, type PlanoVeiculo, type VeiculoFinanceiro, type UsoVeiculo, type ResumoUsoVeiculo } from "../components/financeiro/ReembolsoVeiculos";
+import { ReembolsoVeiculos, type PlanoVeiculo, type VeiculoFinanceiro, type UsoVeiculo, type ResumoUsoVeiculo, type RegraVeiculoParticular } from "../components/financeiro/ReembolsoVeiculos";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 import { comoLeitura } from "../servidor/fonte";
@@ -67,7 +67,7 @@ export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, p
   ]);
 
   const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-  const [caixaR, resumoR, acertosR, escalasR, cartoesR, faturasR, pessoasR, planosR, veiculosR, usosR, lavagensR, usosResumoR] = await Promise.all([
+  const [caixaR, resumoR, acertosR, escalasR, cartoesR, faturasR, pessoasR, planosR, veiculosR, usosR, lavagensR, usosResumoR, regraVeiculoR] = await Promise.all([
     consultar<MovimentoHoje[]>(`vw_caixa_hoje?select=origem_id,dia,natureza,descricao,valor&dia=eq.${hoje}&order=natureza.asc,descricao.asc,valor.asc,origem_id.asc&limit=50`, sessao.accessToken),
     consultar<ResumoCaixa[]>(`vw_caixa_resumo_dia?select=movimentos,entradas,saidas,saldo&dia=eq.${hoje}&limit=1`, sessao.accessToken),
     consultar<Acerto[]>(`acerto_freelance?select=id,usuario_id,evento_id,valor,chave_pix_retrato,estado,criado_em,evento(data_evento,codigo_legado)&estado=eq.pendente&order=criado_em.asc,id.asc&limit=${FREELANCE_POR_PAGINA}&offset=${(paginaAcertos - 1) * FREELANCE_POR_PAGINA}`, sessao.accessToken, { headers: { Prefer: "count=exact" } }),
@@ -80,6 +80,7 @@ export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, p
     consultar<UsoVeiculo[]>("uso_veiculo_particular?select=id,plano_id,veiculo_id,motorista_id,numero_uso,km_rodados,transportou_material,lavagem_opcao,valor_deslocamento_centavos,valor_adicional_centavos,valor_lavagem_centavos,valor_bonus_centavos,estado&estado=eq.pendente&order=criado_em.asc,id.asc&limit=26", sessao.accessToken),
     consultar<UsoVeiculo[]>("uso_veiculo_particular?select=id,plano_id,veiculo_id,motorista_id,numero_uso,km_rodados,transportou_material,lavagem_opcao,lavagem_realizada_em,valor_deslocamento_centavos,valor_adicional_centavos,valor_lavagem_centavos,valor_bonus_centavos,estado&lavagem_opcao=eq.lavagem&lavagem_realizada_em=is.null&order=criado_em.asc,id.asc&limit=26", sessao.accessToken),
     consultar<ResumoUsoVeiculo[]>("vw_resumo_uso_veiculo?select=veiculo_id,ultimo_uso&limit=500", sessao.accessToken),
+    consultar<RegraVeiculoParticular[]>("regra_veiculo_particular?select=lavagem_cada,lavagem_valor_centavos,bonus_cada,bonus_valor_centavos&limit=1", sessao.accessToken),
   ]);
 
   const conciliacao = comoLeitura(conciliacaoR);
@@ -105,7 +106,7 @@ export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, p
 
       {caixaR.ok && resumoR.ok && acertosR.ok && escalasR.ok && cartoesR.ok && faturasR.ok && pessoasR.ok ? <GestaoFinanceira movimentos={caixaR.dados ?? []} resumo={resumoR.dados?.[0] ?? { movimentos: 0, entradas: 0, saidas: 0, saldo: 0 }} acertos={acertosR.dados ?? []} totalAcertos={acertosR.total ?? 0} paginaAcertos={paginaAcertos} escalas={escalasR.dados ?? []} totalEscalas={escalasR.total ?? 0} paginaEscalas={paginaEscalas} cartoes={cartoesR.dados ?? []} faturas={faturasR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Os novos módulos financeiros aguardam a migration da branch. Os lançamentos existentes continuam abaixo.</p>}
 
-      {planosR.ok && veiculosR.ok && usosR.ok && lavagensR.ok && usosResumoR.ok && pessoasR.ok ? <ReembolsoVeiculos planos={planosR.dados ?? []} veiculos={veiculosR.dados ?? []} usos={usosR.dados ?? []} lavagens={lavagensR.dados ?? []} resumos={usosResumoR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Não foi possível carregar os reembolsos de veículos.</p>}
+      {planosR.ok && veiculosR.ok && usosR.ok && lavagensR.ok && usosResumoR.ok && pessoasR.ok && regraVeiculoR.ok && regraVeiculoR.dados?.[0] ? <ReembolsoVeiculos planos={planosR.dados ?? []} veiculos={veiculosR.dados ?? []} usos={usosR.dados ?? []} lavagens={lavagensR.dados ?? []} resumos={usosResumoR.dados ?? []} pessoas={pessoasR.dados ?? []} regra={regraVeiculoR.dados[0]} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Não foi possível carregar os reembolsos de veículos.</p>}
 
       {semLancamento && (
         <LacunaDeDados titulo="Nenhum lançamento financeiro disponível">

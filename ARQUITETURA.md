@@ -23,6 +23,8 @@ Em `/admin/operacao?aba=vinculos`, responsáveis são carregados em páginas de 
 
 Em `/admin/financeiro`, entradas e despesas pagas têm paginações independentes de 30 registros, com contagem do PostgREST. Despesas usam `pago_em` e os campos `valor_bruto`, `valor_liquido` e `tipo_pagamento` do schema atual; contas a pagar pertencem a um fluxo separado. Alterar uma página preserva a posição da outra na URL.
 
+Na seção de veículos particulares, a frequência e os valores de lavagem e bônus vêm de `regra_veiculo_particular`. O formulário usa essa regra para pedir a escolha no uso devido; reembolsos já lançados exibem os valores gravados em cada uso, mesmo se a regra mudar depois.
+
 ## Autenticação e acesso
 
 Login sem senha oferece OTP e link com aprovação entre dispositivos. `pedido_login` associa um selector público ao pedido: o selector consulta o estado, não autoriza. O hash de uso único é validado no GoTrue e o e-mail retornado precisa corresponder ao pedido. A página de confirmação remove o segredo do fragmento e o envia ao BFF. Compatibilidade com o fluxo antigo deve ser conferida antes de remover endpoints.
