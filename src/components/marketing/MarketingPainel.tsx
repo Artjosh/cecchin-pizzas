@@ -8,6 +8,7 @@ type Perfil = { usuario_id: string; ativo: boolean };
 type Agenda = { id: string; responsavel_id: string; solicitacao_id: string | null; categoria: "story" | "feed" | "gravacao" | "tarefa"; titulo: string; descricao_conteudo: string; midia_caminho: string | null; agendado_para: string; situacao: "planejado" | "confirmado" | "publicado" | "cancelado"; confirmado_em: string | null; publicado_em: string | null };
 type Solicitacao = { id: string; solicitante_id: string; responsavel_id: string | null; titulo: string; descricao: string; categoria: string; situacao: string; prazo: string | null; criado_em: string };
 type Concorrente = { id: string; nome: string; instagram_usuario: string | null; google_place_id: string | null; seguidores_instagram: number | null; publicacoes_instagram: number | null; nota_google: number | null; avaliacoes_google: number | null; instagram_atualizado_em: string | null; google_atualizado_em: string | null; consulta_erro: string | null };
+type Publicacao = { instagram_media_id: string; tipo: string; legenda: string | null; permalink: string; midia_url: string | null; miniatura_url: string | null; publicado_em: string };
 type Dados = { agenda: Agenda[]; solicitacoes: Solicitacao[]; perfis: Perfil[]; alertas: { agenda_id: string; criado_em: string; lido_em: string | null }[]; concorrentes: Concorrente[] };
 
 function dataLocal(data: Date) {
@@ -41,6 +42,10 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
   const [formAgenda, setFormAgenda] = useState({ categoria: "story", titulo: "", descricao_conteudo: "", midia_caminho: "", agendado_para: "", responsavel_id: usuarioId, solicitacao_id: "" });
   const [formPedido, setFormPedido] = useState({ titulo: "", descricao: "", categoria: "arte", responsavel_id: "" });
   const [formConcorrente, setFormConcorrente] = useState({ id: "", nome: "", instagram_usuario: "", google_place_id: "" });
+  const [concorrenteAberto, setConcorrenteAberto] = useState("");
+  const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
+  const [carregandoPublicacoes, setCarregandoPublicacoes] = useState(false);
+  const [erroPublicacoes, setErroPublicacoes] = useState("");
   const [prazoPorId, setPrazoPorId] = useState<Record<string, string>>({});
 
   const carregar = useCallback(async () => {
@@ -57,6 +62,15 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
   }, [semana]);
   useEffect(() => { void carregar(); }, [carregar]);
   useEffect(() => { const intervalo = window.setInterval(() => { void carregar(); }, 30000); return () => window.clearInterval(intervalo); }, [carregar]);
+  useEffect(() => {
+    if (!concorrenteAberto) return;
+    const controller = new AbortController();
+    fetch(`/api/operacao/marketing/publicacoes?concorrente=${concorrenteAberto}`, { cache: "no-store", signal: controller.signal })
+      .then(async (resposta) => { const corpo = await resposta.json() as { publicacoes?: Publicacao[]; mensagem?: string }; if (!resposta.ok) throw new Error(corpo.mensagem ?? "Falha ao carregar publicações"); setPublicacoes(corpo.publicacoes ?? []); })
+      .catch((falha) => { if (!controller.signal.aborted) setErroPublicacoes(falha instanceof Error ? falha.message : "Falha ao carregar publicações"); })
+      .finally(() => { if (!controller.signal.aborted) setCarregandoPublicacoes(false); });
+    return () => controller.abort();
+  }, [concorrenteAberto]);
 
   const enviar = async (corpo: Record<string, unknown>, sucesso: string) => {
     setSalvando(true);
@@ -100,6 +114,7 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
   }, [dados]);
   const dias = Array.from({ length: 7 }, (_, indice) => { const dia = new Date(semana); dia.setDate(dia.getDate() + indice); return dia; });
   const nome = (id: string) => pessoas.find((p) => p.id === id)?.nome ?? (id === usuarioId ? "Você" : "Integrante");
+  const perfilAberto = dados?.concorrentes.find((item) => item.id === concorrenteAberto);
 
   return <div className="space-y-6 pb-12">
     <header className="flex flex-wrap items-end justify-between gap-3">
@@ -124,6 +139,13 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
     <section className="space-y-4 rounded-2xl bg-surface-container-low p-5"><div><h2 className="font-title-lg">Concorrência</h2><p className="text-sm text-on-surface-variant">As métricas mostram a última coleta oficial. Sem integração configurada, permanecem sem valor.</p></div>
       {gestor && <form className="flex flex-wrap items-end gap-2" onSubmit={async (e) => { e.preventDefault(); if (await enviar({ acao: "concorrente", ...formConcorrente }, formConcorrente.id ? "Concorrente atualizado" : "Concorrente cadastrado")) setFormConcorrente({ id: "", nome: "", instagram_usuario: "", google_place_id: "" }); }}><label className="min-w-44 flex-1 text-xs">Nome<input required maxLength={150} className={campo} value={formConcorrente.nome} onChange={(e) => setFormConcorrente({ ...formConcorrente, nome: e.target.value })} /></label><label className="min-w-44 flex-1 text-xs">Instagram profissional<input placeholder="@usuario" maxLength={31} className={campo} value={formConcorrente.instagram_usuario} onChange={(e) => setFormConcorrente({ ...formConcorrente, instagram_usuario: e.target.value })} /></label><label className="min-w-44 flex-1 text-xs">Google Place ID<input placeholder="Place ID" maxLength={255} className={campo} value={formConcorrente.google_place_id} onChange={(e) => setFormConcorrente({ ...formConcorrente, google_place_id: e.target.value })} /></label><button disabled={salvando || (!formConcorrente.instagram_usuario.trim() && !formConcorrente.google_place_id.trim())} className={`${botao} bg-primary text-on-primary`}>{formConcorrente.id ? "Salvar" : "Adicionar"}</button>{formConcorrente.id && <button type="button" className={`${botao} bg-surface-container-high`} onClick={() => setFormConcorrente({ id: "", nome: "", instagram_usuario: "", google_place_id: "" })}>Cancelar</button>}</form>}
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{(dados?.concorrentes ?? []).map((concorrente) => <article key={concorrente.id} className="rounded-xl bg-surface-container-lowest p-4"><div className="flex items-start justify-between gap-2"><h3 className="font-label-lg">{concorrente.nome}</h3>{gestor && <button type="button" className="text-xs text-primary underline" onClick={() => setFormConcorrente({ id: concorrente.id, nome: concorrente.nome, instagram_usuario: concorrente.instagram_usuario ?? "", google_place_id: concorrente.google_place_id ?? "" })}>Editar</button>}</div><div className="mt-3 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-on-surface-variant">Instagram</p><strong>{concorrente.seguidores_instagram == null ? "Aguardando coleta" : `${concorrente.seguidores_instagram.toLocaleString("pt-BR")} seguidores`}</strong>{concorrente.publicacoes_instagram != null && <p>{concorrente.publicacoes_instagram.toLocaleString("pt-BR")} publicações</p>}</div><div><p className="text-xs text-on-surface-variant">Google</p><strong>{concorrente.nota_google == null ? "Aguardando coleta" : `${Number(concorrente.nota_google).toFixed(1).replace(".", ",")} / 5`}</strong>{concorrente.avaliacoes_google != null && <p>{concorrente.avaliacoes_google.toLocaleString("pt-BR")} avaliações</p>}</div></div><div className="mt-3 flex flex-wrap gap-3 text-xs">{concorrente.instagram_usuario && <a className="text-primary underline" href={`https://www.instagram.com/${encodeURIComponent(concorrente.instagram_usuario)}/`} target="_blank" rel="noreferrer">Abrir Instagram</a>}{concorrente.google_place_id && <a className="text-primary underline" href={`https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(concorrente.google_place_id)}`} target="_blank" rel="noreferrer">Abrir no Maps</a>}</div>{(concorrente.instagram_atualizado_em || concorrente.google_atualizado_em) && <p className="mt-2 text-xs text-on-surface-variant">Última coleta: {rotuloData([concorrente.instagram_atualizado_em, concorrente.google_atualizado_em].filter(Boolean).sort().at(-1)!)}</p>}{concorrente.consulta_erro && <p className="mt-2 text-xs text-error">Coleta pendente: {concorrente.consulta_erro}</p>}</article>)}{!dados?.concorrentes.length && <p className="text-sm text-on-surface-variant">Nenhum concorrente cadastrado.</p>}</div>
+      {(dados?.concorrentes ?? []).some((item) => item.instagram_usuario) && <div className="space-y-3 rounded-xl bg-surface-container-lowest p-4"><label className="block max-w-sm text-sm font-medium">Publicações recentes de um concorrente<select className={`${campo} mt-2`} value={concorrenteAberto} onChange={(e) => { setConcorrenteAberto(e.target.value); setPublicacoes([]); setErroPublicacoes(""); setCarregandoPublicacoes(Boolean(e.target.value)); }}><option value="">Escolha o Instagram</option>{dados?.concorrentes.filter((item) => item.instagram_usuario).map((item) => <option key={item.id} value={item.id}>{item.nome} · @{item.instagram_usuario}</option>)}</select></label>
+        {perfilAberto?.instagram_usuario && <a href={`https://www.instagram.com/${encodeURIComponent(perfilAberto.instagram_usuario)}/`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">Abrir perfil e stories no Instagram</a>}
+        {carregandoPublicacoes && <p role="status" className="text-sm text-on-surface-variant">Carregando publicações…</p>}
+        {erroPublicacoes && <p role="alert" className="text-sm text-error">{erroPublicacoes}</p>}
+        {concorrenteAberto && !carregandoPublicacoes && !erroPublicacoes && !publicacoes.length && <p className="text-sm text-on-surface-variant">Ainda não há publicações coletadas para este perfil. Abra o Instagram para conferir feed e stories diretamente.</p>}
+        {!!publicacoes.length && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{publicacoes.map((post) => <a key={post.instagram_media_id} href={post.permalink} target="_blank" rel="noopener noreferrer" className="overflow-hidden rounded-xl bg-surface-container text-sm hover:bg-surface-container-high">{(post.miniatura_url || (post.tipo !== "VIDEO" ? post.midia_url : null)) && <img src={post.miniatura_url || post.midia_url!} alt={post.legenda?.slice(0, 100) || "Publicação do Instagram"} loading="lazy" className="aspect-square w-full object-cover" />}<div className="p-3"><p className="line-clamp-3">{post.legenda || "Abrir publicação"}</p><p className="mt-2 text-xs text-on-surface-variant">{rotuloData(post.publicado_em)} · {post.tipo.toLowerCase().replaceAll("_", " ")}</p></div></a>)}</div>}
+      </div>}
     </section>
   </div>;
 }
