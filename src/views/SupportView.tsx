@@ -9,7 +9,7 @@ import {
   Phone,
 } from "lucide-react";
 
-import { comoData, comoHora, linkWhatsApp } from "../lib/formato";
+import { comoData, comoHora, hojeSaoPaulo, linkWhatsApp } from "../lib/formato";
 import { CONTATO } from "../lib/operacao";
 import { telefoneDoAtendimento } from "../servidor/whatsapp";
 import { exigirSessao } from "../servidor/auth/guarda";
@@ -72,7 +72,7 @@ interface MeuEvento {
 
 export async function SupportView() {
   const sessao = await exigirSessao("/cliente/suporte");
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeSaoPaulo();
 
   /*
    * Filtro por dono obrigatório: a policy de `evento` deixa quem é da operação

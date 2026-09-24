@@ -5,6 +5,15 @@
  * arquivo não pode ter `"use client"` nem importar quem tem.
  */
 
+/** Data do dia operacional em Sao Paulo, inclusive perto da virada em UTC. */
+export function hojeSaoPaulo(instante: Date = new Date()): string {
+  const partes = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(instante);
+  const valor = (tipo: string) => partes.find((parte) => parte.type === tipo)?.value;
+  return `${valor("year")}-${valor("month")}-${valor("day")}`;
+}
+
 /**
  * `2026-09-12` vira `12/09/2026`.
  *

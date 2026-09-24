@@ -1,5 +1,6 @@
 import { MapaTatico, type EventoNoMapa } from "../components/mapa/MapaTatico";
 import { QG_CECCHIN } from "../lib/operacao";
+import { hojeSaoPaulo } from "../lib/formato";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 import { fonteDeDados } from "../servidor/fonte";
@@ -16,7 +17,7 @@ import { MapaDesenhado } from "./desenho/MapaDesenhado";
 
 async function MapaDoBanco() {
   const sessao = await exigirPapel(["staff"]);
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeSaoPaulo();
 
   const r = await consultar<EventoNoMapa[]>(
     "vw_evento?select=id,cliente_nome,endereco,bairro,cidade,horario," +

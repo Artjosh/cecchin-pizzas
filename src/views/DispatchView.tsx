@@ -1,4 +1,5 @@
 import { eventosDemo, responsaveisDemo } from "../lib/demo-operacao";
+import { hojeSaoPaulo } from "../lib/formato";
 import { TituloNoHeader } from "@/src/components/layouts/TituloNoHeader";
 import {
   AgendaFiltravel,
@@ -11,11 +12,11 @@ import { comoLeitura, fonteDeDados } from "../servidor/fonte";
 
 
 /** Demonstracao interativa usa a mesma agenda; alteracoes ficam no navegador. */
-function DespachoDesenhado(){const hoje=new Date().toISOString().slice(0,10);return <div className="space-y-3"><TituloNoHeader>Agenda e Despacho de Eventos</TituloNoHeader><AgendaFiltravel eventos={eventosDemo(hoje)} hoje={hoje} responsaveis={responsaveisDemo} podeAlocar demo /></div>;}
+function DespachoDesenhado(){const hoje=hojeSaoPaulo();return <div className="space-y-3"><TituloNoHeader>Agenda e Despacho de Eventos</TituloNoHeader><AgendaFiltravel eventos={eventosDemo(hoje)} hoje={hoje} responsaveis={responsaveisDemo} podeAlocar demo /></div>;}
 
 async function DespachoDoBanco() {
   const sessao = await exigirPapel(["staff"]);
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeSaoPaulo();
 
   const [eventosR, responsaveisR] = await Promise.all([
     consultar<EventoDaAgenda[]>(

@@ -7,7 +7,7 @@ import {
   SemLinhas,
 } from "../components/painel/Painel";
 import { cn } from "../lib/utils";
-import { comoData, comoHora } from "../lib/formato";
+import { comoData, comoHora, hojeSaoPaulo } from "../lib/formato";
 import { formatBRL } from "../lib/moeda";
 import { exigirSessao } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
@@ -106,7 +106,7 @@ function montarEtapas(e: EventoParaAcompanhar, hoje: string): Etapa[] {
 
 async function RastreioDoBanco() {
   const sessao = await exigirSessao("/cliente/rastreio");
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeSaoPaulo();
 
   /*
    * Filtro por dono obrigatório — a policy de `evento` deixa quem opera ver

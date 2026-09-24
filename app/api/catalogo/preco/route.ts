@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { sessaoAtual } from "@/src/servidor/auth/sessao-atual";
 import { chamarFuncao } from "@/src/servidor/supabase";
+import { hojeSaoPaulo } from "@/src/lib/formato";
 
 /**
  * Preço de um modelo de rodízio.
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
   const validaDe =
     typeof corpo.valida_de === "string" && /^\d{4}-\d{2}-\d{2}$/.test(corpo.valida_de)
       ? corpo.valida_de
-      : new Date().toISOString().slice(0, 10);
+      : hojeSaoPaulo();
 
   const r = await chamarFuncao<string>(
     "definir_preco",

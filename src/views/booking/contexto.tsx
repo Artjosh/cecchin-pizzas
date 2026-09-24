@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { PrecosReserva } from "../../components/pagamentos/ConfigurarPrecosReserva";
+import { hojeSaoPaulo } from "../../lib/formato";
 import { QG_CECCHIN } from "../../lib/operacao";
 
 export type TipoLocal = "casa" | "salao" | "cobertura" | "chacara";
@@ -93,7 +94,7 @@ import { formatBRL } from "../../lib/moeda";
 export { formatBRL };
 
 function hoje(): string {
-  return new Date().toISOString().slice(0, 10);
+  return hojeSaoPaulo();
 }
 
 interface Reserva {

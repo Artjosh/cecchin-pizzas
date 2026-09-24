@@ -6,6 +6,7 @@ import {
   type ItemDoCatalogo,
 } from "../components/CatalogoEditavel";
 import { cn } from "../lib/utils";
+import { hojeSaoPaulo } from "../lib/formato";
 import { formatBRL } from "../lib/moeda";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
@@ -96,7 +97,7 @@ async function CatalogoDoBanco() {
    * consulta vem ordenada por data decrescente, o primeiro de cada modelo é o
    * que vale.
    */
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeSaoPaulo();
   const precoDe = new Map<string, PrecoVigente>();
   for (const p of precos.dados ?? []) {
     if (p.valida_de <= hoje && !precoDe.has(p.modelo_rodizio_id)) {

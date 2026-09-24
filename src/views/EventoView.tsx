@@ -19,7 +19,7 @@ import {
   CabecalhoDoPainel,
   Etiqueta,
 } from "../components/painel/Painel";
-import { comoData, comoHora, comoTelefone, linkWhatsApp, linkCentralWhatsApp } from "../lib/formato";
+import { comoData, comoHora, comoTelefone, hojeSaoPaulo, linkWhatsApp, linkCentralWhatsApp } from "../lib/formato";
 import { formatBRL } from "../lib/moeda";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar, chamarFuncao } from "../servidor/supabase";
@@ -90,7 +90,7 @@ function n(v: string | number | null | undefined): number {
 export async function EventoView({ id }: { id: string }) {
   const sessao = await exigirPapel(["staff"]);
   if(id.startsWith("demo-evento-") && (await fonteDeDados()) === "mock") {
-    const e=eventosDemo(new Date().toISOString().slice(0,10)).find(e=>e.id===id);
+    const e=eventosDemo(hojeSaoPaulo()).find(e=>e.id===id);
     if(!e) notFound();
     return <div className="space-y-4"><CabecalhoDoPainel titulo={e.cliente_nome??"Evento de demonstração"} descricao="Evento de demonstração" acoes={<Link href={`/admin/montar-equipe?evento=${e.id}`} className="rounded-lg bg-primary px-4 py-2 text-on-primary">Montar equipe</Link>}/><div className="grid gap-4 md:grid-cols-3"><Bloco titulo="Quando" icone={<Calendar/>}><Campo rotulo="Data" valor={comoData(e.data_evento)}/><Campo rotulo="Horário" valor={comoHora(e.horario)}/></Bloco><Bloco titulo="Onde" icone={<MapPin/>}><Campo rotulo="Endereço" valor={e.endereco}/><Campo rotulo="Cidade" valor={e.cidade}/></Bloco><Bloco titulo="O que" icone={<ChefHat/>}><Campo rotulo="Rodízio" valor={e.modelo_rodizio_nome}/><Campo rotulo="Forno" valor={e.modelo_forno_nome}/><Campo rotulo="Pessoas" valor={(e.inteiros??0)+(e.meios??0)}/></Bloco></div><QrEvento demo evento={e.id} titulo={e.cliente_nome??"Demonstração"}/></div>;
   }
