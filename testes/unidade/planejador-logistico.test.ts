@@ -57,4 +57,21 @@ describe("planejador logístico", () => {
     const comPausa = planejarLogistica([evento], [empresa], config, [{ ...aprovado, retornoMs: Date.parse("2026-10-06T10:20:00-03:00") }]);
     expect(comPausa.propostas).toHaveLength(1);
   });
+
+  it("antecipa a saída dentro de 30 minutos para reutilizar o carro sem atrasar a montagem", () => {
+    const proximo = { ...evento, id: "evento-b", inicioMs: Date.parse("2026-10-06T13:00:00-03:00") };
+    const semFlex = planejarLogistica([evento, proximo], [empresa], { ...config, flexSaidaMinutos: 0 });
+    expect(semFlex.pendencias).toHaveLength(1);
+
+    const comFlex = planejarLogistica([evento, proximo], [empresa], config);
+    expect(comFlex.pendencias).toHaveLength(0);
+    expect(comFlex.propostas).toHaveLength(2);
+    expect(comFlex.propostas[0].modo).toBe("levar");
+    expect(Date.parse(comFlex.propostas[0].saidaPrevista)).toBe(Date.parse("2026-10-06T10:20:00-03:00"));
+    expect(comFlex.propostas[0].alertas.join(" ")).toMatch(/antecipada em 10 minutos/);
+    for (const proposta of comFlex.propostas) {
+      const inicio = proposta.eventoId === evento.id ? evento.inicioMs : proximo.inicioMs;
+      expect(Date.parse(proposta.saidaPrevista) + proposta.rotaMinutos * 60_000).toBeLessThanOrEqual(inicio - config.montagemPadraoMinutos * 60_000);
+    }
+  });
 });

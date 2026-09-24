@@ -109,6 +109,10 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
     ocupacao.set(plano.veiculoId, [...(ocupacao.get(plano.veiculoId) ?? []), { inicio: plano.saidaMs, fim: plano.retornoMs }]);
   }
   const ordenados = [...eventos].sort((a, b) => saidaBase(a, config) - saidaBase(b, config) || a.rotaMinutos - b.rotaMinutos);
+  const flex = Number.isFinite(config.flexSaidaMinutos) ? Math.min(30, Math.max(0, config.flexSaidaMinutos)) : 0;
+  const deslocamentos = [0];
+  for (let ajuste = 5; ajuste <= flex; ajuste += 5) deslocamentos.push(-ajuste, ajuste);
+  if (flex % 5) deslocamentos.push(-flex, flex);
 
   for (const evento of ordenados) {
     if (!Number.isFinite(evento.inicioMs) || evento.rotaMinutos <= 0 || evento.rotaKm <= 0 || evento.pessoas < 1) {
@@ -121,30 +125,34 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
     for (const carro of disponibilidade) {
       if (!elegivel(evento, carro)) continue;
       const ocupacoes = ocupacao.get(carro.id) ?? [];
-      const viagem = viagemMinutos(evento, config, base);
       const segundo = !!evento.segundoEventoId;
       if (segundo && (!evento.segundoInicioMs || !evento.trechoSegundoMinutos || !evento.trechoSegundoKm || !evento.segundaRotaKm || !evento.segundaRotaMinutos)) continue;
       const terminaServico = segundo ? evento.segundoInicioMs! + config.duracaoEventoMinutos * minuto : evento.inicioMs + config.duracaoEventoMinutos * minuto;
       const trechoSegundo = segundo ? Math.ceil(evento.trechoSegundoMinutos! * config.fatorPicoPercentual / 100) : 0;
       const primeiroFim = evento.inicioMs + config.duracaoEventoMinutos * minuto;
       if (segundo && primeiroFim + trechoSegundo * minuto > evento.segundoInicioMs! - (evento.segundoBebidaAntes ? config.montagemBebidaAntesMinutos : config.montagemPadraoMinutos) * minuto) continue;
-      const retornoLevar = base + viagem * 2 * minuto;
-      const precisaReutilizar = ordenados.some((outro) => outro.id !== evento.id && saidaBase(outro, config) >= retornoLevar + config.minutosCarregar * minuto && saidaBase(outro, config) < terminaServico + viagem * minuto);
-      for (const modo of (["equipe", "levar"] as const)) {
-        if (segundo && modo === "levar") continue; // mesma equipe e mesmo carro na dupla
-        if (modo === "levar" && carro.limiteLevar < 1) continue;
-        const fim = modo === "levar" ? base + viagem * 2 * minuto : terminaServico + (segundo ? Math.ceil(evento.segundaRotaMinutos! * config.fatorPicoPercentual / 100) : viagem) * minuto;
-        const saida = base;
-        const retorno = fim;
-        if (ocupacoes.some((o) => saida < o.fim + config.minutosCarregar * minuto && retorno + config.minutosCarregar * minuto > o.inicio)) continue;
-        const kmTotal = modo === "levar" ? evento.rotaKm * 2 : segundo ? evento.rotaKm + evento.trechoSegundoKm! + evento.segundaRotaKm! : evento.rotaKm * 2;
-        const custoCentavos = custo(carro, kmTotal, material, config);
-        const alertas: string[] = [];
-        if (modo === "levar") alertas.push("Confirme quem buscará a equipe e o material no fim do evento.");
-        if (segundo) alertas.push("Dupla: mesma equipe, saída do QG contabilizada uma vez; confirme tempo de desmontagem entre os eventos.");
-        const proposta: PropostaLogistica = { eventoId: evento.id, segundoEventoId: evento.segundoEventoId, veiculoId: carro.id, modo, saidaPrevista: new Date(saida).toISOString(), retornoPrevisto: new Date(retorno).toISOString(), rotaMinutos: viagem, distanciaTotalKm: Math.round(kmTotal * 100) / 100, custoCentavos, alertas };
-        // Custo primeiro; em empate, preferir frota própria e viagem curta.
-        candidatos.push({ proposta, prioridade: custoCentavos + (carro.proprietarioId ? 100 : 0) + (modo === "levar" ? (precisaReutilizar ? -300 : 150) : 0) + Math.round(evento.rotaMinutos) });
+      for (const ajuste of deslocamentos) {
+        const saida = base + ajuste * minuto;
+        const viagem = viagemMinutos(evento, config, saida);
+        const montagem = evento.bebidaAntes ? config.montagemBebidaAntesMinutos : config.montagemPadraoMinutos;
+        if (saida + viagem * minuto > evento.inicioMs - montagem * minuto) continue;
+        const retornoLevar = saida + viagem * 2 * minuto;
+        const precisaReutilizar = ordenados.some((outro) => outro.id !== evento.id && saidaBase(outro, config) >= retornoLevar + config.minutosCarregar * minuto && saidaBase(outro, config) < terminaServico + viagem * minuto);
+        for (const modo of (["equipe", "levar"] as const)) {
+          if (segundo && modo === "levar") continue; // mesma equipe e mesmo carro na dupla
+          if (modo === "levar" && carro.limiteLevar < 1) continue;
+          const retorno = modo === "levar" ? retornoLevar : terminaServico + (segundo ? Math.ceil(evento.segundaRotaMinutos! * config.fatorPicoPercentual / 100) : viagem) * minuto;
+          if (ocupacoes.some((o) => saida < o.fim + config.minutosCarregar * minuto && retorno + config.minutosCarregar * minuto > o.inicio)) continue;
+          const kmTotal = modo === "levar" ? evento.rotaKm * 2 : segundo ? evento.rotaKm + evento.trechoSegundoKm! + evento.segundaRotaKm! : evento.rotaKm * 2;
+          const custoCentavos = custo(carro, kmTotal, material, config);
+          const alertas: string[] = [];
+          if (modo === "levar") alertas.push("Confirme quem buscará a equipe e o material no fim do evento.");
+          if (segundo) alertas.push("Dupla: mesma equipe, saída do QG contabilizada uma vez; confirme tempo de desmontagem entre os eventos.");
+          if (ajuste) alertas.push(`Saída ${ajuste < 0 ? "antecipada" : "adiada"} em ${Math.abs(ajuste)} minutos para encaixar a logística.`);
+          const proposta: PropostaLogistica = { eventoId: evento.id, segundoEventoId: evento.segundoEventoId, veiculoId: carro.id, modo, saidaPrevista: new Date(saida).toISOString(), retornoPrevisto: new Date(retorno).toISOString(), rotaMinutos: viagem, distanciaTotalKm: Math.round(kmTotal * 100) / 100, custoCentavos, alertas };
+          // Prefere custo baixo e frota própria; só ajusta a saída quando ajuda a reutilizar o carro ou resolve conflito.
+          candidatos.push({ proposta, prioridade: custoCentavos + (carro.proprietarioId ? 100 : 0) + (modo === "levar" ? (precisaReutilizar ? -300 : 150) : 0) + Math.round(evento.rotaMinutos) + Math.abs(ajuste) });
+        }
       }
     }
     candidatos.sort((a, b) => a.prioridade - b.prioridade || a.proposta.saidaPrevista.localeCompare(b.proposta.saidaPrevista));
