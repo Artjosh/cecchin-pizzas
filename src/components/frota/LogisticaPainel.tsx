@@ -9,7 +9,7 @@ type Requisito = { evento_id: string; forno_necessario: string; bebida_necessari
 type Rota = { evento_id: string; distancia_km: number; duracao_minutos: number; medido_em: string; latitude: number; longitude: number };
 type Duplo = { id: string; primeiro_evento_id: string; segundo_evento_id: string };
 type TrechoDuplo = { evento_duplo_id: string; primeira_latitude: number; primeira_longitude: number; segunda_latitude: number; segunda_longitude: number; distancia_km: number; duracao_minutos: number; medido_em: string };
-type Plano = { id: string; evento_id: string; situacao: string; veiculo_id: string; motorista_id: string | null; modo: string; saida_prevista: string; retorno_previsto: string };
+type Plano = { id: string; evento_id: string; evento_duplo_id: string | null; situacao: string; veiculo_id: string; motorista_id: string | null; modo: string; saida_prevista: string; retorno_previsto: string };
 type Parada = { plano_id: string; evento_id: string; ordem: number; chegada_prevista: string };
 type ViagemPrevista = { eventos: string[]; veiculo_id: string; saida_prevista: string; retorno_previsto: string; distancia_km: number; custo_estimado: number; paradas: Array<{ eventoId: string; nome: string; chegadaPrevista: string; prazo: string }> };
 type Veiculo = { id: string; modelo: string; placa: string; forno_maximo: TipoForno; bebida_maxima: TipoBebida; lugares: number; limite_eventos_levar: number; proprietario_id: string | null };
@@ -103,6 +103,7 @@ export function LogisticaPainel() {
   const [ocupado, setOcupado] = useState("");
   const [primeiro, setPrimeiro] = useState("");
   const [segundo, setSegundo] = useState("");
+  const [confirmarDesvinculo, setConfirmarDesvinculo] = useState<string | null>(null);
   const [revisao, setRevisao] = useState(0);
   const [selecionados, setSelecionados] = useState<Set<string> | null>(null);
   const [opcaoPorEvento, setOpcaoPorEvento] = useState<Record<string, string>>({});
@@ -190,7 +191,15 @@ export function LogisticaPainel() {
           <div className="space-y-1 text-sm"><p>{requisito ? `${requisito.pessoas_transportar} pessoas · forno ${requisito.forno_necessario} · bebida ${requisito.bebida_necessaria}` : "Carga ainda não informada"}</p><p>{rota ? `${rota.distancia_km} km · ${rota.duracao_minutos} min desde o QG` : "Rota rodoviária ainda não calculada"}</p><p>{planos.length ? planos.map((plano) => `${dados.veiculos.find((v) => v.id === plano.veiculo_id)?.modelo ?? "Carro"}: ${plano.situacao}${paradaDaViagem?.plano_id === plano.id ? ` · parada ${paradaDaViagem.ordem}` : ""}`).join(" · ") : "Nenhum carro planejado"}</p>{paradaDaViagem && <p className="text-xs text-on-surface-variant">Chegada prevista {new Date(paradaDaViagem.chegada_prevista).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })} · custo compartilhado entre as paradas</p>}</div>
           <RequisitoForm evento={evento} atual={requisito} bloqueado={Boolean(ocupado)} salvar={(valores) => acao("requisito", { evento: evento.id, dados: valores })} />
           <button disabled={Boolean(ocupado)} onClick={() => void acao("rota", { evento: evento.id })} className="rounded-xl bg-surface-container px-3 py-2 text-xs disabled:opacity-50">{ocupado === "rota" ? "Calculando…" : rota ? "Atualizar rota" : "Calcular rota"}</button>
-          {dupla?.primeiro_evento_id === evento.id && <div className="space-y-1 text-xs"><p>{trecho ? `${trecho.distancia_km} km · ${trecho.duracao_minutos} min até o segundo evento` : "Trecho entre os eventos ainda não calculado"}</p><button disabled={Boolean(ocupado)} onClick={() => void acao("rota_dupla", { duplo: dupla.id })} className="rounded-xl bg-surface-container px-3 py-2 disabled:opacity-50">{ocupado === "rota_dupla" ? "Calculando…" : "Calcular trecho da dupla"}</button></div>}
+          {dupla?.primeiro_evento_id === evento.id && <div className="space-y-2 text-xs">
+            <p>{trecho ? `${trecho.distancia_km} km · ${trecho.duracao_minutos} min até o segundo evento` : "Trecho entre os eventos ainda não calculado"}</p>
+            <div className="flex flex-wrap gap-2">
+              <button disabled={Boolean(ocupado)} onClick={() => void acao("rota_dupla", { duplo: dupla.id })} className="rounded-xl bg-surface-container px-3 py-2 disabled:opacity-50">{ocupado === "rota_dupla" ? "Calculando…" : "Calcular trecho da dupla"}</button>
+              <button disabled={Boolean(ocupado) || dados.planos.some((plano) => plano.evento_duplo_id === dupla.id && plano.situacao === "aprovado")} onClick={() => setConfirmarDesvinculo(dupla.id)} className="rounded-xl bg-surface-container px-3 py-2 disabled:opacity-50">Desfazer dupla</button>
+            </div>
+            {dados.planos.some((plano) => plano.evento_duplo_id === dupla.id && plano.situacao === "aprovado") && <p className="text-on-surface-variant">Revise o plano de carro aprovado antes de desfazer a dupla.</p>}
+            {confirmarDesvinculo === dupla.id && <div className="rounded-xl bg-surface-container p-3"><p>As propostas de carro desta dupla serão removidas. Os eventos continuarão separados na agenda.</p><div className="mt-2 flex gap-2"><button disabled={Boolean(ocupado)} onClick={() => { setConfirmarDesvinculo(null); void acao("desvincular", { duplo: dupla.id }); }} className="rounded-lg bg-primary px-3 py-2 text-on-primary disabled:opacity-50">Confirmar desvínculo</button><button onClick={() => setConfirmarDesvinculo(null)} className="rounded-lg px-3 py-2">Manter dupla</button></div></div>}
+          </div>}
           {dupla?.segundo_evento_id === evento.id && <p className="text-xs text-on-surface-variant">O carro desta dupla é planejado no primeiro evento.</p>}
           {opcoes.length > 1 && <label className="grid gap-1 text-xs">Comparar carros e modos de viagem<select className={campo} value={propostaSelecionada ? chave(propostaSelecionada) : ""} onChange={(ev) => setOpcaoPorEvento((atual) => ({ ...atual, [evento.id]: ev.target.value }))}>{opcoes.map((item) => <option key={chave(item)} value={chave(item)}>{dados.veiculos.find((carro) => carro.id === item.veiculoId)?.modelo ?? "Carro"} · {item.modo === "levar" ? "levar" : "com a equipe"} · R$ {(item.custoCentavos / 100).toFixed(2).replace(".", ",")}</option>)}</select></label>}
           {propostaSelecionada && <Proposta key={`${chave(propostaSelecionada)}:${propostaSelecionada.saidaPrevista}`} proposta={propostaSelecionada} dados={dados} ocupado={Boolean(ocupado)} salvar={(valores) => acao("plano", { dados: valores })} />}

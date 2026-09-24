@@ -173,6 +173,8 @@ export async function POST(request: NextRequest) {
     resultado = await chamarFuncao("salvar_requisito_logistico", { p_evento: corpo.evento, p_dados: corpo.dados }, sessao.accessToken);
   } else if (acao === "vincular" && uuid.test(corpo.primeiro) && uuid.test(corpo.segundo) && corpo.primeiro !== corpo.segundo) {
     resultado = await chamarFuncao("vincular_evento_duplo", { p_primeiro: corpo.primeiro, p_segundo: corpo.segundo, p_observacao: typeof corpo.observacao === "string" ? corpo.observacao.slice(0, 500) : null }, sessao.accessToken);
+  } else if (acao === "desvincular" && uuid.test(corpo.duplo)) {
+    resultado = await chamarFuncao("desvincular_evento_duplo", { p_duplo: corpo.duplo }, sessao.accessToken);
   } else if (acao === "rota" && uuid.test(corpo.evento)) {
     const ponto = await consultar<Array<{ latitude: number; longitude: number }>>(`localizacao_evento?select=latitude,longitude&evento_id=eq.${corpo.evento}&limit=1`, sessao.accessToken);
     if (!ponto.ok || !ponto.dados?.[0]) return NextResponse.json({ mensagem: "Localize o evento no mapa antes de calcular a rota." }, { status: 400 });
