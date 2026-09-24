@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
     let rota;
     try { rota = await medirTrecho({ latitude: QG_CECCHIN.coordenada.lat, longitude: QG_CECCHIN.coordenada.lng }, { latitude, longitude }); }
     catch (falha) { return NextResponse.json({ mensagem: falha instanceof Error ? falha.message : "Rota indisponível" }, { status: 502 }); }
-    resultado = await chamarFuncao("salvar_trajeto_logistico", { p_evento: corpo.evento, p_latitude: latitude, p_longitude: longitude, p_km: rota.km, p_minutos: rota.minutos }, sessao.accessToken);
+    resultado = await consultarComoServico("rpc/salvar_trajeto_logistico_servidor", { method: "POST", body: JSON.stringify({ p_usuario: sessao.usuario.id, p_evento: corpo.evento, p_latitude: latitude, p_longitude: longitude, p_km: rota.km, p_minutos: rota.minutos }) });
   } else if (acao === "rota_dupla" && uuid.test(corpo.duplo)) {
     const dupla = await consultar<Array<{ primeiro_evento_id: string; segundo_evento_id: string }>>(`evento_duplo?select=primeiro_evento_id,segundo_evento_id&id=eq.${corpo.duplo}&limit=1`, sessao.accessToken);
     if (!dupla.ok || !dupla.dados?.[0]) return NextResponse.json({ mensagem: "Dupla não encontrada" }, { status: 404 });
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
     let rota;
     try { rota = await medirTrecho(primeiro.dados[0], segundo.dados[0]); }
     catch (falha) { return NextResponse.json({ mensagem: falha instanceof Error ? falha.message : "Rota indisponível" }, { status: 502 }); }
-    resultado = await chamarFuncao("salvar_trajeto_duplo", { p_duplo: corpo.duplo, p_primeira_lat: primeiro.dados[0].latitude, p_primeira_lng: primeiro.dados[0].longitude, p_segunda_lat: segundo.dados[0].latitude, p_segunda_lng: segundo.dados[0].longitude, p_km: rota.km, p_minutos: rota.minutos }, sessao.accessToken);
+    resultado = await consultarComoServico("rpc/salvar_trajeto_duplo_servidor", { method: "POST", body: JSON.stringify({ p_usuario: sessao.usuario.id, p_duplo: corpo.duplo, p_primeira_lat: primeiro.dados[0].latitude, p_primeira_lng: primeiro.dados[0].longitude, p_segunda_lat: segundo.dados[0].latitude, p_segunda_lng: segundo.dados[0].longitude, p_km: rota.km, p_minutos: rota.minutos }) });
   } else if (acao === "plano" && corpo.dados && typeof corpo.dados === "object" && uuid.test(corpo.dados.evento_id) && uuid.test(corpo.dados.veiculo_id)) {
     resultado = await chamarFuncao("salvar_plano_logistico", { p_dados: corpo.dados }, sessao.accessToken);
   } else return NextResponse.json({ mensagem: "Ação inválida" }, { status: 400 });
