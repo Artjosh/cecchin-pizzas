@@ -61,7 +61,7 @@ export async function FinanceiroView() {
   ]);
 
   const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-  const [caixaR, resumoR, acertosR, escalasR, cartoesR, faturasR, pessoasR, planosR, veiculosR, usosR, usosResumoR] = await Promise.all([
+  const [caixaR, resumoR, acertosR, escalasR, cartoesR, faturasR, pessoasR, planosR, veiculosR, usosR, lavagensR, usosResumoR] = await Promise.all([
     consultar<MovimentoHoje[]>(`vw_caixa_hoje?select=origem_id,dia,natureza,descricao,valor&dia=eq.${hoje}&order=natureza.asc,descricao.asc,valor.asc,origem_id.asc&limit=50`, sessao.accessToken),
     consultar<ResumoCaixa[]>(`vw_caixa_resumo_dia?select=movimentos,entradas,saidas,saldo&dia=eq.${hoje}&limit=1`, sessao.accessToken),
     consultar<Acerto[]>("acerto_freelance?select=id,usuario_id,evento_id,valor,chave_pix_retrato,estado,criado_em,evento(data_evento,codigo_legado)&estado=eq.pendente&order=criado_em.asc&limit=100", sessao.accessToken),
@@ -72,6 +72,7 @@ export async function FinanceiroView() {
     consultar<PlanoVeiculo[]>("vw_viagem_particular_a_registrar?select=id,evento_id,veiculo_id,motorista_id,distancia_km,retorno_previsto&order=retorno_previsto.desc,id.desc&limit=26", sessao.accessToken),
     consultar<VeiculoFinanceiro[]>("veiculo_operacional?select=id,proprietario_id,modelo,placa&proprietario_id=not.is.null&order=modelo.asc&limit=200", sessao.accessToken),
     consultar<UsoVeiculo[]>("uso_veiculo_particular?select=id,plano_id,veiculo_id,motorista_id,numero_uso,km_rodados,transportou_material,lavagem_opcao,valor_deslocamento_centavos,valor_adicional_centavos,valor_lavagem_centavos,valor_bonus_centavos,estado&estado=eq.pendente&order=criado_em.asc,id.asc&limit=26", sessao.accessToken),
+    consultar<UsoVeiculo[]>("uso_veiculo_particular?select=id,plano_id,veiculo_id,motorista_id,numero_uso,km_rodados,transportou_material,lavagem_opcao,lavagem_realizada_em,valor_deslocamento_centavos,valor_adicional_centavos,valor_lavagem_centavos,valor_bonus_centavos,estado&lavagem_opcao=eq.lavagem&lavagem_realizada_em=is.null&order=criado_em.asc,id.asc&limit=26", sessao.accessToken),
     consultar<ResumoUsoVeiculo[]>("vw_resumo_uso_veiculo?select=veiculo_id,ultimo_uso&limit=500", sessao.accessToken),
   ]);
 
@@ -98,7 +99,7 @@ export async function FinanceiroView() {
 
       {caixaR.ok && resumoR.ok && acertosR.ok && escalasR.ok && cartoesR.ok && faturasR.ok && pessoasR.ok ? <GestaoFinanceira movimentos={caixaR.dados ?? []} resumo={resumoR.dados?.[0] ?? { movimentos: 0, entradas: 0, saidas: 0, saldo: 0 }} acertos={acertosR.dados ?? []} escalas={escalasR.dados ?? []} cartoes={cartoesR.dados ?? []} faturas={faturasR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Os novos módulos financeiros aguardam a migration da branch. Os lançamentos existentes continuam abaixo.</p>}
 
-      {planosR.ok && veiculosR.ok && usosR.ok && usosResumoR.ok && pessoasR.ok ? <ReembolsoVeiculos planos={planosR.dados ?? []} veiculos={veiculosR.dados ?? []} usos={usosR.dados ?? []} resumos={usosResumoR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Não foi possível carregar os reembolsos de veículos.</p>}
+      {planosR.ok && veiculosR.ok && usosR.ok && lavagensR.ok && usosResumoR.ok && pessoasR.ok ? <ReembolsoVeiculos planos={planosR.dados ?? []} veiculos={veiculosR.dados ?? []} usos={usosR.dados ?? []} lavagens={lavagensR.dados ?? []} resumos={usosResumoR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Não foi possível carregar os reembolsos de veículos.</p>}
 
       {semLancamento && (
         <LacunaDeDados titulo="Nenhum lançamento financeiro disponível">

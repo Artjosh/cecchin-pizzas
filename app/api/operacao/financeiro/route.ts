@@ -36,6 +36,9 @@ export async function POST(request: NextRequest) {
     case "quitar_uso_veiculo":
       if (typeof corpo.id !== "string" || !uuid.test(corpo.id) || typeof corpo.data !== "string" || !data.test(corpo.data)) return NextResponse.json({ mensagem: "Confira o reembolso" }, { status: 400 });
       funcao = "quitar_uso_veiculo"; args = { p_id: corpo.id, p_data: corpo.data }; break;
+    case "confirmar_lavagem_veiculo":
+      if (typeof corpo.id !== "string" || !uuid.test(corpo.id) || typeof corpo.data !== "string" || !data.test(corpo.data)) return NextResponse.json({ mensagem: "Confira a data da lavagem" }, { status: 400 });
+      funcao = "confirmar_lavagem_veiculo"; args = { p_id: corpo.id, p_data: corpo.data }; break;
     default: return NextResponse.json({ mensagem: "Ação desconhecida" }, { status: 400 });
   }
   const resposta = await chamarFuncao(funcao, args, sessao.accessToken);
