@@ -52,6 +52,8 @@ function MapaReal({ eventos, base, selecionado, aoSelecionar }: { eventos: Event
   const biblioteca = useRef<BibliotecaMapa | null>(null);
   const mapa = useRef<MapaMapLibre | null>(null);
   const pinos = useRef(new Map<string, Marker>());
+  const aoSelecionarAtual = useRef(aoSelecionar);
+  aoSelecionarAtual.current = aoSelecionar;
   const [pontos, setPontos] = useState(new Map<string, Coordenada>());
   const [buscando, setBuscando] = useState<string | null>(null);
   const [bibliotecaCarregada, setBibliotecaCarregada] = useState(false);
@@ -74,42 +76,59 @@ function MapaReal({ eventos, base, selecionado, aoSelecionar }: { eventos: Event
     instancia.addControl(new modulo.NavigationControl({ showCompass: false }), "bottom-right");
     instancia.on("load", () => aplicarVisualOperacional(instancia));
     new modulo.Marker({ element: elementoBase() }).setLngLat(paraLngLat(base)).setPopup(new modulo.Popup({ offset: 20 }).setText("Base operacional")).addTo(instancia);
-    return () => { pinos.current.forEach((pino) => pino.remove()); instancia.remove(); mapa.current = null; };
+    return () => { pinos.current.forEach((pino) => pino.remove()); pinos.current.clear(); instancia.remove(); mapa.current = null; };
   }, [base, bibliotecaCarregada]);
 
   useEffect(() => {
-    if (!selecionado || pontos.has(selecionado) || buscando || !mapa.current) return;
+    if (!selecionado || pontos.has(selecionado) || !mapa.current) {
+      setBuscando(null);
+      return;
+    }
     const evento = eventos.find((item) => item.id === selecionado);
     const endereco = evento && enderecoDoEvento(evento);
-    if (!endereco) return;
-    let vivo = true; setBuscando(selecionado);
+    if (!endereco) { setBuscando(null); return; }
+    const controller = new AbortController();
+    setBuscando(selecionado);
     void (async () => {
       try {
-        const resposta = await fetch(`/api/mapa/buscar?q=${encodeURIComponent(endereco)}`);
+        const resposta = await fetch(`/api/mapa/buscar?q=${encodeURIComponent(endereco)}`, { signal: controller.signal });
         const dado = await resposta.json() as { locais?: Array<Coordenada> };
         const ponto = dado.locais?.[0];
-        if (vivo && ponto) setPontos((antes) => new Map(antes).set(selecionado, ponto));
-      } finally { if (vivo) setBuscando(null); }
+        if (!controller.signal.aborted && ponto) setPontos((antes) => new Map(antes).set(selecionado, ponto));
+      } catch (erro) {
+        if (!controller.signal.aborted) console.error("Falha ao localizar evento no mapa", erro);
+      } finally { if (!controller.signal.aborted) setBuscando(null); }
     })();
-    return () => { vivo = false; };
-  }, [buscando, eventos, pontos, selecionado]);
+    return () => { controller.abort(); };
+  }, [bibliotecaCarregada, eventos, pontos, selecionado]);
 
   useEffect(() => {
     const instancia = mapa.current; const modulo = biblioteca.current; if (!instancia || !modulo) return;
+    const idsAtuais = new Set(eventos.map((evento) => evento.id));
+    for (const [id, marcador] of pinos.current) {
+      if (!idsAtuais.has(id)) { marcador.remove(); pinos.current.delete(id); }
+    }
     for (const [id, ponto] of pontos) {
       const evento = eventos.find((item) => item.id === id); const indice = eventos.findIndex((item) => item.id === id);
       if (!evento || indice < 0) continue;
-      const anterior = pinos.current.get(id);
-      anterior?.remove();
-      const marcador = new modulo.Marker({ element: elementoEvento(indice + 1, id === selecionado) }).setLngLat(paraLngLat(ponto)).setPopup(new modulo.Popup({ offset: 20 }).setText(`${evento.cliente_nome ?? "Evento"} · ${enderecoDoEvento(evento)}`)).addTo(instancia);
-      marcador.getElement().addEventListener("click", () => aoSelecionar(id));
+      if (pinos.current.has(id)) continue;
+      const marcador = new modulo.Marker({ element: elementoEvento(indice + 1, false) }).setLngLat(paraLngLat(ponto)).setPopup(new modulo.Popup({ offset: 20 }).setText(`${evento.cliente_nome ?? "Evento"} · ${enderecoDoEvento(evento)}`)).addTo(instancia);
+      marcador.getElement().addEventListener("click", () => aoSelecionarAtual.current(id));
       pinos.current.set(id, marcador);
+    }
+    for (const [id, marcador] of pinos.current) {
+      const elemento = marcador.getElement();
+      elemento.classList.toggle("scale-125", id === selecionado);
+      elemento.classList.toggle("bg-primary", id === selecionado);
+      elemento.classList.toggle("text-on-primary", id === selecionado);
+      elemento.classList.toggle("bg-surface", id !== selecionado);
+      elemento.classList.toggle("text-on-surface", id !== selecionado);
     }
     const selecionadoPonto = selecionado ? pontos.get(selecionado) : null;
     if (selecionadoPonto) instancia.flyTo({ center: paraLngLat(selecionadoPonto), zoom: 15, essential: true });
-  }, [aoSelecionar, eventos, pontos, selecionado]);
+  }, [bibliotecaCarregada, eventos, pontos, selecionado]);
 
-  return <div ref={recipiente} className="h-full w-full" />;
+  return <div className="relative h-full w-full"><div ref={recipiente} className="h-full w-full" />{buscando && <div role="status" className="absolute bottom-4 left-4 rounded-lg bg-surface-container px-3 py-2 text-sm text-on-surface shadow-lg">Localizando evento…</div>}</div>;
 }
 
 export function MapaTatico({ eventos, base }: { eventos: EventoNoMapa[]; base: Coordenada }) {
