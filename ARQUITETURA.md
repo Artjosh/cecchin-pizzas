@@ -21,6 +21,8 @@ Leituras de negócio ficam em `src/servidor/`; consultas paginadas selecionam s�
 
 Em `/admin/operacao?aba=vinculos`, responsáveis são carregados em páginas de 30. Busca por nome e filtro de contas não ligadas passam pelo BFF `GET /api/operacao/responsavel`, sob o JWT da gestão e RLS do banco; a ligação continua pela RPC `ligar_responsavel`. A leitura inicial envia apenas a primeira página. Funcionários e contas elegíveis ainda são enviados no render inicial, pois são listas pequenas no banco local; reavalie seus limites se crescerem.
 
+Em `/admin/financeiro`, entradas e despesas pagas têm paginações independentes de 30 registros, com contagem do PostgREST. Despesas usam `pago_em` e os campos `valor_bruto`, `valor_liquido` e `tipo_pagamento` do schema atual; contas a pagar pertencem a um fluxo separado. Alterar uma página preserva a posição da outra na URL.
+
 ## Autenticação e acesso
 
 Login sem senha oferece OTP e link com aprovação entre dispositivos. `pedido_login` associa um selector público ao pedido: o selector consulta o estado, não autoriza. O hash de uso único é validado no GoTrue e o e-mail retornado precisa corresponder ao pedido. A página de confirmação remove o segredo do fragmento e o envia ao BFF. Compatibilidade com o fluxo antigo deve ser conferida antes de remover endpoints.

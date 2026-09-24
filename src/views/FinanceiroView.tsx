@@ -17,6 +17,7 @@ import { ReembolsoVeiculos, type PlanoVeiculo, type VeiculoFinanceiro, type UsoV
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 import { comoLeitura } from "../servidor/fonte";
+import { PaginacaoPorParametro } from "../components/painel/PaginacaoPorParametro";
 
 /**
  * Financeiro: o que entrou, o que saiu e o que está a acertar.
@@ -37,7 +38,9 @@ interface Lancamento {
   observacao?: string | null;
 }
 
-export async function FinanceiroView() {
+const LANCAMENTOS_POR_PAGINA = 30;
+
+export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1 }: { paginaEntradas?: number; paginaDespesas?: number } = {}) {
   const sessao = await exigirPapel(["gestao"]);
 
   const [conciliacaoR, entradasR, despesasR, contasR] = await Promise.all([
@@ -47,12 +50,14 @@ export async function FinanceiroView() {
       sessao.accessToken,
     ),
     consultar<Lancamento[]>(
-      "entrada?select=id,data,descricao,valor_bruto,valor_liquido,tipo,observacao&order=data.desc&limit=30",
+      `entrada?select=id,data,descricao,valor_bruto,valor_liquido,tipo,observacao&order=data.desc,id.desc&limit=${LANCAMENTOS_POR_PAGINA}&offset=${(paginaEntradas - 1) * LANCAMENTOS_POR_PAGINA}`,
       sessao.accessToken,
+      { headers: { Prefer: "count=exact" } },
     ),
     consultar<Lancamento[]>(
-      "despesa?select=id,data,descricao,valor_bruto:valor,tipo:natureza&order=data.desc&limit=30",
+      `despesa?select=id,data:pago_em,descricao,valor_bruto,valor_liquido,tipo:tipo_pagamento&pago_em=not.is.null&order=pago_em.desc,id.desc&limit=${LANCAMENTOS_POR_PAGINA}&offset=${(paginaDespesas - 1) * LANCAMENTOS_POR_PAGINA}`,
       sessao.accessToken,
+      { headers: { Prefer: "count=exact" } },
     ),
     consultar<{ id: string }[]>(
       "conta_a_pagar?select=id&limit=1",
@@ -86,8 +91,8 @@ export async function FinanceiroView() {
 
   const semLancamento =
     entradasR.ok && despesasR.ok && contasR.ok &&
-    (entradasR.dados?.length ?? 0) === 0 &&
-    (despesasR.dados?.length ?? 0) === 0 &&
+    (entradasR.total ?? 0) === 0 &&
+    (despesasR.total ?? 0) === 0 &&
     (contasR.dados?.length ?? 0) === 0;
 
   return (
@@ -147,12 +152,20 @@ export async function FinanceiroView() {
           icone={<ArrowUpRight className="w-5 h-5" />}
           linhas={entradasR.dados ?? []}
           vazio="Nenhuma entrada lançada."
+          erro={!entradasR.ok}
+          pagina={paginaEntradas}
+          total={entradasR.total ?? 0}
+          parametro="entradas"
         />
         <Lancamentos
           titulo="Despesas"
           icone={<ArrowDownRight className="w-5 h-5" />}
           linhas={despesasR.dados ?? []}
-          vazio="Nenhuma despesa lançada."
+          vazio="Nenhuma despesa paga."
+          erro={!despesasR.ok}
+          pagina={paginaDespesas}
+          total={despesasR.total ?? 0}
+          parametro="despesas"
         />
       </div>
     </div>
@@ -164,11 +177,19 @@ function Lancamentos({
   icone,
   linhas,
   vazio,
+  erro,
+  pagina,
+  total,
+  parametro,
 }: {
   titulo: string;
   icone: React.ReactNode;
   linhas: Lancamento[];
   vazio: string;
+  erro: boolean;
+  pagina: number;
+  total: number;
+  parametro: string;
 }) {
   return (
     <section className="flex flex-col gap-space-sm">
@@ -177,8 +198,10 @@ function Lancamentos({
         {titulo}
       </h2>
 
-      {linhas.length === 0 ? (
-        <SemLinhas titulo="Sem lançamento" detalhe={vazio} />
+      {erro ? (
+        <FalhaDeLeitura motivo={`Não foi possível carregar ${titulo.toLowerCase()}.`} />
+      ) : linhas.length === 0 ? (
+        <SemLinhas titulo={total ? "Página sem lançamentos" : "Sem lançamento"} detalhe={total ? "Escolha outra página." : vazio} />
       ) : (
         <Tabela colunas={["Data", "Descrição", "Valor"]}>
           {linhas.map((l) => (
@@ -197,6 +220,7 @@ function Lancamentos({
           ))}
         </Tabela>
       )}
+      {!erro && total > LANCAMENTOS_POR_PAGINA && <PaginacaoPorParametro parametro={parametro} pagina={pagina} total={total} porPagina={LANCAMENTOS_POR_PAGINA} rotulo={`Páginas de ${titulo.toLowerCase()}`} />}
     </section>
   );
 }
