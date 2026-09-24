@@ -71,7 +71,7 @@ Contrato detalhado: [dimensionamento](../cecchin-pizzas-backend/migracao/DIMENSI
 
 Perfil mostra casa–QG; aberto pela montagem inclui o evento. A modal de mapa da montagem reúne opções em uma coluna com scroll e slider de densidade, sem outro preview sobreposto. MapLibre é carregado no navegador e usa worker estático.
 
-Três dados são independentes: meios de deslocamento, veículos próprios e categorias de CNH. Uber/ônibus/empresa não significam veículo próprio; ter veículo não implica habilitação. A frota física da empresa ainda não tem entidade de alocação.
+Três dados são independentes: meios de deslocamento, veículos próprios e categorias de CNH. Uber/ônibus/empresa não significam veículo próprio; ter veículo não implica habilitação. O cadastro `veiculo_operacional` reúne frota da empresa (`proprietario_id` nulo) e carros particulares; `plano_logistico` registra a alocação planejada por evento. A gestão edita os veículos em `/admin/frota`.
 
 Residência fica em `perfil_operacional_equipe`, com leitura de gestão/admin; não amplie a exposição de `usuario` para guardar endereço privado. QG vem de `QG_CECCHIN` em `src/lib/operacao.ts`. O ponto do evento fica em `localizacao_evento`: escolha explícita do geocoder, gravação autorizada e uso condicionado ao endereço de referência ainda coincidir com o evento.
 
@@ -101,6 +101,6 @@ A redução do payload RSC deve ser medida por bytes, latência e custo no clien
 
 ## Limites atuais
 
-Frota física, upload de foto/Storage e emissão de GPS continuam ausentes. Checkout hospedado da InfinitePay, aprovação manual e devolução registrada estão implementados localmente. A disponibilidade de cobrança real depende da configuração e do serviço em execução no ambiente; consulte o [contrato de pagamentos](../cecchin-pizzas-backend/infra/INFINITEPAY.md). Banco e Desenho compartilham componentes de equipe, mas o volume e os dados disponíveis diferem.
+Upload de foto/Storage e emissão de GPS continuam ausentes. A frota está modelada, mas o banco local ainda não tem veículos físicos cadastrados. Checkout hospedado da InfinitePay, aprovação manual e devolução registrada estão implementados localmente. A disponibilidade de cobrança real depende da configuração e do serviço em execução no ambiente; consulte o [contrato de pagamentos](../cecchin-pizzas-backend/infra/INFINITEPAY.md). Banco e Desenho compartilham componentes de equipe, mas o volume e os dados disponíveis diferem.
 
 Veja os [procedimentos de verificação](TESTES.md) e o [backend](../cecchin-pizzas-backend/README.md).
