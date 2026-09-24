@@ -7,8 +7,8 @@ import { BadgeCheck } from "lucide-react";
 import {
   LigarResponsavel,
   type ContaDaOperacao,
-  type ResponsavelParaLigar,
 } from "../components/LigarResponsavel";
+import { buscarResponsaveisOperacao } from "../servidor/responsaveis-operacao";
 
 import {
   CabecalhoDoPainel,
@@ -22,10 +22,9 @@ import {
 } from "../components/painel/Painel";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
-import { comoLeitura } from "../servidor/fonte";
 
 /**
- * Quem opera: os 362 responsáveis e os funcionários.
+ * Quem opera: os responsáveis históricos e os funcionários.
  *
  * Diferente de `/admin/equipe`, que trata de CONTAS e papéis. Aqui é a
  * operação: quem leva o forno, quem assina o evento.
@@ -40,14 +39,6 @@ import { comoLeitura } from "../servidor/fonte";
  * não encontra o próprio trabalho.
  */
 
-interface Responsavel {
-  id: string;
-  nome: string;
-  slug: string | null;
-  usuario_id: string | null;
-  ativo: boolean;
-}
-
 interface Funcionario {
   id: string;
   nome: string;
@@ -58,10 +49,7 @@ async function VinculosOperacao() {
   const sessao = await exigirPapel(["gestao"]);
 
   const [responsaveisR, funcionariosR, contasR] = await Promise.all([
-    consultar<Responsavel[]>(
-      "responsavel?select=id,nome,slug,usuario_id,ativo&order=ativo.desc,nome.asc&limit=500",
-      sessao.accessToken,
-    ),
+    buscarResponsaveisOperacao(sessao.accessToken, 0, "", true),
     consultar<Funcionario[]>(
       "funcionario?select=id,nome,ativo&order=nome.asc&limit=500",
       sessao.accessToken,
@@ -78,9 +66,6 @@ async function VinculosOperacao() {
     ),
   ]);
 
-  const responsaveis = comoLeitura(responsaveisR);
-  const lista = responsaveis.estado === "ok" ? responsaveis.linhas : [];
-  const semConta = lista.filter((r) => r.usuario_id === null).length;
   const funcionarios = funcionariosR.dados ?? [];
   const contas = contasR.dados ?? [];
 
@@ -89,11 +74,11 @@ async function VinculosOperacao() {
       <CabecalhoDoPainel
         titulo="Equipe de operação"
         descricao="Quem responde pelos eventos. Papéis e contas ficam em Equipe e acessos."
-        contagem={responsaveis.estado === "ok" ? lista.length : null}
+        contagem={responsaveisR.ok ? responsaveisR.totalGeral : null}
       />
 
-      {semConta > 0 && (
-        <LacunaDeDados titulo={`${semConta} responsáveis sem conta ligada`}>
+      {responsaveisR.ok && responsaveisR.semConta > 0 && (
+        <LacunaDeDados titulo={`${responsaveisR.semConta} responsáveis sem conta ligada`}>
           <p>
             <code className="font-mono">responsavel.usuario_id</code> é o elo
             entre quem aparece na agenda e quem entra no sistema. Sem ele, a
@@ -101,7 +86,7 @@ async function VinculosOperacao() {
             em Minha rota.
           </p>
           <p>
-            Os 362 vieram da planilha, onde só havia o nome. Ligue abaixo, um a
+            Os responsáveis históricos vieram da planilha, onde só havia o nome. Ligue abaixo, um a
             um: só quem já tem conta de operação aparece na lista, porque
             cliente não responde por evento.
           </p>
@@ -118,20 +103,20 @@ async function VinculosOperacao() {
           Responsáveis
         </h2>
 
-        {responsaveis.estado === "erro" && (
-          <FalhaDeLeitura motivo={responsaveis.motivo} />
+        {!responsaveisR.ok && (
+          <FalhaDeLeitura motivo="Não foi possível carregar os responsáveis." />
         )}
 
-        {responsaveis.estado === "vazio" && (
+        {responsaveisR.ok && responsaveisR.totalGeral === 0 && (
           <SemLinhas
             titulo="Nenhum responsável"
             detalhe="Vêm da carga da planilha, da coluna Responsável."
           />
         )}
 
-        {responsaveis.estado === "ok" && (
+        {responsaveisR.ok && (
           <LigarResponsavel
-            responsaveis={lista as ResponsavelParaLigar[]}
+            dadosIniciais={responsaveisR}
             contas={contas}
           />
         )}

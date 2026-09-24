@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { sessaoAtual } from "@/src/servidor/auth/sessao-atual";
 import { chamarFuncao } from "@/src/servidor/supabase";
+import { buscarResponsaveisOperacao } from "@/src/servidor/responsaveis-operacao";
 
 /**
  * Liga uma conta ao responsável — ou desliga.
@@ -20,6 +21,24 @@ import { chamarFuncao } from "@/src/servidor/supabase";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+export async function GET(request: NextRequest) {
+  const sessao = await sessaoAtual();
+  if (!sessao) return NextResponse.json({ mensagem: "Sem sessão." }, { status: 401 });
+  if (sessao.usuario.papel !== "gestao" && sessao.usuario.papel !== "admin") {
+    return NextResponse.json({ mensagem: "Só gestão ou admin consulta responsáveis." }, { status: 403 });
+  }
+  const textoPagina = request.nextUrl.searchParams.get("pagina") ?? "0";
+  const busca = request.nextUrl.searchParams.get("busca") ?? "";
+  if (!/^\d{1,4}$/.test(textoPagina) || busca.length > 80) {
+    return NextResponse.json({ mensagem: "Busca inválida." }, { status: 400 });
+  }
+  const resultado = await buscarResponsaveisOperacao(
+    sessao.accessToken, Number(textoPagina), busca, request.nextUrl.searchParams.get("semConta") !== "0",
+  );
+  if (!resultado.ok) return NextResponse.json({ mensagem: "Não foi possível carregar os responsáveis." }, { status: 503 });
+  return NextResponse.json(resultado, { headers: { "Cache-Control": "private, no-store" } });
+}
 
 export async function PATCH(request: NextRequest) {
   const sessao = await sessaoAtual();

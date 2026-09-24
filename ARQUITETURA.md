@@ -19,6 +19,8 @@ flowchart LR
 
 Leituras de negócio ficam em `src/servidor/`; consultas paginadas selecionam só os campos usados. BFF valida entrada e sessão e chama operações existentes. Transações de reserva, escala, embarque, perfil, atenção e preferências vivem em RPCs PostgreSQL. Nest atende integrações, webhooks, bot, fila e tarefas assíncronas. Detalhe dos serviços: [infraestrutura](../cecchin-pizzas-backend/infra/README.md).
 
+Em `/admin/operacao?aba=vinculos`, responsáveis são carregados em páginas de 30. Busca por nome e filtro de contas não ligadas passam pelo BFF `GET /api/operacao/responsavel`, sob o JWT da gestão e RLS do banco; a ligação continua pela RPC `ligar_responsavel`. A leitura inicial envia apenas a primeira página. Funcionários e contas elegíveis ainda são enviados no render inicial, pois são listas pequenas no banco local; reavalie seus limites se crescerem.
+
 ## Autenticação e acesso
 
 Login sem senha oferece OTP e link com aprovação entre dispositivos. `pedido_login` associa um selector público ao pedido: o selector consulta o estado, não autoriza. O hash de uso único é validado no GoTrue e o e-mail retornado precisa corresponder ao pedido. A página de confirmação remove o segredo do fragmento e o envia ao BFF. Compatibilidade com o fluxo antigo deve ser conferida antes de remover endpoints.

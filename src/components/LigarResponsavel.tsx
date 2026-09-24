@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Link2, Loader2, Search, Unlink, UserX } from "lucide-react";
 
 import { cn } from "../lib/utils";
+import { Paginacao } from "./painel/Paginacao";
 
 /**
  * Ligar conta a responsável — o elo que faz "Minha rota" existir.
@@ -34,11 +35,18 @@ export interface ContaDaOperacao {
   papel: string;
 }
 
+interface PaginaResponsaveis {
+  responsaveis: ResponsavelParaLigar[];
+  total: number;
+  semConta: number;
+  porPagina: number;
+}
+
 export function LigarResponsavel({
-  responsaveis,
+  dadosIniciais,
   contas,
 }: {
-  responsaveis: ResponsavelParaLigar[];
+  dadosIniciais: PaginaResponsaveis;
   contas: ContaDaOperacao[];
 }) {
   const router = useRouter();
@@ -46,8 +54,38 @@ export function LigarResponsavel({
 
   const [busca, setBusca] = useState("");
   const [soSemConta, setSoSemConta] = useState(true);
+  const [pagina, setPagina] = useState(0);
+  const [dados, setDados] = useState(dadosIniciais);
+  const [carregando, setCarregando] = useState(false);
+  const primeiraLeitura = useRef(true);
   const [emVoo, setEmVoo] = useState<string | null>(null);
   const [falha, setFalha] = useState<string | null>(null);
+
+  useEffect(() => { setDados(dadosIniciais); }, [dadosIniciais]);
+
+  useEffect(() => {
+    if (primeiraLeitura.current) {
+      primeiraLeitura.current = false;
+      return;
+    }
+    const controlador = new AbortController();
+    const temporizador = setTimeout(async () => {
+      setCarregando(true);
+      setFalha(null);
+      try {
+        const parametros = new URLSearchParams({ pagina: String(pagina), busca, semConta: soSemConta ? "1" : "0" });
+        const resposta = await fetch(`/api/operacao/responsavel?${parametros}`, { signal: controlador.signal, cache: "no-store" });
+        if (!resposta.ok) throw new Error("Não foi possível carregar os responsáveis.");
+        const novosDados = await resposta.json() as PaginaResponsaveis;
+        if (!controlador.signal.aborted) setDados(novosDados);
+      } catch {
+        if (!controlador.signal.aborted) setFalha("Não foi possível carregar os responsáveis.");
+      } finally {
+        if (!controlador.signal.aborted) setCarregando(false);
+      }
+    }, busca ? 250 : 0);
+    return () => { clearTimeout(temporizador); controlador.abort(); };
+  }, [busca, soSemConta, pagina]);
 
   const nomeDaConta = useMemo(() => {
     const m = new Map<string, ContaDaOperacao>();
@@ -55,24 +93,7 @@ export function LigarResponsavel({
     return m;
   }, [contas]);
 
-  const alvo = busca
-    .trim()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
-
-  const visiveis = responsaveis
-    .filter((r) => !soSemConta || r.usuario_id === null)
-    .filter(
-      (r) =>
-        !alvo ||
-        r.nome
-          .normalize("NFD")
-          .replace(/[̀-ͯ]/g, "")
-          .toLowerCase()
-          .includes(alvo),
-    )
-    .slice(0, 60);
+  const visiveis = dados.responsaveis;
 
   async function ligar(responsavel: string, usuario: string) {
     setFalha(null);
@@ -96,6 +117,9 @@ export function LigarResponsavel({
        * e manter uma segunda cópia aqui divergiria da primeira assim que outra
        * pessoa ligasse a mesma conta.
        */
+      setBusca("");
+      setSoSemConta(true);
+      setPagina(0);
       comecar(() => router.refresh());
     } catch {
       setFalha("Falha de rede. A alteração não foi gravada.");
@@ -105,7 +129,7 @@ export function LigarResponsavel({
   }
 
   const ocupado = pendente || emVoo !== null;
-  const semConta = responsaveis.filter((r) => r.usuario_id === null).length;
+  const semConta = dados.semConta;
 
   return (
     <div className="flex flex-col gap-space-md">
@@ -122,7 +146,7 @@ export function LigarResponsavel({
             id="busca-responsavel"
             type="search"
             value={busca}
-            onChange={(e) => setBusca(e.target.value)}
+            onChange={(e) => { setBusca(e.target.value); setPagina(0); }}
             placeholder="Buscar responsável pelo nome"
             className="w-full h-11 bg-surface-container-highest rounded-lg pl-9 pr-3 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary"
           />
@@ -130,7 +154,7 @@ export function LigarResponsavel({
 
         <button
           type="button"
-          onClick={() => setSoSemConta((v) => !v)}
+          onClick={() => { setSoSemConta((v) => !v); setPagina(0); }}
           aria-pressed={soSemConta}
           className={cn(
             "h-11 px-4 rounded-lg font-label-md text-label-md flex items-center gap-2 transition-colors",
@@ -152,6 +176,8 @@ export function LigarResponsavel({
           {falha}
         </p>
       )}
+
+      {carregando && <p role="status" className="text-sm text-on-surface-variant">Buscando responsáveis…</p>}
 
       {contas.length === 0 && (
         <p className="font-body-md text-body-md text-on-surface-variant bg-surface-container-low rounded-xl p-space-md">
@@ -232,19 +258,15 @@ export function LigarResponsavel({
           );
         })}
 
-        {visiveis.length === 0 && (
+        {!carregando && visiveis.length === 0 && (
           <li className="font-body-md text-body-md text-on-surface-variant bg-surface-container-low rounded-xl p-space-md text-center">
             Nenhum responsável{soSemConta ? " sem conta" : ""}
-            {alvo ? " com esse nome" : ""}.
+            {busca ? " com esse nome" : ""}.
           </li>
         )}
       </ul>
 
-      {visiveis.length === 60 && (
-        <p className="font-body-sm text-body-sm text-on-surface-variant">
-          Mostrando os 60 primeiros. Use a busca para chegar nos outros.
-        </p>
-      )}
+      <Paginacao pagina={pagina + 1} total={dados.total} porPagina={dados.porPagina} onPagina={numero => setPagina(numero - 1)} rotulo="Páginas de responsáveis" />
     </div>
   );
 }
