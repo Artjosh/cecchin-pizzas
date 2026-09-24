@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { sessaoAtual } from "@/src/servidor/auth/sessao-atual";
-import { chamarFuncao, consultar } from "@/src/servidor/supabase";
+import { chamarFuncao, consultar, consultarComoServico } from "@/src/servidor/supabase";
 import { QG_CECCHIN } from "@/src/lib/operacao";
 
 export const dynamic = "force-dynamic";
@@ -156,7 +156,12 @@ export async function POST(request: NextRequest) {
       const motorista = typeof corpo.motorista_id === "string" ? corpo.motorista_id : "";
       const justificativa = typeof corpo.justificativa === "string" ? corpo.justificativa.trim() : "";
       if (!uuid.test(motorista) || justificativa.length < 10 || justificativa.length > 500) return NextResponse.json({ mensagem: "Informe motorista e como as equipes serão buscadas." }, { status: 400 });
-      const resultado = await chamarFuncao("salvar_viagem_levar", { p_dados: { eventos: viagem.eventos, pontos: viagem.pontos, pernas: viagem.pernas, veiculo_id: viagem.veiculo_id, saida_prevista: viagem.saida_prevista, motorista_id: motorista, justificativa } }, sessao.accessToken);
+      // Esta gravacao usa service_role somente depois de medir a rota aqui. A
+      // funcao direta nao e acessivel ao JWT do gestor, pois aceita as pernas.
+      const resultado = await consultarComoServico<string>("rpc/salvar_viagem_levar_servidor", {
+        method: "POST",
+        body: JSON.stringify({ p_usuario: sessao.usuario.id, p_dados: { eventos: viagem.eventos, pontos: viagem.pontos, pernas: viagem.pernas, veiculo_id: viagem.veiculo_id, saida_prevista: viagem.saida_prevista, motorista_id: motorista, justificativa } }),
+      });
       if (!resultado.ok) {
         let mensagem = "Não foi possível aprovar a viagem. Confira capacidade, horários e disponibilidade do carro.";
         try { const erro = JSON.parse(resultado.erro ?? "{}"); if (typeof erro.message === "string") mensagem = erro.message; } catch { /* erro externo */ }
