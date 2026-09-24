@@ -52,7 +52,23 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
     finally { if (carga === cargaAtual.current) setCarregando(false); }
   }, [semana]);
   useEffect(() => { setDados(null); setCarregandoMais(false); void carregar(); return () => { cargaAtual.current++; }; }, [carregar]);
-  useEffect(() => { const intervalo = window.setInterval(() => { if (document.visibilityState === "visible" && !carregandoMais && (dados?.agenda.length ?? 0) <= 200) void carregar(); }, 30000); return () => window.clearInterval(intervalo); }, [carregar, carregandoMais, dados?.agenda.length]);
+  useEffect(() => {
+    const controlador = new AbortController();
+    let atualizando = false;
+    const intervalo = window.setInterval(async () => {
+      if (document.visibilityState !== "visible" || carregandoMais || atualizando || !dados) return;
+      if (dados.agenda.length <= 200) { void carregar(); return; }
+      atualizando = true;
+      try {
+        const resposta = await fetch("/api/operacao/marketing?somenteAlertas=1", { cache: "no-store", signal: controlador.signal });
+        if (!resposta.ok) return;
+        const atualizacao = await resposta.json() as Pick<Dados, "alertas">;
+        if (!controlador.signal.aborted) setDados((atual) => atual ? { ...atual, alertas: atualizacao.alertas } : null);
+      } catch { /* A proxima rodada tenta novamente. */ }
+      finally { atualizando = false; }
+    }, 30000);
+    return () => { controlador.abort(); window.clearInterval(intervalo); };
+  }, [carregar, carregandoMais, dados]);
   const carregarMaisAgenda = async () => {
     if (!dados?.maisAgenda || carregandoMais) return;
     const carga = cargaAtual.current;

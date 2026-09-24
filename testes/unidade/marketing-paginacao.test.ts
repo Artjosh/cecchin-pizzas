@@ -32,3 +32,12 @@ it("busca somente a agenda ao carregar a próxima página", async () => {
   expect(mocks.consultar).toHaveBeenCalledTimes(1);
   expect(mocks.consultar).toHaveBeenCalledWith(expect.stringContaining("offset=200"), "sessao-de-teste");
 });
+
+it("consulta somente alertas sem substituir paginas da agenda ja carregadas", async () => {
+  const resposta = await GET(new NextRequest("http://localhost/api/operacao/marketing?somenteAlertas=1"));
+  const dados = await resposta.json();
+  expect(resposta.status).toBe(200);
+  expect(dados).toEqual({ alertas: [] });
+  expect(mocks.consultar).toHaveBeenCalledTimes(1);
+  expect(mocks.consultar).toHaveBeenCalledWith(expect.stringContaining("alerta_marketing?select="), "sessao-de-teste");
+});

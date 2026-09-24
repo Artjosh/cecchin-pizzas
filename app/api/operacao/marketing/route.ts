@@ -10,6 +10,11 @@ const tamanhoPaginaAgenda = 200;
 export async function GET(request: NextRequest) {
   const sessao = await sessaoAtual();
   if (!sessao || !permitidos.has(sessao.usuario.papel)) return erro("Sem permissão", 403);
+  if (request.nextUrl.searchParams.get("somenteAlertas") === "1") {
+    const alertas = await consultar("alerta_marketing?select=agenda_id,criado_em,lido_em&lido_em=is.null&order=criado_em.desc&limit=100", sessao.accessToken);
+    if (!alertas.ok) return erro("Não foi possível carregar os alertas", 503);
+    return NextResponse.json({ alertas: alertas.dados ?? [] }, { headers: { "Cache-Control": "no-store" } });
+  }
   const inicio = request.nextUrl.searchParams.get("inicio");
   const fim = request.nextUrl.searchParams.get("fim");
   const paginaTexto = request.nextUrl.searchParams.get("pagina") ?? "0";
