@@ -46,7 +46,7 @@ export function SeletorDeFonte() {
 
   // Enquanto não leu o cookie, não desenha: um estado provisório piscando
   // "mock" e virando "real" é pior do que meio segundo de nada.
-  if (fonte === null || caminho === "/operacional/whatsapp") return null;
+  if (fonte === null || caminho === "/operacional/whatsapp" || caminho.startsWith("/cliente/brotos") || caminho.startsWith("/admin/brotos") || caminho.startsWith("/operacional/marketing")) return null;
 
   return (
     <div

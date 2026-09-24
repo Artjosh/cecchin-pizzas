@@ -35,7 +35,7 @@ import { AvisoAtendimento } from "../whatsapp/AvisoAtendimento";
 export function OperationalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [titulo,setTitulo]=useState<TituloRegistrado>(null);
-  const { podeVer } = useAuth();
+  const { podeVer, usuario } = useAuth();
 
   const isDespacho = pathname === "/operacional/despacho";
 
@@ -397,7 +397,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
           Sai junto com o interruptor, quando a última tela estiver ligada.
         */}
         <main className={pathname === "/operacional/whatsapp" ? "h-[calc(100dvh-4rem)] min-h-0 min-w-0 overflow-hidden bg-surface p-3 md:p-4" : "flex-1 bg-surface px-space-md py-3 md:px-space-lg pb-24 min-w-0"}>
-          {pathname !== "/operacional/whatsapp" && <AvisoDisponibilidade />}{children}
+          {usuario?.papel === "staff" && pathname !== "/operacional/whatsapp" && <AvisoDisponibilidade />}{children}
         </main>
       </div>
     </div></ContextoTitulo.Provider>
