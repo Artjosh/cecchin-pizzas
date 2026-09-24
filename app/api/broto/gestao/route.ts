@@ -15,13 +15,25 @@ export async function GET(request: NextRequest) {
   const paginaFinanceiro = Number(paginaFinanceiroTexto);
   const limite = 50;
   const consultaPedidos = `pedido_broto?select=id,cliente_id,total_centavos,status,pagamento_status,valor_pago_centavos,solicitado_em,prazo_entrega,endereco_entrega,observacao,item_pedido_broto(produto_id,nome_produto,quantidade,preco_unitario_centavos)&status=in.${tipoPedidos === "ativos" ? "(solicitado,aceito,producao,saiu_entrega)" : "(entregue,cancelado)"}&order=${tipoPedidos === "ativos" ? "prazo_entrega.asc,id.asc" : "solicitado_em.desc,id.desc"}&limit=${limite + 1}&offset=${paginaPedidos * limite}`;
+  const agora = new Date();
+  const emQuatroHoras = new Date(agora.getTime() + 4 * 60 * 60_000);
+  const filtroAtivos = "status=in.(solicitado,aceito,producao,saiu_entrega)";
+  const consultarAlertas = async () => {
+    if (tipoPedidos !== "ativos") return { atrasados: 0, proximos: 0 };
+    const [atrasados, proximos] = await Promise.all([
+      consultar(`pedido_broto?select=id&${filtroAtivos}&prazo_entrega=lt.${agora.toISOString()}&limit=1`, sessao.accessToken, { headers: { Prefer: "count=exact" } }),
+      consultar(`pedido_broto?select=id&${filtroAtivos}&prazo_entrega=gte.${agora.toISOString()}&prazo_entrega=lte.${emQuatroHoras.toISOString()}&limit=1`, sessao.accessToken, { headers: { Prefer: "count=exact" } }),
+    ]);
+    if (!atrasados.ok || !proximos.ok || atrasados.total === undefined || proximos.total === undefined) return null;
+    return { atrasados: atrasados.total, proximos: proximos.total };
+  };
   if (request.nextUrl.searchParams.get("somentePedidos") === "1") {
-    const pedidos = await consultar(consultaPedidos, sessao.accessToken);
-    if (!pedidos.ok) return erro("Não foi possível carregar os pedidos de brotos", 503);
+    const [pedidos, alertas] = await Promise.all([consultar(consultaPedidos, sessao.accessToken), consultarAlertas()]);
+    if (!pedidos.ok || alertas === null) return erro("Não foi possível carregar os pedidos de brotos", 503);
     const lista = Array.isArray(pedidos.dados) ? pedidos.dados : [];
-    return NextResponse.json({ pedidos: lista.slice(0, limite), temMaisPedidos: lista.length > limite }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ pedidos: lista.slice(0, limite), temMaisPedidos: lista.length > limite, alertas }, { headers: { "Cache-Control": "no-store" } });
   }
-  const [clientes, produtos, precos, pedidos, financeiro, resumo, pessoas] = await Promise.all([
+  const [clientes, produtos, precos, pedidos, financeiro, resumo, pessoas, alertas] = await Promise.all([
     consultar("cliente_broto?select=id,usuario_id,razao_social,cnpj,telefone,endereco,cidade,uf,cep,ativo&order=razao_social.asc&limit=300", sessao.accessToken),
     consultar("produto_broto?select=id,nome,descricao,preco_base_centavos,ativo&order=nome.asc&limit=200", sessao.accessToken),
     consultar("preco_cliente_broto?select=cliente_id,produto_id,valor_centavos&limit=1000", sessao.accessToken),
@@ -29,11 +41,12 @@ export async function GET(request: NextRequest) {
     consultar(`vw_financeiro_broto?select=lancamento_id,data,tipo,valor_centavos,descricao,pedido_id&order=data.desc,lancamento_id.desc&limit=${limite + 1}&offset=${paginaFinanceiro * limite}`, sessao.accessToken),
     consultar("vw_resumo_financeiro_broto?select=entradas_centavos,despesas_centavos,saldo_centavos&limit=1", sessao.accessToken),
     consultar("usuario?select=id,nome,email&ativo=eq.true&order=nome.asc&limit=500", sessao.accessToken),
+    consultarAlertas(),
   ]);
-  if ([clientes, produtos, precos, pedidos, financeiro, resumo, pessoas].some((r) => !r.ok)) return erro("Não foi possível carregar a gestão de brotos", 503);
+  if ([clientes, produtos, precos, pedidos, financeiro, resumo, pessoas].some((r) => !r.ok) || alertas === null) return erro("Não foi possível carregar a gestão de brotos", 503);
   const listaPedidos = Array.isArray(pedidos.dados) ? pedidos.dados : [];
   const listaFinanceiro = Array.isArray(financeiro.dados) ? financeiro.dados : [];
-  return NextResponse.json({ clientes: clientes.dados ?? [], produtos: produtos.dados ?? [], precos: precos.dados ?? [], pedidos: listaPedidos.slice(0, limite), temMaisPedidos: listaPedidos.length > limite, financeiro: listaFinanceiro.slice(0, limite), temMaisFinanceiro: listaFinanceiro.length > limite, resumo: Array.isArray(resumo.dados) ? resumo.dados[0] ?? null : null, pessoas: pessoas.dados ?? [] }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ clientes: clientes.dados ?? [], produtos: produtos.dados ?? [], precos: precos.dados ?? [], pedidos: listaPedidos.slice(0, limite), temMaisPedidos: listaPedidos.length > limite, financeiro: listaFinanceiro.slice(0, limite), temMaisFinanceiro: listaFinanceiro.length > limite, resumo: Array.isArray(resumo.dados) ? resumo.dados[0] ?? null : null, pessoas: pessoas.dados ?? [], alertas }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: NextRequest) {
