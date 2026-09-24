@@ -47,10 +47,14 @@ describe("planejador logístico", () => {
   });
 
   it("considera saídas já aprovadas sem bloquear o carro pelo dia inteiro", () => {
-    const aprovado = { veiculoId: empresa.id, saidaMs: Date.parse("2026-10-06T09:30:00-03:00"), retornoMs: Date.parse("2026-10-06T10:45:00-03:00") };
+    const aprovado = { veiculoId: empresa.id, saidaMs: Date.parse("2026-10-06T09:30:00-03:00"), retornoMs: Date.parse("2026-10-06T10:10:00-03:00") };
     const disponivel = planejarLogistica([evento], [empresa], config, [aprovado]);
     expect(disponivel.propostas).toHaveLength(1);
     const ocupado = planejarLogistica([evento], [empresa], config, [{ ...aprovado, retornoMs: Date.parse("2026-10-06T11:40:00-03:00") }]);
     expect(ocupado.propostas).toHaveLength(0);
+    const semPausa = planejarLogistica([evento], [empresa], config, [{ ...aprovado, retornoMs: Date.parse("2026-10-06T10:25:00-03:00") }]);
+    expect(semPausa.propostas).toHaveLength(0);
+    const comPausa = planejarLogistica([evento], [empresa], config, [{ ...aprovado, retornoMs: Date.parse("2026-10-06T10:20:00-03:00") }]);
+    expect(comPausa.propostas).toHaveLength(1);
   });
 });
