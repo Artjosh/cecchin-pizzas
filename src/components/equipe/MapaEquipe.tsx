@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useRef,useState} from "react";
+import {useEffect,useMemo,useRef,useState} from "react";
 import {AvatarPessoa} from "./AvatarPessoa";
 import {EstrelasNota} from "./EstrelasNota";
 import {TransporteEquipe} from "./TransporteEquipe";
@@ -13,20 +13,22 @@ import {comoData,comoHora} from "../../lib/formato";
 type Ponto={lat:number;lng:number};
 type Rota={duracaoSegundos:number;distanciaMetros:number;geometria:{type:'LineString';coordinates:[number,number][]}};
 const cache=new Map<string,Rota>();
+const SEM_OPCOES:SugestaoEquipe[]=[];
+const SEM_LIDERES:string[]=[];
 const chave=(a:Ponto,b:Ponto)=>`${a.lat},${a.lng}:${b.lat},${b.lng}`;
 async function rota(a:Ponto,b:Ponto,signal:AbortSignal){const k=chave(a,b);if(cache.has(k))return cache.get(k)!;const r=await fetch('/api/mapa/rota?'+new URLSearchParams({origemLat:String(a.lat),origemLng:String(a.lng),destinoLat:String(b.lat),destinoLng:String(b.lng)}),{signal});if(!r.ok)throw Error('Rota indisponível');const d=await r.json() as Rota;if(!Number.isFinite(d.duracaoSegundos))throw Error('Rota indisponível');if(cache.size>300)cache.clear();cache.set(k,d);return d;}
 const minutos=(r:Rota|null|undefined)=>r?`${Math.ceil(r.duracaoSegundos/60)} min`:'—';
-export function MapaEquipe({evento,pessoas:pessoasRecebidas,demo,fechar,perfil,opcoes=[],lideres=[],aplicar,adicionar,aoLocalizarEvento,embutido=false}:{evento?:EventoEquipe;pessoas:PessoaEquipe[];demo:boolean;fechar:()=>void;perfil:(p:PessoaEquipe)=>void;opcoes?:SugestaoEquipe[];lideres?:string[];aplicar?:(ids:string[],lideres:string[])=>void;adicionar?:(id:string)=>string;aoLocalizarEvento?:(ponto:{latitude:number;longitude:number})=>void;embutido?:boolean}){
+export function MapaEquipe({evento,pessoas:pessoasRecebidas,demo,fechar,perfil,opcoes=SEM_OPCOES,lideres=SEM_LIDERES,aplicar,adicionar,aoLocalizarEvento,embutido=false}:{evento?:EventoEquipe;pessoas:PessoaEquipe[];demo:boolean;fechar:()=>void;perfil:(p:PessoaEquipe)=>void;opcoes?:SugestaoEquipe[];lideres?:string[];aplicar?:(ids:string[],lideres:string[])=>void;adicionar?:(id:string)=>string;aoLocalizarEvento?:(ponto:{latitude:number;longitude:number})=>void;embutido?:boolean}){
  const [opcao,setOpcao]=useState(-1),[densidade,setDensidade]=useState(75),[feedback,setFeedback]=useState('');
  const indice=opcoes.length?Math.min(opcao,opcoes.length-1):-1;
  const lideresVisiveis=indice>=0?opcoes[indice].lideres:lideres;
- const pessoas=ordenarEquipe(indice>=0?opcoes[indice].pessoas:pessoasRecebidas,lideresVisiveis);
+ const pessoas=useMemo(()=>ordenarEquipe(indice>=0?opcoes[indice].pessoas:pessoasRecebidas,lideresVisiveis),[indice,opcoes,pessoasRecebidas,lideresVisiveis]);
  const enquadrar=useRef<(()=>void)|null>(null);
  const container=useRef<HTMLDivElement>(null),mapa=useRef<import('maplibre-gl').Map|null>(null),lib=useRef<typeof import('maplibre-gl')|null>(null);
  const [pronto,setPronto]=useState(false),[erro,setErro]=useState(''),[destino,setDestino]=useState<Ponto|null>(evento?.latitude!=null&&evento?.longitude!=null?{lat:evento?.latitude,lng:evento?.longitude}:null),[locais,setLocais]=useState<Array<Ponto&{endereco:string}>>([]),[buscando,setBuscando]=useState(false);
  const [ativo,setAtivo]=useState(pessoas[0]?.id??''),[rotas,setRotas]=useState<Record<string,Rota|null>>({}),[trechoEvento,setTrechoEvento]=useState<Rota|null>(null),[calculando,setCalculando]=useState(false);
  useEffect(()=>{setDestino(evento?.latitude!=null&&evento?.longitude!=null?{lat:evento.latitude,lng:evento.longitude}:null);},[evento?.id,evento?.latitude,evento?.longitude]);
- const qg=QG_CECCHIN.coordenada;const assinatura=pessoas.map(p=>`${p.id}:${p.perfil?.latitude}:${p.perfil?.longitude}`).join('|');
+ const qg=QG_CECCHIN.coordenada;const assinatura=useMemo(()=>pessoas.map(p=>`${p.id}:${p.perfil?.latitude}:${p.perfil?.longitude}`).join('|'),[pessoas]);
  useEffect(()=>{let vivo=true;const observer=new ResizeObserver(()=>{mapa.current?.resize();});if(container.current)observer.observe(container.current);void Promise.all([import('maplibre-gl'),import('maplibre-gl/dist/maplibre-gl.css')]).then(([m])=>{if(!vivo||!container.current)return;m.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');lib.current=m;const instancia=new m.Map({container:container.current,style:ESTILO_MAPA_OPERACIONAL,center:[qg.lng,qg.lat],zoom:11,attributionControl:false});mapa.current=instancia;instancia.addControl(new m.NavigationControl({showCompass:false}),'bottom-right');instancia.on('load',()=>{if(!vivo)return;aplicarVisualOperacional(instancia);instancia.addSource('trajetos-equipe',{type:'geojson',data:{type:'FeatureCollection',features:[]}});instancia.addLayer({id:'trajetos-equipe',type:'line',source:'trajetos-equipe',paint:{'line-color':['get','cor'],'line-width':4,'line-opacity':0.85}});setPronto(true);});}).catch(()=>setErro('Não foi possível carregar o mapa.'));return()=>{vivo=false;observer.disconnect();mapa.current?.remove();mapa.current=null;};},[]);
  useEffect(()=>{if(!pessoas.some(p=>p.id===ativo))setAtivo(pessoas[0]?.id??'');},[assinatura,ativo]);
  useEffect(()=>{const c=new AbortController();let vivo=true;setCalculando(true);setRotas({});setTrechoEvento(null);const filas=pessoas.filter(p=>p.perfil?.latitude!=null&&p.perfil?.longitude!=null);let indice=0;async function worker(){while(vivo&&indice<filas.length){const p=filas[indice++];try{const r=await rota({lat:p.perfil!.latitude!,lng:p.perfil!.longitude!},qg,c.signal);if(vivo)setRotas(a=>({...a,[p.id]:r}));}catch{if(vivo)setRotas(a=>({...a,[p.id]:null}));}}}const eventoRota=destino?rota(qg,destino,c.signal).then(r=>{if(vivo)setTrechoEvento(r);}).catch(()=>{}):Promise.resolve();void Promise.all([worker(),worker(),eventoRota]).finally(()=>{if(vivo)setCalculando(false);});return()=>{vivo=false;c.abort();};},[assinatura,destino?.lat,destino?.lng]);
