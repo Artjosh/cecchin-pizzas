@@ -31,6 +31,7 @@ const NOME_DO_BLOCO: Record<string, string> = {
   confirmacao: "Confirmação",
   feedback: "Feedback",
 };
+const PENDENCIAS_POR_PAGINA = 20;
 
 export async function PendenciasView({
   bloco,
@@ -47,14 +48,13 @@ export async function PendenciasView({
   const resultado = await consultar<Pendencia[]>(
       "vw_pendencia?select=bloco,ordem,id,data_evento,codigo_legado,pendencia,faltando" +
         filtro +
-        `&order=ordem.asc,data_evento.asc,id.asc,bloco.asc&limit=51&offset=${pagina * 50}`,
+        `&order=ordem.asc,data_evento.asc,id.asc,bloco.asc&limit=${PENDENCIAS_POR_PAGINA}&offset=${pagina * PENDENCIAS_POR_PAGINA}`,
       sessao.accessToken,
       { headers: { Prefer: "count=exact" } },
     );
   const leitura = comoLeitura(resultado);
 
-  const recebidas = leitura.estado === "ok" ? leitura.linhas : [];
-  const linhas = recebidas.slice(0, 50);
+  const linhas = leitura.estado === "ok" ? leitura.linhas : [];
 
 
   return (
@@ -93,7 +93,7 @@ export async function PendenciasView({
         <PendenciasTabela linhas={linhas}/>
       )}
 
-      {leitura.estado !== "erro" && <Paginacao pagina={pagina + 1} total={resultado.total ?? 0} porPagina={50} baseZero />}
+      {leitura.estado !== "erro" && <Paginacao pagina={pagina + 1} total={resultado.total ?? 0} porPagina={PENDENCIAS_POR_PAGINA} baseZero />}
 
     </div>
   );
