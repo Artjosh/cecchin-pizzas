@@ -68,9 +68,9 @@ export async function FinanceiroView() {
     consultar<Cartao[]>("cartao_credito_empresa?select=id,nome,fechamento_dia,vencimento_dia&ativo=eq.true&order=nome.asc&limit=100", sessao.accessToken),
     consultar<Fatura[]>("vw_fatura_cartao?select=cartao_id,nome,competencia,vencimento,total,pago&order=competencia.desc&limit=100", sessao.accessToken),
     consultar<{ id: string; nome: string }[]>("usuario?select=id,nome&ativo=eq.true&limit=500", sessao.accessToken),
-    consultar<PlanoVeiculo[]>(`plano_logistico?select=id,evento_id,veiculo_id,motorista_id,distancia_km,retorno_previsto&situacao=eq.aprovado&retorno_previsto=lte.${new Date().toISOString()}&order=retorno_previsto.desc&limit=200`, sessao.accessToken),
+    consultar<PlanoVeiculo[]>("vw_viagem_particular_a_registrar?select=id,evento_id,veiculo_id,motorista_id,distancia_km,retorno_previsto&order=retorno_previsto.desc,id.desc&limit=26", sessao.accessToken),
     consultar<VeiculoFinanceiro[]>("veiculo_operacional?select=id,proprietario_id,modelo,placa&proprietario_id=not.is.null&order=modelo.asc&limit=200", sessao.accessToken),
-    consultar<UsoVeiculo[]>("uso_veiculo_particular?select=id,plano_id,veiculo_id,motorista_id,numero_uso,km_rodados,transportou_material,lavagem_opcao,valor_deslocamento_centavos,valor_adicional_centavos,valor_lavagem_centavos,valor_bonus_centavos,estado&order=numero_uso.desc&limit=1000", sessao.accessToken),
+    consultar<UsoVeiculo[]>("uso_veiculo_particular?select=id,plano_id,veiculo_id,motorista_id,numero_uso,km_rodados,transportou_material,lavagem_opcao,valor_deslocamento_centavos,valor_adicional_centavos,valor_lavagem_centavos,valor_bonus_centavos,estado&estado=eq.pendente&order=criado_em.asc,id.asc&limit=26", sessao.accessToken),
     consultar<ResumoUsoVeiculo[]>("vw_resumo_uso_veiculo?select=veiculo_id,ultimo_uso&limit=500", sessao.accessToken),
   ]);
 
