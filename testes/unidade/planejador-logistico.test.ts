@@ -48,6 +48,8 @@ describe("planejador logístico", () => {
   it("prioriza frota própria, respeita capacidade e pede ajuda sem carro compatível", () => {
     const resultado = planejarLogistica([evento], [particular, empresa], config);
     expect(resultado.propostas[0].veiculoId).toBe("empresa");
+    expect(resultado.alternativas[evento.id].some((opcao) => opcao.veiculoId === "particular")).toBe(true);
+    expect(new Set(resultado.alternativas[evento.id].map((opcao) => `${opcao.veiculoId}:${opcao.modo}`)).size).toBe(resultado.alternativas[evento.id].length);
     const incapaz = planejarLogistica([{ ...evento, pessoas: 6 }], [particular, empresa], config);
     expect(incapaz.propostas).toHaveLength(0);
     expect(incapaz.pendencias[0].motivo).toMatch(/lugares/i);

@@ -63,6 +63,7 @@ export type PropostaLogistica = {
 
 export type ResultadoPlanejador = {
   propostas: PropostaLogistica[];
+  alternativas: Record<string, PropostaLogistica[]>;
   pendencias: { eventoId: string; motivo: string }[];
   eventos: number;
   carrosDisponiveis: number;
@@ -113,6 +114,7 @@ function cobreViagem(janelas: { inicioMs: number; fimMs: number }[], saida: numb
 /** Sugere uma alocação; conflitos, equipamento ausente e folga de saída vão à gestão. */
 export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: VeiculoPlanejavel[], config: ConfiguracaoPlanejador, aprovadas: OcupacaoAprovada[] = []): ResultadoPlanejador {
   const propostas: PropostaLogistica[] = [];
+  const alternativas: ResultadoPlanejador["alternativas"] = {};
   const pendencias: ResultadoPlanejador["pendencias"] = [];
   const disponibilidade = veiculos.filter((v) => v.disponivel);
   const ocupacao = new Map<string, { inicio: number; fim: number }[]>();
@@ -176,8 +178,18 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
       pendencias.push({ eventoId: evento.id, motivo: porCapacidade ? "Nenhum carro compatível cabe no horário. Escolha veículo de terceiro, ajuste forno/bebida ou revise a saída." : "Faltam lugares. A gestão precisa escolher outro carro ou ajustar a equipe." });
       continue;
     }
+    const vistos = new Set([`${escolhido.veiculoId}:${escolhido.modo}`]);
+    const opcoes: PropostaLogistica[] = [];
+    for (const candidato of candidatos.slice(1)) {
+      const chave = `${candidato.proposta.veiculoId}:${candidato.proposta.modo}`;
+      if (vistos.has(chave)) continue;
+      vistos.add(chave);
+      opcoes.push(candidato.proposta);
+      if (opcoes.length === 3) break;
+    }
+    alternativas[evento.id] = opcoes;
     propostas.push(escolhido);
     ocupacao.set(escolhido.veiculoId, [...(ocupacao.get(escolhido.veiculoId) ?? []), { inicio: Date.parse(escolhido.saidaPrevista), fim: Date.parse(escolhido.retornoPrevisto) }]);
   }
-  return { propostas, pendencias, eventos: eventos.length, carrosDisponiveis: disponibilidade.length };
+  return { propostas, alternativas, pendencias, eventos: eventos.length, carrosDisponiveis: disponibilidade.length };
 }
