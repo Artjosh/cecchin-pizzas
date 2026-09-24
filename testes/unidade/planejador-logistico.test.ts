@@ -35,4 +35,22 @@ describe("planejador logístico", () => {
     expect(impossivel.propostas).toHaveLength(0);
     expect(impossivel.pendencias).toHaveLength(1);
   });
+
+  it("reutiliza o carro de levar após o retorno e a pausa no QG", () => {
+    const segundo = { ...evento, id: "evento-b", inicioMs: Date.parse("2026-10-06T14:00:00-03:00") };
+    const resultado = planejarLogistica([evento, segundo], [empresa], config);
+    expect(resultado.pendencias).toHaveLength(0);
+    expect(resultado.propostas).toHaveLength(2);
+    expect(resultado.propostas[0].modo).toBe("levar");
+    expect(resultado.propostas[1].veiculoId).toBe("empresa");
+    expect(Date.parse(resultado.propostas[1].saidaPrevista) - Date.parse(resultado.propostas[0].retornoPrevisto)).toBeGreaterThanOrEqual(10 * 60_000);
+  });
+
+  it("considera saídas já aprovadas sem bloquear o carro pelo dia inteiro", () => {
+    const aprovado = { veiculoId: empresa.id, saidaMs: Date.parse("2026-10-06T09:30:00-03:00"), retornoMs: Date.parse("2026-10-06T10:45:00-03:00") };
+    const disponivel = planejarLogistica([evento], [empresa], config, [aprovado]);
+    expect(disponivel.propostas).toHaveLength(1);
+    const ocupado = planejarLogistica([evento], [empresa], config, [{ ...aprovado, retornoMs: Date.parse("2026-10-06T11:40:00-03:00") }]);
+    expect(ocupado.propostas).toHaveLength(0);
+  });
 });

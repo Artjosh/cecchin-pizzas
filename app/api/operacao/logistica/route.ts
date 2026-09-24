@@ -42,11 +42,14 @@ export async function GET(request: NextRequest) {
   semana.setUTCDate(semana.getUTCDate() - ((semana.getUTCDay() + 6) % 7));
   const inicioSemana = semana.toISOString().slice(0, 10);
   const idsFiltro = ids.length ? `&evento_id=in.(${ids.join(",")})` : "&evento_id=eq.00000000-0000-0000-0000-000000000000";
+  const amanha = new Date(`${dia}T12:00:00Z`);
+  amanha.setUTCDate(amanha.getUTCDate() + 1);
+  const fimDia = amanha.toISOString().slice(0, 10);
   const [requisitos, rotas, locais, planos, duplos, disponibilidades] = await Promise.all([
     consultar(`requisito_logistico_evento?select=*${idsFiltro}&limit=100`, token),
     consultar(`trajeto_logistico_evento?select=*${idsFiltro}&limit=100`, token),
     consultar(`localizacao_evento?select=evento_id,latitude,longitude${idsFiltro}&limit=100`, token),
-    consultar(`plano_logistico?select=*${idsFiltro}&situacao=neq.cancelado&limit=200`, token),
+    consultar(`plano_logistico?select=*&saida_prevista=lt.${fimDia}T00:00:00-03:00&retorno_previsto=gt.${dia}T00:00:00-03:00&situacao=neq.cancelado&limit=200`, token),
     consultar(`evento_duplo?select=*&or=(primeiro_evento_id.in.(${ids.length ? ids.join(",") : "00000000-0000-0000-0000-000000000000"}),segundo_evento_id.in.(${ids.length ? ids.join(",") : "00000000-0000-0000-0000-000000000000"}))&limit=100`, token),
     consultar(`disponibilidade_veiculo?select=veiculo_id,dias&semana=eq.${inicioSemana}&limit=200`, token),
   ]);

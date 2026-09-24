@@ -66,6 +66,8 @@ export type ResultadoPlanejador = {
   carrosDisponiveis: number;
 };
 
+export type OcupacaoAprovada = { veiculoId: string; saidaMs: number; retornoMs: number };
+
 const minuto = 60_000;
 const pesoForno: Record<TipoForno, number> = { nenhum: 0, mini: 1, mini_medio: 2, medio: 3 };
 const pesoBebida: Record<TipoBebida, number> = { nenhuma: 0, isopor_pequeno: 1, isopor_grande: 2 };
@@ -98,11 +100,15 @@ function custo(veiculo: VeiculoPlanejavel, km: number, material: boolean, config
 }
 
 /** Sugere uma alocação; conflitos, equipamento ausente e folga de saída vão à gestão. */
-export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: VeiculoPlanejavel[], config: ConfiguracaoPlanejador): ResultadoPlanejador {
+export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: VeiculoPlanejavel[], config: ConfiguracaoPlanejador, aprovadas: OcupacaoAprovada[] = []): ResultadoPlanejador {
   const propostas: PropostaLogistica[] = [];
   const pendencias: ResultadoPlanejador["pendencias"] = [];
   const disponibilidade = veiculos.filter((v) => v.disponivel);
-  const ocupacao = new Map<string, { inicio: number; fim: number; quantidadeLevar: number }[]>();
+  const ocupacao = new Map<string, { inicio: number; fim: number }[]>();
+  for (const plano of aprovadas) {
+    if (!Number.isFinite(plano.saidaMs) || !Number.isFinite(plano.retornoMs) || plano.retornoMs <= plano.saidaMs) continue;
+    ocupacao.set(plano.veiculoId, [...(ocupacao.get(plano.veiculoId) ?? []), { inicio: plano.saidaMs, fim: plano.retornoMs }]);
+  }
   const ordenados = [...eventos].sort((a, b) => saidaBase(a, config) - saidaBase(b, config) || a.rotaMinutos - b.rotaMinutos);
 
   for (const evento of ordenados) {
@@ -123,11 +129,12 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
       const trechoSegundo = segundo ? Math.ceil(evento.trechoSegundoMinutos! * config.fatorPicoPercentual / 100) : 0;
       const primeiroFim = evento.inicioMs + config.duracaoEventoMinutos * minuto;
       if (segundo && primeiroFim + trechoSegundo * minuto > evento.segundoInicioMs! - (evento.segundoBebidaAntes ? config.montagemBebidaAntesMinutos : config.montagemPadraoMinutos) * minuto) continue;
+      const retornoLevar = base + viagem * 2 * minuto;
+      const precisaReutilizar = ordenados.some((outro) => outro.id !== evento.id && saidaBase(outro, config) >= retornoLevar + config.minutosCarregar * minuto && saidaBase(outro, config) < terminaServico + viagem * minuto);
       for (const modo of (["equipe", "levar"] as const)) {
         if (segundo && modo === "levar") continue; // mesma equipe e mesmo carro na dupla
-        if (modo === "levar" && carro.limiteLevar < 2) continue;
-        if (modo === "levar" && ocupacoes.filter((o) => o.quantidadeLevar > 0).length >= carro.limiteLevar) continue;
-        const fim = modo === "levar" ? base + (viagem * 2 + config.minutosCarregar) * minuto : terminaServico + (segundo ? Math.ceil(evento.segundaRotaMinutos! * config.fatorPicoPercentual / 100) : viagem) * minuto;
+        if (modo === "levar" && carro.limiteLevar < 1) continue;
+        const fim = modo === "levar" ? base + viagem * 2 * minuto : terminaServico + (segundo ? Math.ceil(evento.segundaRotaMinutos! * config.fatorPicoPercentual / 100) : viagem) * minuto;
         let saida = base;
         const anterior = ocupacoes.filter((o) => o.fim <= base + config.flexSaidaMinutos * minuto).sort((a, b) => b.fim - a.fim)[0];
         if (anterior) saida = Math.max(base, anterior.fim + config.minutosCarregar * minuto);
@@ -142,7 +149,7 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
         if (segundo) alertas.push("Dupla: mesma equipe, saída do QG contabilizada uma vez; confirme tempo de desmontagem entre os eventos.");
         const proposta: PropostaLogistica = { eventoId: evento.id, segundoEventoId: evento.segundoEventoId, veiculoId: carro.id, modo, saidaPrevista: new Date(saida).toISOString(), retornoPrevisto: new Date(retorno).toISOString(), rotaMinutos: viagem, distanciaTotalKm: Math.round(kmTotal * 100) / 100, custoCentavos, alertas };
         // Custo primeiro; em empate, preferir frota própria e viagem curta.
-        candidatos.push({ proposta, prioridade: custoCentavos + (carro.proprietarioId ? 100 : 0) + (modo === "levar" ? 150 : 0) + Math.round(evento.rotaMinutos) });
+        candidatos.push({ proposta, prioridade: custoCentavos + (carro.proprietarioId ? 100 : 0) + (modo === "levar" ? (precisaReutilizar ? -300 : 150) : 0) + Math.round(evento.rotaMinutos) });
       }
     }
     candidatos.sort((a, b) => a.prioridade - b.prioridade || a.proposta.saidaPrevista.localeCompare(b.proposta.saidaPrevista));
@@ -153,7 +160,7 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
       continue;
     }
     propostas.push(escolhido);
-    ocupacao.set(escolhido.veiculoId, [...(ocupacao.get(escolhido.veiculoId) ?? []), { inicio: Date.parse(escolhido.saidaPrevista), fim: Date.parse(escolhido.retornoPrevisto), quantidadeLevar: escolhido.modo === "levar" ? 1 : 0 }]);
+    ocupacao.set(escolhido.veiculoId, [...(ocupacao.get(escolhido.veiculoId) ?? []), { inicio: Date.parse(escolhido.saidaPrevista), fim: Date.parse(escolhido.retornoPrevisto) }]);
   }
   return { propostas, pendencias, eventos: eventos.length, carrosDisponiveis: disponibilidade.length };
 }
