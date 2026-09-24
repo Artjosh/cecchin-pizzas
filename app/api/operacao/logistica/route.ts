@@ -92,14 +92,15 @@ export async function GET(request: NextRequest) {
   const dia = request.nextUrl.searchParams.get("data") ?? "";
   if (!data.test(dia) || Number.isNaN(Date.parse(`${dia}T12:00:00Z`))) return NextResponse.json({ mensagem: "Data inválida" }, { status: 400 });
   const token = sessao.accessToken;
-  const [eventos, veiculos, configuracao, regra, pessoas] = await Promise.all([
+  const [eventos, veiculos, configuracao, capacidade, regra, pessoas] = await Promise.all([
     consultar<Array<{ id: string; cliente_nome: string; data_evento: string; horario: string; inteiros: number; meios: number }>>(`vw_eventos_montagem?select=id,cliente_nome,data_evento,horario,inteiros,meios&data_evento=eq.${dia}&order=horario.asc,id.asc&limit=100`, token),
     consultar("veiculo_operacional?select=id,placa,modelo,forno_maximo,bebida_maxima,lugares,limite_eventos_levar,proprietario_id,ativo&ativo=is.true&order=modelo.asc&limit=200", token),
     consultar<Array<Record<string, unknown>>>("configuracao_logistica?select=*&limit=1", token),
+    consultar<Array<{ duracao_minutos: number }>>("configuracao_capacidade?select=duracao_minutos&limit=1", token),
     consultar<Array<Record<string, unknown>>>("regra_veiculo_particular?select=*&limit=1", token),
     consultar<Array<{ id: string; nome: string }>>("usuario?select=id,nome&ativo=is.true&papel=in.(staff,gestao,admin)&order=nome.asc&limit=300", token),
   ]);
-  if ([eventos, veiculos, configuracao, regra, pessoas].some((r) => !r.ok)) return NextResponse.json({ mensagem: "Não foi possível carregar a logística. Confira as migrações e o acesso ao banco." }, { status: 503 });
+  if ([eventos, veiculos, configuracao, capacidade, regra, pessoas].some((r) => !r.ok)) return NextResponse.json({ mensagem: "Não foi possível carregar a logística. Confira as migrações e o acesso ao banco." }, { status: 503 });
   const ids = (eventos.dados ?? []).map((e) => e.id);
   const semana = new Date(`${dia}T12:00:00Z`);
   semana.setUTCDate(semana.getUTCDate() - ((semana.getUTCDay() + 6) % 7));
@@ -114,9 +115,9 @@ export async function GET(request: NextRequest) {
   amanha.setUTCDate(amanha.getUTCDate() + 1);
   const fimDia = amanha.toISOString().slice(0, 10);
   const [requisitos, rotas, locais, planos, duplos, disponibilidades, disponibilidadesPessoas] = await Promise.all([
-    consultar(`requisito_logistico_evento?select=*${idsFiltro}&limit=100`, token),
-    consultar(`trajeto_logistico_evento?select=*${idsFiltro}&limit=100`, token),
-    consultar(`localizacao_evento?select=evento_id,latitude,longitude${idsFiltro}&limit=100`, token),
+    consultar<Array<Record<string, unknown>>>(`requisito_logistico_evento?select=*${idsFiltro}&limit=100`, token),
+    consultar<Array<Record<string, unknown>>>(`trajeto_logistico_evento?select=*${idsFiltro}&limit=100`, token),
+    consultar<Array<Record<string, unknown>>>(`localizacao_evento?select=evento_id,latitude,longitude${idsFiltro}&limit=100`, token),
     consultar(`plano_logistico?select=*&saida_prevista=lt.${fimDia}T00:00:00-03:00&retorno_previsto=gt.${dia}T00:00:00-03:00&situacao=neq.cancelado&limit=200`, token),
     consultar(`evento_duplo?select=*&or=(primeiro_evento_id.in.(${ids.length ? ids.join(",") : "00000000-0000-0000-0000-000000000000"}),segundo_evento_id.in.(${ids.length ? ids.join(",") : "00000000-0000-0000-0000-000000000000"}))&limit=100`, token),
     consultar(`disponibilidade_veiculo?select=veiculo_id,semana,dias&semana=in.(${semanas})&limit=600`, token),
@@ -124,12 +125,21 @@ export async function GET(request: NextRequest) {
   ]);
   if ([requisitos, rotas, locais, planos, duplos, disponibilidades, disponibilidadesPessoas].some((r) => !r.ok)) return NextResponse.json({ mensagem: "Não foi possível carregar os planos e a disponibilidade." }, { status: 503 });
   const idsDuplos = ((duplos.dados ?? []) as Array<{ id: string }>).map((item) => item.id);
+  const segundosForaDoDia = [...new Set(((duplos.dados ?? []) as Array<{ segundo_evento_id: string }>).map((item) => item.segundo_evento_id).filter((id) => !ids.includes(id)))];
+  const filtroSegundos = segundosForaDoDia.join(",");
+  const [eventosVinculados, requisitosVinculados, rotasVinculadas, locaisVinculados] = segundosForaDoDia.length ? await Promise.all([
+    consultar<Array<Record<string, unknown>>>(`vw_eventos_montagem?select=id,cliente_nome,data_evento,horario,inteiros,meios&id=in.(${filtroSegundos})&limit=100`, token),
+    consultar<Array<Record<string, unknown>>>(`requisito_logistico_evento?select=*&evento_id=in.(${filtroSegundos})&limit=100`, token),
+    consultar<Array<Record<string, unknown>>>(`trajeto_logistico_evento?select=*&evento_id=in.(${filtroSegundos})&limit=100`, token),
+    consultar<Array<Record<string, unknown>>>(`localizacao_evento?select=evento_id,latitude,longitude&evento_id=in.(${filtroSegundos})&limit=100`, token),
+  ]) : [{ ok: true, dados: [] }, { ok: true, dados: [] }, { ok: true, dados: [] }, { ok: true, dados: [] }];
+  if ([eventosVinculados, requisitosVinculados, rotasVinculadas, locaisVinculados].some((r) => !r.ok)) return NextResponse.json({ mensagem: "Não foi possível carregar o segundo evento das duplas." }, { status: 503 });
   const trechosDuplos = idsDuplos.length ? await consultar(`trajeto_logistico_duplo?select=*&evento_duplo_id=in.(${idsDuplos.join(",")})&limit=100`, token) : { ok: true, dados: [] };
   if (!trechosDuplos.ok) return NextResponse.json({ mensagem: "Não foi possível carregar os trajetos entre eventos." }, { status: 503 });
   const idsPlanos = ((planos.dados ?? []) as Array<{ id: string }>).map((plano) => plano.id);
   const paradas = idsPlanos.length ? await consultar(`parada_viagem_levar?select=plano_id,evento_id,ordem,chegada_prevista&plano_id=in.(${idsPlanos.join(",")})&order=ordem.asc&limit=200`, token) : { ok: true, dados: [] };
   if (!paradas.ok) return NextResponse.json({ mensagem: "Não foi possível carregar as paradas das viagens." }, { status: 503 });
-  return NextResponse.json({ eventos: eventos.dados ?? [], veiculos: veiculos.dados ?? [], pessoas: pessoas.dados ?? [], configuracao: configuracao.dados?.[0] ?? null, regra: regra.dados?.[0] ?? null, requisitos: requisitos.dados ?? [], rotas: rotas.dados ?? [], locais: locais.dados ?? [], planos: planos.dados ?? [], paradas: paradas.dados ?? [], duplos: duplos.dados ?? [], trechosDuplos: trechosDuplos.dados ?? [], disponibilidades: disponibilidades.dados ?? [], disponibilidadesPessoas: disponibilidadesPessoas.dados ?? [], inicioSemana }, { headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json({ eventos: eventos.dados ?? [], eventosVinculados: eventosVinculados.dados ?? [], veiculos: veiculos.dados ?? [], pessoas: pessoas.dados ?? [], configuracao: configuracao.dados?.[0] ?? null, capacidade: capacidade.dados?.[0] ?? null, regra: regra.dados?.[0] ?? null, requisitos: [...(requisitos.dados ?? []), ...(requisitosVinculados.dados ?? [])], rotas: [...(rotas.dados ?? []), ...(rotasVinculadas.dados ?? [])], locais: [...(locais.dados ?? []), ...(locaisVinculados.dados ?? [])], planos: planos.dados ?? [], paradas: paradas.dados ?? [], duplos: duplos.dados ?? [], trechosDuplos: trechosDuplos.dados ?? [], disponibilidades: disponibilidades.dados ?? [], disponibilidadesPessoas: disponibilidadesPessoas.dados ?? [], inicioSemana }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(request: NextRequest) {

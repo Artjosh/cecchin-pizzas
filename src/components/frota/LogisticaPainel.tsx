@@ -13,7 +13,7 @@ type Plano = { id: string; evento_id: string; situacao: string; veiculo_id: stri
 type Parada = { plano_id: string; evento_id: string; ordem: number; chegada_prevista: string };
 type ViagemPrevista = { eventos: string[]; veiculo_id: string; saida_prevista: string; retorno_previsto: string; distancia_km: number; custo_estimado: number; paradas: Array<{ eventoId: string; nome: string; chegadaPrevista: string; prazo: string }> };
 type Veiculo = { id: string; modelo: string; placa: string; forno_maximo: TipoForno; bebida_maxima: TipoBebida; lugares: number; limite_eventos_levar: number; proprietario_id: string | null };
-type Dados = { eventos: Evento[]; requisitos: Requisito[]; rotas: Rota[]; locais: Array<{ evento_id: string; latitude: number; longitude: number }>; duplos: Duplo[]; trechosDuplos: TrechoDuplo[]; planos: Plano[]; paradas: Parada[]; veiculos: Veiculo[]; pessoas: Array<{ id: string; nome: string }>; disponibilidades: Array<{ veiculo_id: string; semana: string; dias: boolean[] }>; disponibilidadesPessoas: Array<{ usuario_id: string; semana: string; dias: DiaPessoa[] }>; configuracao: Record<string, number> | null; regra: Record<string, number> | null };
+type Dados = { eventos: Evento[]; eventosVinculados: Evento[]; requisitos: Requisito[]; rotas: Rota[]; locais: Array<{ evento_id: string; latitude: number; longitude: number }>; duplos: Duplo[]; trechosDuplos: TrechoDuplo[]; planos: Plano[]; paradas: Parada[]; veiculos: Veiculo[]; pessoas: Array<{ id: string; nome: string }>; disponibilidades: Array<{ veiculo_id: string; semana: string; dias: boolean[] }>; disponibilidadesPessoas: Array<{ usuario_id: string; semana: string; dias: DiaPessoa[] }>; configuracao: Record<string, number> | null; capacidade: { duracao_minutos: number } | null; regra: Record<string, number> | null };
 const campo = "min-w-0 rounded-xl bg-surface-container px-3 py-2 text-sm text-on-surface";
 
 function dataLocal() { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); }
@@ -61,7 +61,7 @@ function propostasDoDia(dados: Dados, veiculos: VeiculoPlanejavel[]): ResultadoP
     }
     const base = { id: evento.id, inicioMs: Date.parse(`${evento.data_evento}T${evento.horario}-03:00`), convidados: (evento.inteiros ?? 0) + (evento.meios ?? 0), forno: requisito.forno_necessario as TipoForno, bebida: requisito.bebida_necessaria as TipoBebida, bebidaAntes: requisito.bebida_comeca_antes, pessoas: requisito.pessoas_transportar, rotaMinutos: rota.duracao_minutos, rotaKm: rota.distancia_km };
     if (!dupla) return [base];
-    const segundo = dados.eventos.find((item) => item.id === dupla.segundo_evento_id);
+    const segundo = [...dados.eventos, ...dados.eventosVinculados].find((item) => item.id === dupla.segundo_evento_id);
     const requisitoSegundo = dados.requisitos.find((item) => item.evento_id === dupla.segundo_evento_id);
     const rotaSegundo = rotaAtual(dados, dupla.segundo_evento_id);
     const trecho = trechoAtual(dados, dupla);
@@ -71,10 +71,10 @@ function propostasDoDia(dados: Dados, veiculos: VeiculoPlanejavel[]): ResultadoP
     }
     return [{ ...base, forno: ordemForno[Math.max(ordemForno.indexOf(base.forno), ordemForno.indexOf(requisitoSegundo.forno_necessario as TipoForno))], bebida: ordemBebida[Math.max(ordemBebida.indexOf(base.bebida), ordemBebida.indexOf(requisitoSegundo.bebida_necessaria as TipoBebida))], pessoas: Math.max(base.pessoas, requisitoSegundo.pessoas_transportar), segundoEventoId: segundo.id, segundoInicioMs: Date.parse(`${segundo.data_evento}T${segundo.horario}-03:00`), segundoBebidaAntes: requisitoSegundo.bebida_comeca_antes, trechoSegundoMinutos: trecho.duracao_minutos, trechoSegundoKm: trecho.distancia_km, segundaRotaKm: rotaSegundo.distancia_km, segundaRotaMinutos: rotaSegundo.duracao_minutos }];
   });
-  if (!dados.configuracao || !dados.regra) return { propostas: [], pendencias: dados.eventos.map((evento) => ({ eventoId: evento.id, motivo: "Configure as regras de logística e de veículo particular antes de gerar sugestões." })), eventos: dados.eventos.length, carrosDisponiveis: veiculos.filter((carro) => carro.disponivel).length };
+  if (!dados.configuracao || !dados.capacidade || !dados.regra) return { propostas: [], pendencias: dados.eventos.map((evento) => ({ eventoId: evento.id, motivo: "Configure a capacidade, a logística e o veículo particular antes de gerar sugestões." })), eventos: dados.eventos.length, carrosDisponiveis: veiculos.filter((carro) => carro.disponivel).length };
   const c = dados.configuracao, r = dados.regra;
   const aprovadas = dados.planos.filter((plano) => plano.situacao === "aprovado").map((plano) => ({ veiculoId: plano.veiculo_id, saidaMs: Date.parse(plano.saida_prevista), retornoMs: Date.parse(plano.retorno_previsto) }));
-  const resultado = planejarLogistica(eventos, veiculos, { minutosCarregar: c.minutos_carregar, flexSaidaMinutos: c.flex_saida_minutos, montagemPadraoMinutos: c.montagem_padrao_minutos, montagemBebidaAntesMinutos: c.montagem_bebida_antes_minutos, fatorPicoPercentual: c.fator_pico_percentual, custoFrotaCentavosKm: c.custo_frota_centavos_km, materialCentavosKm: r.material_centavos_km, pessoasCentavosKm: r.pessoas_centavos_km, minimoCentavos: r.minimo_centavos, adicionalMaterialCentavos: r.adicional_material_centavos, duracaoEventoMinutos: 240 }, aprovadas);
+  const resultado = planejarLogistica(eventos, veiculos, { minutosCarregar: c.minutos_carregar, flexSaidaMinutos: c.flex_saida_minutos, montagemPadraoMinutos: c.montagem_padrao_minutos, montagemBebidaAntesMinutos: c.montagem_bebida_antes_minutos, fatorPicoPercentual: c.fator_pico_percentual, custoFrotaCentavosKm: c.custo_frota_centavos_km, materialCentavosKm: r.material_centavos_km, pessoasCentavosKm: r.pessoas_centavos_km, minimoCentavos: r.minimo_centavos, adicionalMaterialCentavos: r.adicional_material_centavos, duracaoEventoMinutos: dados.capacidade.duracao_minutos }, aprovadas);
   return { ...resultado, pendencias: [...pendenciasPreparacao, ...resultado.pendencias] };
 }
 
