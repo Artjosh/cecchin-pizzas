@@ -34,6 +34,25 @@ export function BrotosCliente() {
     finally { setCarregando(false); }
   }, [paginaPedidos]);
   useEffect(() => { void carregar(); }, [carregar]);
+  const pedidosCarregados = dados !== null;
+  useEffect(() => {
+    if (!pedidosCarregados || salvando) return;
+    const controlador = new AbortController();
+    let emAndamento = false;
+    const atualizarPedidos = async () => {
+      if (document.visibilityState !== "visible" || emAndamento) return;
+      emAndamento = true;
+      try {
+        const resposta = await fetch(`/api/broto/cliente?pagina=${paginaPedidos}&somentePedidos=1`, { cache: "no-store", signal: controlador.signal });
+        if (!resposta.ok) return;
+        const lista = await resposta.json() as Pick<Dados, "pedidos" | "temMaisPedidos">;
+        if (!controlador.signal.aborted) setDados((atual) => atual ? { ...atual, pedidos: lista.pedidos, temMaisPedidos: lista.temMaisPedidos } : atual);
+      } catch { /* A próxima consulta atualiza os pedidos. */ }
+      finally { emAndamento = false; }
+    };
+    const intervalo = window.setInterval(() => void atualizarPedidos(), 30_000);
+    return () => { controlador.abort(); window.clearInterval(intervalo); };
+  }, [paginaPedidos, pedidosCarregados, salvando]);
   const precos = useMemo(() => new Map(dados?.precos.map((p) => [p.produto_id, p.valor_centavos]) ?? []), [dados]);
   const total = (dados?.produtos ?? []).reduce((soma, p) => soma + (quantidades[p.id] ?? 0) * (precos.get(p.id) ?? p.preco_base_centavos), 0);
   const enviar = async (corpo: Record<string, unknown>, mensagem: string) => {

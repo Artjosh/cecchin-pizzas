@@ -11,6 +11,16 @@ export async function GET(request: NextRequest) {
   if (!/^\d{1,4}$/.test(paginaTexto)) return erro("Página inválida", 400);
   const pagina = Number(paginaTexto);
   const limite = 50;
+  if (request.nextUrl.searchParams.get("somentePedidos") === "1") {
+    const clientes = await consultar(`cliente_broto?select=id&usuario_id=eq.${sessao.usuario.id}&limit=1`, sessao.accessToken);
+    if (!clientes.ok) return erro("Falha ao carregar pedidos", 503);
+    const id = Array.isArray(clientes.dados) ? clientes.dados[0]?.id : null;
+    if (!id) return NextResponse.json({ pedidos: [], temMaisPedidos: false }, { headers: { "Cache-Control": "no-store" } });
+    const pedidos = await consultar(`pedido_broto?select=id,total_centavos,status,pagamento_status,solicitado_em,prazo_entrega,item_pedido_broto(nome_produto,quantidade,preco_unitario_centavos)&cliente_id=eq.${id}&order=solicitado_em.desc,id.desc&limit=${limite + 1}&offset=${pagina * limite}`, sessao.accessToken);
+    if (!pedidos.ok) return erro("Falha ao carregar pedidos", 503);
+    const lista = Array.isArray(pedidos.dados) ? pedidos.dados : [];
+    return NextResponse.json({ pedidos: lista.slice(0, limite), temMaisPedidos: lista.length > limite }, { headers: { "Cache-Control": "no-store" } });
+  }
   const [clientes, produtos] = await Promise.all([
     consultar(`cliente_broto?select=id,razao_social,cnpj,telefone,endereco,cidade,uf,cep,complemento,ativo&usuario_id=eq.${sessao.usuario.id}&limit=1`, sessao.accessToken),
     consultar("produto_broto?select=id,nome,descricao,preco_base_centavos&ativo=eq.true&order=nome.asc&limit=100", sessao.accessToken),
