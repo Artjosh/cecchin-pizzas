@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
   if (!sessao || !["admin", "gestao"].includes(sessao.usuario.papel)) return erro("Sem permissão", 403);
   const paginaPedidosTexto = request.nextUrl.searchParams.get("paginaPedidos") ?? "0";
   const paginaFinanceiroTexto = request.nextUrl.searchParams.get("paginaFinanceiro") ?? "0";
-  if (!/^\d{1,4}$/.test(paginaPedidosTexto) || !/^\d{1,4}$/.test(paginaFinanceiroTexto)) return erro("Página inválida", 400);
+  const tipoPedidos = request.nextUrl.searchParams.get("tipoPedidos") ?? "ativos";
+  if (!/^\d{1,4}$/.test(paginaPedidosTexto) || !/^\d{1,4}$/.test(paginaFinanceiroTexto) || !["ativos", "historico"].includes(tipoPedidos)) return erro("Página inválida", 400);
   const paginaPedidos = Number(paginaPedidosTexto);
   const paginaFinanceiro = Number(paginaFinanceiroTexto);
   const limite = 50;
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     consultar("cliente_broto?select=id,usuario_id,razao_social,cnpj,telefone,endereco,cidade,uf,cep,ativo&order=razao_social.asc&limit=300", sessao.accessToken),
     consultar("produto_broto?select=id,nome,descricao,preco_base_centavos,ativo&order=nome.asc&limit=200", sessao.accessToken),
     consultar("preco_cliente_broto?select=cliente_id,produto_id,valor_centavos&limit=1000", sessao.accessToken),
-    consultar(`pedido_broto?select=id,cliente_id,total_centavos,status,pagamento_status,valor_pago_centavos,solicitado_em,prazo_entrega,endereco_entrega,observacao,item_pedido_broto(produto_id,nome_produto,quantidade,preco_unitario_centavos)&order=solicitado_em.desc,id.desc&limit=${limite + 1}&offset=${paginaPedidos * limite}`, sessao.accessToken),
+    consultar(`pedido_broto?select=id,cliente_id,total_centavos,status,pagamento_status,valor_pago_centavos,solicitado_em,prazo_entrega,endereco_entrega,observacao,item_pedido_broto(produto_id,nome_produto,quantidade,preco_unitario_centavos)&status=in.${tipoPedidos === "ativos" ? "(solicitado,aceito,producao,saiu_entrega)" : "(entregue,cancelado)"}&order=${tipoPedidos === "ativos" ? "prazo_entrega.asc,id.asc" : "solicitado_em.desc,id.desc"}&limit=${limite + 1}&offset=${paginaPedidos * limite}`, sessao.accessToken),
     consultar(`vw_financeiro_broto?select=lancamento_id,data,tipo,valor_centavos,descricao,pedido_id&order=data.desc,lancamento_id.desc&limit=${limite + 1}&offset=${paginaFinanceiro * limite}`, sessao.accessToken),
     consultar("vw_resumo_financeiro_broto?select=entradas_centavos,despesas_centavos,saldo_centavos&limit=1", sessao.accessToken),
     consultar("usuario?select=id,nome,email&ativo=eq.true&order=nome.asc&limit=500", sessao.accessToken),
