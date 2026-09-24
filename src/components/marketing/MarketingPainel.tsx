@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Check, Clock3, Plus, RefreshCw, Send } from "lucide-react";
 import { dataSaoPaulo, horarioSaoPauloParaIso, inicioSemana, somarDias } from "../../lib/agenda-marketing-data";
 
@@ -35,20 +35,23 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
   const [carregandoPublicacoes, setCarregandoPublicacoes] = useState(false);
   const [erroPublicacoes, setErroPublicacoes] = useState("");
   const [prazoPorId, setPrazoPorId] = useState<Record<string, string>>({});
+  const cargaAtual = useRef(0);
 
   const carregar = useCallback(async () => {
+    const carga = ++cargaAtual.current;
     const fim = somarDias(semana, 7);
     setCarregando(true);
     setErro("");
     try {
       const resposta = await fetch(`/api/operacao/marketing?inicio=${semana}&fim=${fim}`, { cache: "no-store" });
       if (!resposta.ok) throw new Error("Não foi possível carregar a agenda. Confira a migration e o acesso ao banco.");
-      setDados(await resposta.json() as Dados);
-    } catch (e) { setErro(e instanceof Error ? e.message : "Falha ao carregar"); }
-    finally { setCarregando(false); }
+      const resultado = await resposta.json() as Dados;
+      if (carga === cargaAtual.current) setDados(resultado);
+    } catch (e) { if (carga === cargaAtual.current) setErro(e instanceof Error ? e.message : "Falha ao carregar"); }
+    finally { if (carga === cargaAtual.current) setCarregando(false); }
   }, [semana]);
-  useEffect(() => { void carregar(); }, [carregar]);
-  useEffect(() => { const intervalo = window.setInterval(() => { void carregar(); }, 30000); return () => window.clearInterval(intervalo); }, [carregar]);
+  useEffect(() => { setDados(null); void carregar(); return () => { cargaAtual.current++; }; }, [carregar]);
+  useEffect(() => { const intervalo = window.setInterval(() => { if (document.visibilityState === "visible") void carregar(); }, 30000); return () => window.clearInterval(intervalo); }, [carregar]);
   useEffect(() => {
     if (!concorrenteAberto) return;
     const controller = new AbortController();
