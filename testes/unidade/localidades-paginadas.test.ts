@@ -23,8 +23,13 @@ it("pagina a busca combinada com localidades incompletas sem enviar a tabela int
   expect(dados.localidades).toHaveLength(1);
   expect(dados.total).toBe(42);
   expect(dados.incompletas).toBe(12);
-  expect(mocks.consultar).toHaveBeenCalledWith(expect.stringContaining("&and=(or(cidade.ilike.*Gravata%C3%AD*,bairro.ilike.*Gravata%C3%AD*),or(valor.is.null,minutos_normal.is.null,minutos_pico.is.null))"), "sessao-teste", expect.any(Object));
+  expect(mocks.consultar).toHaveBeenCalledWith(expect.stringContaining("&and=(or(cidade.imatch."), "sessao-teste", expect.any(Object));
   expect(mocks.consultar).toHaveBeenCalledWith(expect.stringContaining("limit=30&offset=30"), "sessao-teste", expect.any(Object));
+  const consultaComAcento = mocks.consultar.mock.calls.find(([caminho]) => caminho.startsWith("localidade?select=id,cidade"))?.[0];
+  mocks.consultar.mockClear();
+  await GET(new NextRequest("http://localhost/api/localidade?busca=Gravatai&incompletas=1&pagina=1"));
+  const consultaSemAcento = mocks.consultar.mock.calls.find(([caminho]) => caminho.startsWith("localidade?select=id,cidade"))?.[0];
+  expect(consultaSemAcento).toBe(consultaComAcento);
 });
 
 it("bloqueia leitura sem papel de gestão", async () => {

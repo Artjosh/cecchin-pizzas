@@ -25,6 +25,16 @@ function uuidValido(valor: unknown): valor is string {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(valor);
 }
 
+function padraoBusca(valor: string) {
+  const classes: Record<string, string> = {
+    a: "[aáàâãä]", c: "[cç]", e: "[eéèêë]", i: "[iíìîï]",
+    n: "[nñ]", o: "[oóòôõö]", u: "[uúùûü]",
+  };
+  const texto = valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const partes = [...texto].map((letra) => classes[letra] ?? (/^[a-z0-9]$/.test(letra) ? letra : " "));
+  return `.*${partes.join("").trim().replace(/\s+/g, ".*")}.*`;
+}
+
 async function sessaoDeGestao() {
   const sessao = await sessaoAtual();
   if (!sessao) {
@@ -52,7 +62,8 @@ export async function GET(request: NextRequest) {
   const pagina = Number(textoPagina);
   const porPagina = 30;
   const termo = busca.replace(/[,*().%]/g, " ").trim();
-  const buscaExpressao = `cidade.ilike.*${encodeURIComponent(termo)}*,bairro.ilike.*${encodeURIComponent(termo)}*`;
+  const padrao = termo ? encodeURIComponent(padraoBusca(termo)) : "";
+  const buscaExpressao = `cidade.imatch.${padrao},bairro.imatch.${padrao}`;
   const incompletasExpressao = "valor.is.null,minutos_normal.is.null,minutos_pico.is.null";
   const filtro = termo && incompletas ? `&and=(or(${buscaExpressao}),or(${incompletasExpressao}))`
     : termo ? `&or=(${buscaExpressao})` : incompletas ? `&or=(${incompletasExpressao})` : "";
