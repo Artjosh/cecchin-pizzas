@@ -104,6 +104,8 @@ export function LogisticaPainel() {
   const [primeiro, setPrimeiro] = useState("");
   const [segundo, setSegundo] = useState("");
   const [confirmarDesvinculo, setConfirmarDesvinculo] = useState<string | null>(null);
+  const [cancelarPlanoId, setCancelarPlanoId] = useState<string | null>(null);
+  const [motivoCancelamento, setMotivoCancelamento] = useState("");
   const [revisao, setRevisao] = useState(0);
   const [selecionados, setSelecionados] = useState<Set<string> | null>(null);
   const [opcaoPorEvento, setOpcaoPorEvento] = useState<Record<string, string>>({});
@@ -190,6 +192,13 @@ export function LogisticaPainel() {
           <div><h3 className="font-semibold">{evento.horario?.slice(0, 5)} · {evento.cliente_nome || "Evento"}</h3><p className="text-xs text-on-surface-variant">{(evento.inteiros ?? 0) + (evento.meios ?? 0)} convidados{dupla ? " · Evento duplo" : ""}</p></div>
           <div className="space-y-1 text-sm"><p>{requisito ? `${requisito.pessoas_transportar} pessoas · forno ${requisito.forno_necessario} · bebida ${requisito.bebida_necessaria}` : "Carga ainda não informada"}</p><p>{rota ? `${rota.distancia_km} km · ${rota.duracao_minutos} min desde o QG` : "Rota rodoviária ainda não calculada"}</p><p>{planos.length ? planos.map((plano) => `${dados.veiculos.find((v) => v.id === plano.veiculo_id)?.modelo ?? "Carro"}: ${plano.situacao}${paradaDaViagem?.plano_id === plano.id ? ` · parada ${paradaDaViagem.ordem}` : ""}`).join(" · ") : "Nenhum carro planejado"}</p>{paradaDaViagem && <p className="text-xs text-on-surface-variant">Chegada prevista {new Date(paradaDaViagem.chegada_prevista).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })} · custo compartilhado entre as paradas</p>}</div>
           <RequisitoForm evento={evento} atual={requisito} bloqueado={Boolean(ocupado)} salvar={(valores) => acao("requisito", { evento: evento.id, dados: valores })} />
+          {planos.filter((plano) => plano.situacao === "aprovado").map((plano) => <div key={plano.id} className="rounded-xl bg-surface-container p-3 text-xs">
+            <p>Plano aprovado para {dados.veiculos.find((carro) => carro.id === plano.veiculo_id)?.modelo ?? "o carro"}. O cancelamento preserva o registro e libera o carro para um novo planejamento.</p>
+            {new Date(plano.saida_prevista).getTime() <= Date.now() ? <p className="mt-2 text-on-surface-variant">A saída prevista já passou. Confira a viagem com a operação.</p> : cancelarPlanoId === plano.id ? <div className="mt-2 space-y-2">
+              <label className="grid gap-1">Motivo do cancelamento<textarea value={motivoCancelamento} onChange={(ev) => setMotivoCancelamento(ev.target.value)} maxLength={500} className={campo} rows={2} placeholder="Explique por que o carro precisa ser replanejado" /></label>
+              <div className="flex flex-wrap gap-2"><button disabled={Boolean(ocupado) || motivoCancelamento.trim().length < 10} onClick={() => { setCancelarPlanoId(null); void acao("cancelar_plano", { plano: plano.id, motivo: motivoCancelamento.trim() }); }} className="rounded-lg bg-primary px-3 py-2 text-on-primary disabled:opacity-50">Confirmar cancelamento</button><button onClick={() => setCancelarPlanoId(null)} className="rounded-lg px-3 py-2">Manter plano</button></div>
+            </div> : <button disabled={Boolean(ocupado)} onClick={() => { setMotivoCancelamento(""); setCancelarPlanoId(plano.id); }} className="mt-2 rounded-lg bg-surface-container-high px-3 py-2 disabled:opacity-50">Cancelar plano aprovado</button>}
+          </div>)}
           <button disabled={Boolean(ocupado)} onClick={() => void acao("rota", { evento: evento.id })} className="rounded-xl bg-surface-container px-3 py-2 text-xs disabled:opacity-50">{ocupado === "rota" ? "Calculando…" : rota ? "Atualizar rota" : "Calcular rota"}</button>
           {dupla?.primeiro_evento_id === evento.id && <div className="space-y-2 text-xs">
             <p>{trecho ? `${trecho.distancia_km} km · ${trecho.duracao_minutos} min até o segundo evento` : "Trecho entre os eventos ainda não calculado"}</p>
