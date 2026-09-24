@@ -14,5 +14,6 @@ describe("agenda de marketing no fuso de São Paulo", () => {
 
   it("envia o horário digitado em São Paulo como instante UTC", () => {
     expect(horarioSaoPauloParaIso("2026-09-24T12:00")).toBe("2026-09-24T15:00:00.000Z");
+    expect(horarioSaoPauloParaIso("2026-09-24T00:00")).toBe("2026-09-24T03:00:00.000Z");
   });
 });

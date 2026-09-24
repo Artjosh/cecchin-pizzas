@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { sessaoAtual } from "@/src/servidor/auth/sessao-atual";
 import { chamarFuncao, consultar } from "@/src/servidor/supabase";
+import { horarioSaoPauloParaIso } from "@/src/lib/agenda-marketing-data";
 
 const permitidos = new Set(["admin", "gestao", "staff"]);
 const erro = (mensagem: string, status: number) => NextResponse.json({ mensagem }, { status });
@@ -11,8 +12,16 @@ export async function GET(request: NextRequest) {
   const inicio = request.nextUrl.searchParams.get("inicio");
   const fim = request.nextUrl.searchParams.get("fim");
   if (!inicio || !fim || !/^\d{4}-\d{2}-\d{2}$/.test(inicio) || !/^\d{4}-\d{2}-\d{2}$/.test(fim) || fim < inicio) return erro("Período inválido", 400);
+  let inicioIso: string;
+  let fimIso: string;
+  try {
+    inicioIso = horarioSaoPauloParaIso(`${inicio}T00:00`);
+    fimIso = horarioSaoPauloParaIso(`${fim}T00:00`);
+  } catch {
+    return erro("Período inválido", 400);
+  }
   const [agenda, solicitacoes, perfis, alertas, concorrentes] = await Promise.all([
-    consultar(`agenda_marketing?select=id,responsavel_id,solicitacao_id,categoria,titulo,descricao_conteudo,midia_caminho,agendado_para,situacao,confirmado_em,publicado_em&agendado_para=gte.${inicio}T00:00:00-03:00&agendado_para=lt.${fim}T00:00:00-03:00&order=agendado_para.asc&limit=200`, sessao.accessToken),
+    consultar(`agenda_marketing?select=id,responsavel_id,solicitacao_id,categoria,titulo,descricao_conteudo,midia_caminho,agendado_para,situacao,confirmado_em,publicado_em&agendado_para=gte.${inicioIso}&agendado_para=lt.${fimIso}&order=agendado_para.asc&limit=200`, sessao.accessToken),
     consultar("solicitacao_marketing?select=id,solicitante_id,responsavel_id,titulo,descricao,categoria,situacao,prazo,criado_em&order=criado_em.desc&limit=100", sessao.accessToken),
     consultar("perfil_marketing?select=usuario_id,ativo&ativo=eq.true&limit=100", sessao.accessToken),
     consultar("alerta_marketing?select=agenda_id,criado_em,lido_em&lido_em=is.null&order=criado_em.desc&limit=100", sessao.accessToken),
