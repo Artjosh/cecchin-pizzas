@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { planejarLogistica, type PropostaLogistica, type ResultadoPlanejador, type TipoBebida, type TipoForno, type VeiculoPlanejavel } from "@/src/lib/logistica/planejador";
 import { carroEMotoristaCoincidemNoDia, janelasCarro, janelasPessoa, type DiaPessoa } from "@/src/lib/logistica/janelasDisponibilidade";
+import { sugerirParadas } from "@/src/lib/logistica/sugerirParadas";
 
 type Evento = { id: string; cliente_nome: string; data_evento: string; horario: string; inteiros: number; meios: number };
 type Requisito = { evento_id: string; forno_necessario: string; bebida_necessaria: string; bebida_comeca_antes: boolean; pessoas_transportar: number };
@@ -77,14 +78,12 @@ function eventoCabeNaViagem(dados: Dados, carro: Veiculo, evento: Evento) {
 }
 
 function sugerirGrupoViagem(dados: Dados, carro: Veiculo, eventos: Evento[]) {
-  let lugares = 0;
-  return eventos.filter((evento) => {
-    if (!eventoCabeNaViagem(dados, carro, evento)) return false;
-    const pessoas = dados.requisitos.find((item) => item.evento_id === evento.id)!.pessoas_transportar;
-    if (lugares + pessoas > carro.lugares || lugares >= carro.lugares) return false;
-    lugares += pessoas;
-    return true;
-  }).slice(0, carro.limite_eventos_levar).map((evento) => evento.id);
+  return sugerirParadas(eventos.filter((evento) => eventoCabeNaViagem(dados, carro, evento)).map((evento) => ({
+    id: evento.id,
+    horario: evento.horario,
+    pessoas: dados.requisitos.find((item) => item.evento_id === evento.id)!.pessoas_transportar,
+    rotaMinutos: rotaAtual(dados, evento.id)!.duracao_minutos,
+  })), carro.lugares, carro.limite_eventos_levar);
 }
 
 function propostasDoDia(dados: Dados, veiculos: VeiculoPlanejavel[]): ResultadoPlanejador {
