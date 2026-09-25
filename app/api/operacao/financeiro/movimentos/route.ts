@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ mensagem: "Período inválido" }, { status: 400 });
   }
   const resposta = await consultar<MovimentoHoje[]>(
-    `vw_caixa_hoje?select=origem_id,dia,natureza,descricao,valor&dia=eq.${dia}&order=natureza.asc,descricao.asc,valor.asc,origem_id.asc&limit=50&offset=${(pagina - 1) * 50}`,
+    `vw_caixa_hoje?select=origem_id,dia,natureza,descricao,valor,taxa_pendente&dia=eq.${dia}&order=natureza.asc,descricao.asc,valor.asc,origem_id.asc&limit=50&offset=${(pagina - 1) * 50}`,
     sessao.accessToken,
   );
   if (!resposta.ok) return NextResponse.json({ mensagem: "Não foi possível carregar as movimentações" }, { status: 503 });
