@@ -160,7 +160,7 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
       <button type="button" className="ml-auto shrink-0 rounded-lg bg-primary-container px-3 py-2 text-on-primary-container lg:hidden" onClick={()=>setMobilePreview(v=>!v)}>{mobilePreview?"Ver gestão":"Ver Instagram"}</button>
     </nav>
     <div className="grid min-h-0 gap-3 lg:grid-cols-2">
-      <section aria-label="Central do Instagram" className={`${mobilePreview?"":"hidden lg:block"} min-h-[65dvh] overflow-y-auto rounded-2xl bg-surface-container-low p-3`}>
+      <section aria-label="Central do Instagram" className={`${mobilePreview?"":"hidden lg:block"} h-[72dvh] min-h-0 overflow-hidden rounded-2xl bg-surface-container-low p-3`}>
         <InstagramCentral gestor={gestor} />
       </section>
       <div className={`${mobilePreview?"hidden lg:block":""} min-h-0 max-h-[72dvh] space-y-3 overflow-y-auto rounded-2xl bg-surface-container-low p-3`}>
