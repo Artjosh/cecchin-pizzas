@@ -8,6 +8,7 @@ Os procedimentos específicos e versionados vivem em `skills/`:
 - `ligar-dado` — trocar mock por dado real usando PostgREST, Storage ou NestJS.
 - `provar-cadeia` — conferir o fluxo completo e seus efeitos autorizados.
 - `verificar-tela` — revisar mudanças visuais em desktop, tablet e celular.
+- `desenhar-interface` — planejar hierarquia, abas, densidade e estados de telas operacionais antes de alterar o layout.
 
 Leia a skill aplicável antes de começar esse tipo de trabalho. O diretório fica
 na raiz para que Claude, Codex e outros agentes encontrem a mesma instrução.

@@ -103,7 +103,7 @@ Central mantém atendimento humano/bot, fila de envio, mídias autorizadas e ocu
 
 `/admin/localidades` edita taxa e minutos separadamente. O ETL histórico preservou 68 taxas de deslocamento e 18 vigências de preços. Os tempos normal/pico da planilha estavam vazios e continuam nulos até decisão administrativa. Ausência de taxa num bairro específico exige investigar a fonte e o registro, sem copiar preço de catálogo para taxa.
 
-Marketing oferece agenda interna, pedidos, biblioteca e concorrência. A visualização Instagram em metade da tela desktop é uma **prévia fictícia**, com alternância no celular; não há OAuth de contas próprias, leitura de feed/stories próprios ou publicação automática. O upload guarda a mídia na agenda interna, e marcar um conteúdo como publicado registra apenas a conclusão humana. Métricas de concorrentes dependem de credenciais e coleta configuradas. Uma integração real exigirá autenticação e permissões Meta, contas profissionais elegíveis, armazenamento de tokens, mídia acessível pela API e um publicador assíncrono com estados de falha.
+Marketing oferece agenda interna, pedidos, biblioteca e concorrência. A visualização Instagram em metade da tela desktop é uma **prévia fictícia**, com alternância no celular; não há OAuth de contas próprias, leitura de feed/stories próprios ou publicação automática. O upload guarda a mídia na agenda interna, e marcar um conteúdo como publicado registra apenas a conclusão humana. Métricas de concorrentes dependem de credenciais e coleta configuradas. O desenho de integração oficial, múltiplas contas e publicação assíncrona está em [Instagram na central de marketing](INSTAGRAM_INTEGRACAO.md).
 
 ## Desempenho e evidências
 
