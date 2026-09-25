@@ -31,6 +31,7 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { SeletorDeTema } from "../SeletorDeTema";
 import { AvisoAtendimento } from "../whatsapp/AvisoAtendimento";
+import { AvisoPedidosBroto } from "../broto/AvisoPedidosBroto";
 
 export function OperationalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -292,7 +293,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   <Wallet className="w-[18px] h-[18px]" />
                   Financeiro
                 </Link>
-                <Link prefetch={false} href="/admin/brotos" className={cn("flex items-center gap-3 rounded-lg px-3 py-2 transition-colors", pathname === "/admin/brotos" ? "bg-primary-container font-bold text-on-primary-container" : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface")}><ShoppingBasket className="h-5 w-5" /><span className="font-label-lg text-label-lg">Brotos</span></Link>
+                <Link prefetch={false} href="/admin/brotos" className={cn("flex items-center gap-3 rounded-lg px-3 py-2 transition-colors", pathname === "/admin/brotos" ? "bg-primary-container font-bold text-on-primary-container" : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface")}><ShoppingBasket className="h-5 w-5" /><span className="font-label-lg text-label-lg">Brotos</span><AvisoPedidosBroto /></Link>
                 <Link prefetch={false}
                   href="/admin/pagamentos"
                   className={cn("px-3 py-2 rounded-lg font-label-md text-label-md flex items-center gap-space-sm transition-colors", pathname.startsWith("/admin/pagamentos") ? "bg-primary-container text-on-primary-container" : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface")}

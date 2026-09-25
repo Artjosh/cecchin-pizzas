@@ -27,6 +27,11 @@ export async function GET(request: NextRequest) {
     if (!atrasados.ok || !proximos.ok || atrasados.total === undefined || proximos.total === undefined) return null;
     return { atrasados: atrasados.total, proximos: proximos.total };
   };
+  if (request.nextUrl.searchParams.get("somenteContagem") === "1") {
+    const pendentes = await consultar("pedido_broto?select=id&status=eq.solicitado&limit=1", sessao.accessToken, { headers: { Prefer: "count=exact" } });
+    if (!pendentes.ok || pendentes.total === undefined) return erro("Não foi possível contar os pedidos", 503);
+    return NextResponse.json({ pendentes: pendentes.total }, { headers: { "Cache-Control": "no-store" } });
+  }
   if (request.nextUrl.searchParams.get("somentePedidos") === "1") {
     const [pedidos, alertas] = await Promise.all([consultar(consultaPedidos, sessao.accessToken), consultarAlertas()]);
     if (!pedidos.ok || alertas === null) return erro("Não foi possível carregar os pedidos de brotos", 503);
