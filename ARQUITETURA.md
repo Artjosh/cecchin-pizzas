@@ -77,6 +77,8 @@ Três dados são independentes: meios de deslocamento, veículos próprios e cat
 
 Residência fica em `perfil_operacional_equipe`, com leitura de gestão/admin; não amplie a exposição de `usuario` para guardar endereço privado. QG vem de `QG_CECCHIN` em `src/lib/operacao.ts`. O ponto do evento fica em `localizacao_evento`: escolha explícita do geocoder, gravação autorizada e uso condicionado ao endereço de referência ainda coincidir com o evento.
 
+O Mapa Tático lê os pontos confirmados de `localizacao_evento` e enquadra todos os eventos do dia. Eventos antigos sem ponto podem aparecer numa prévia aproximada solicitada pelo operador; essa prévia não é gravada nem libera cálculo logístico. A aba lateral de saídas usa o planejador existente, incluindo viagens com várias paradas e sugestões de carro; linhas tracejadas no mapa são esquemas, enquanto a linha laranja do evento selecionado usa a geometria rodoviária de `/api/mapa/rota`.
+
 OSRM fornece estimativas de carro, sem trânsito ao vivo, tempo de espera ou cálculo específico de ônibus/moto. Geocoding e rota via BFF não são rastreamento GPS. A interface deve apresentar esses limites sem inventar posições.
 
 ## Minha rota, embarque e avaliações

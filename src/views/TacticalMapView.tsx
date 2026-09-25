@@ -6,7 +6,6 @@ import { consultar } from "../servidor/supabase";
 import { fonteDeDados } from "../servidor/fonte";
 
 import { MapaDesenhado } from "./desenho/MapaDesenhado";
-import { LogisticaPainel } from "../components/frota/LogisticaPainel";
 import Link from "next/link";
 
 /* ===========================================================================
@@ -28,8 +27,19 @@ async function MapaDoBanco(data?: string) {
       `&data_evento=eq.${dia}&status=eq.confirmado&order=horario.asc&limit=30`,
     sessao.accessToken,
   );
+  const ids = (r.dados ?? []).map((evento) => evento.id);
+  const locais = ids.length ? await consultar<Array<{ evento_id: string; latitude: number; longitude: number; endereco_referencia: string }>>(
+    `localizacao_evento?select=evento_id,latitude,longitude,endereco_referencia&evento_id=in.(${ids.join(",")})&limit=100`,
+    sessao.accessToken,
+  ) : { ok: true, dados: [] as Array<{ evento_id: string; latitude: number; longitude: number; endereco_referencia: string }> };
+  const coordenadas = new Map((locais.dados ?? []).map((local) => [local.evento_id, local]));
+  const eventos = (r.dados ?? []).map((evento) => {
+    const local = coordenadas.get(evento.id);
+    const enderecoAtual = [evento.endereco, evento.bairro, evento.cidade].filter(Boolean).join(", ");
+    return { ...evento, latitude: local?.endereco_referencia === enderecoAtual ? local.latitude : null, longitude: local?.endereco_referencia === enderecoAtual ? local.longitude : null };
+  });
 
-  return <div className="flex min-h-0 flex-col gap-3">
+  return <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
     <div className="flex flex-wrap items-center gap-2 rounded-xl bg-surface-container-low px-3 py-2 text-sm">
       <strong className="mr-auto">Rotas · {dia === hoje ? "Hoje" : dia.split("-").reverse().join("/")}</strong>
       <Link href={`/operacional/mapa?data=${new Date(Date.parse(`${dia}T12:00:00Z`) - 86400000).toISOString().slice(0, 10)}`} className="rounded-lg bg-surface-container px-3 py-1.5">Dia anterior</Link>
@@ -37,8 +47,8 @@ async function MapaDoBanco(data?: string) {
       <Link href={`/operacional/mapa?data=${new Date(Date.parse(`${dia}T12:00:00Z`) + 86400000).toISOString().slice(0, 10)}`} className="rounded-lg bg-surface-container px-3 py-1.5">Próximo dia</Link>
     </div>
     {!r.ok && <p role="alert" className="rounded-xl bg-error-container p-3 text-on-error-container">Não foi possível carregar os eventos deste dia.</p>}
-    <MapaTatico eventos={r.dados ?? []} base={QG_CECCHIN.coordenada} dia={dia} />
-    {(sessao.usuario.papel === "gestao" || sessao.usuario.papel === "admin") && <LogisticaPainel diaInicial={dia} />}
+    {!locais.ok && <p role="alert" className="rounded-xl bg-error-container p-3 text-on-error-container">Não foi possível carregar as localizações salvas.</p>}
+    <MapaTatico eventos={eventos} base={QG_CECCHIN.coordenada} dia={dia} podePlanejar={sessao.usuario.papel === "gestao" || sessao.usuario.papel === "admin"} />
   </div>;
 }
 

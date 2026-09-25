@@ -29,6 +29,7 @@ export function aplicarVisualOperacional(mapa: MapaMapLibre): void {
       : { fundo: "#dfe3e5", agua: "#b9cbd3", terreno: "#d9dfe0", rua: "#ffffff", texto: "#46616a", halo: "#f5f6f6" };
     for (const camada of mapa.getStyle().layers ?? []) {
       const id = camada.id.toLowerCase();
+      if (id === "rotas-possiveis" || id === "rotas-aprovadas" || id === "rota-selecionada") continue;
       try {
         if (/(poi|transit|aeroway|building|housenumber|address|landuse|boundary|railway|oneway)/.test(id)) {
           mapa.setLayoutProperty(camada.id, "visibility", "none");
