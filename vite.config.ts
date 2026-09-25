@@ -54,7 +54,8 @@ export default defineConfig(({ command }) => {
     server: {
       // O callback local usa `192-168-x-x.sslip.io`, hostname que resolve para
       // o IP Wi-Fi atual e evita a restrição do GoTrue a IPv4 literal.
-      allowedHosts: [".sslip.io"],
+      // Workers no Docker chamam a rota privada de e-mail pelo host da maquina.
+      allowedHosts: [".sslip.io", "host.docker.internal"],
       /*
        * Os módulos de desenvolvimento mudam quando Vite reconstrói as
        * dependências. Sem isto, uma aba aberta pode pedir o arquivo da execução
