@@ -20,11 +20,9 @@ import { comoLeitura, fonteDeDados } from "../servidor/fonte";
  * duração), `modelo_forno` (o equipamento) e `preco_vigencia` (o preço com data
  * de início).
  *
- * A diferença não é detalhe: `preco_vigencia` está VAZIA. O preço de oito anos
- * de eventos foi digitado evento a evento na planilha, e a tabela de preço
- * vigente existe como proposta. Enquanto ninguém a preencher, esta tela mostra
- * o que se vende sem conseguir dizer por quanto — e é melhor dizer isso do que
- * inventar um número.
+ * O ETL inclui vigências de preço para alguns modelos. Eventos históricos
+ * também guardam preço próprio; esta tela só mostra um preço quando há
+ * vigência efetiva para o modelo, sem inventar valores para lacunas.
  */
 
 /** O desenho. Mantido inteiro. */

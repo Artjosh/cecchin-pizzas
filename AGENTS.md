@@ -13,3 +13,5 @@ Leia a skill aplicável antes de começar esse tipo de trabalho. O diretório fi
 na raiz para que Claude, Codex e outros agentes encontrem a mesma instrução.
 
 Consulte também o [README](README.md) para entrada no projeto. Preserve mudanças locais de outras pessoas. Comandos de validação são opções, sujeitos às instruções da sessão; não executar reset, build ou reiniciar serviços por hábito.
+
+Preferência permanente do usuário neste workspace: não executar typecheck nem linter automaticamente. Só fazê-lo após pedido explícito posterior.

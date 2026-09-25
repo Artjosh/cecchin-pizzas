@@ -12,6 +12,7 @@ export const metadata = { title: "Mapa tático · Cecchin Pizzas" };
  */
 export const dynamic = "force-dynamic";
 
-export default function Page() {
-  return <TacticalMapView />;
+export default async function Page({ searchParams }: { searchParams: Promise<{ data?: string }> }) {
+  const { data } = await searchParams;
+  return <TacticalMapView data={data} />;
 }

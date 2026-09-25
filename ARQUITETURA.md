@@ -1,6 +1,6 @@
 # Arquitetura do frontend
 
-Estado do código local revisado em **16/09/2026**. Evidências de execução têm data nos relatórios; funcionalidades locais não implicam implantação em produção.
+Estado do código local revisado em **25/09/2026**. Evidências de execução têm data nos relatórios; funcionalidades locais não implicam implantação em produção. A auditoria transversal e suas lacunas estão em [AUDITORIA_SISTEMA_2026-09-25.md](../AUDITORIA_SISTEMA_2026-09-25.md).
 
 ## Fluxo de dados
 
@@ -21,7 +21,7 @@ Leituras de negócio ficam em `src/servidor/`; consultas paginadas selecionam s�
 
 Em `/admin/operacao?aba=vinculos`, responsáveis são carregados em páginas de 30. Busca por nome e filtro de contas não ligadas passam pelo BFF `GET /api/operacao/responsavel`, sob o JWT da gestão e RLS do banco; a ligação continua pela RPC `ligar_responsavel`. A leitura inicial envia apenas a primeira página. Funcionários e contas elegíveis ainda são enviados no render inicial, pois são listas pequenas no banco local; reavalie seus limites se crescerem.
 
-Em `/admin/financeiro`, entradas e despesas pagas têm paginações independentes de 30 registros, com contagem do PostgREST. Despesas usam `pago_em` e os campos `valor_bruto`, `valor_liquido` e `tipo_pagamento` do schema atual; contas a pagar pertencem a um fluxo separado. Alterar uma página preserva a posição da outra na URL.
+Em `/admin/financeiro`, abas de Hoje, Freelancers, Cartões, Veículos, Conciliação, Lançamentos e Configurações reduzem o conteúdo simultâneo. A configuração InfinitePay, preços, sinal e capacidade fica em Configurações; `/admin/pagamentos` é a central de **Eventos solicitados**. Entradas e despesas pagas têm paginações independentes de 30 registros, com contagem do PostgREST. Despesas usam `pago_em` e os campos `valor_bruto`, `valor_liquido` e `tipo_pagamento` do schema atual; contas a pagar pertencem a um fluxo separado. Alterar uma página preserva a posição da outra na URL. As consultas do servidor ainda cobrem seções não visíveis: medir e reduzir em uma evolução posterior.
 
 Na seção de veículos particulares, a frequência e os valores de lavagem e bônus vêm de `regra_veiculo_particular`. O formulário usa essa regra para pedir a escolha no uso devido; reembolsos já lançados exibem os valores gravados em cada uso, mesmo se a regra mudar depois.
 
@@ -57,7 +57,7 @@ Agenda usa filtros na URL e densidade persistida no navegador: posições 1–5 
 
 ## Montagem de equipe e diretório
 
-`/admin/montar-equipe` e `/admin/operacao` usam os componentes de `src/components/equipe/` nos modos Banco e Desenho. Operação lista perfis em cards com busca/paginação; `?aba=vinculos` mantém a ligação entre usuário, responsável e funcionário. `/admin/equipe` trata contas e permissões, não substitui o perfil operacional.
+`/admin/montar-equipe` e `/admin/operacao` usam os componentes de `src/components/equipe/` nos modos Banco e Desenho. Operação separa integrantes, `?aba=pre-cadastros` e `?aba=vinculos`; a principal lista somente perfis em cards com busca/paginação. `/admin/equipe` trata contas e permissões, não substitui o perfil operacional.
 
 O topo da montagem mostra evento, horário/endereço, base, extras, líderes e ações compactas. A grade desktop comporta dois cards de equipe e três de pessoas quando há largura. Ambas as listas ordenam forno primeiro, com avaliação como critério dentro dos grupos; ambas têm busca. A direita conta habilidades de forno e atendimento, que podem coexistir na mesma pessoa.
 
@@ -73,7 +73,7 @@ Contrato detalhado: [dimensionamento](../cecchin-pizzas-backend/migracao/DIMENSI
 
 Perfil mostra casa–QG; aberto pela montagem inclui o evento. A modal de mapa da montagem reúne opções em uma coluna com scroll e slider de densidade, sem outro preview sobreposto. MapLibre é carregado no navegador e usa worker estático.
 
-Três dados são independentes: meios de deslocamento, veículos próprios e categorias de CNH. Uber/ônibus/empresa não significam veículo próprio; ter veículo não implica habilitação. O cadastro `veiculo_operacional` reúne frota da empresa (`proprietario_id` nulo) e carros particulares; `plano_logistico` registra a alocação planejada por evento. A gestão edita os veículos em `/admin/frota`; o integrante cadastra e edita o próprio carro em `/operacional/minha-escala`, onde também declara os dias em que o disponibiliza. O bot só oferece essa escolha depois que existe uma ficha ativa do carro.
+Três dados são independentes: meios de deslocamento, veículos próprios e categorias de CNH. Uber/ônibus/empresa não significam veículo próprio; ter veículo não implica habilitação. O cadastro `veiculo_operacional` reúne frota da empresa (`proprietario_id` nulo) e carros particulares; `plano_logistico` registra a alocação planejada por evento. A gestão edita os veículos em `/admin/frota`, que exibe cards por carroceria e disponibilidade por dia/horário; eventos e sugestões de rota ficam no planejador do `/operacional/mapa`. O integrante cadastra e edita o próprio carro em `/operacional/minha-escala`, onde também declara os dias em que o disponibiliza. O bot só oferece essa escolha depois que existe uma ficha ativa do carro.
 
 Residência fica em `perfil_operacional_equipe`, com leitura de gestão/admin; não amplie a exposição de `usuario` para guardar endereço privado. QG vem de `QG_CECCHIN` em `src/lib/operacao.ts`. O ponto do evento fica em `localizacao_evento`: escolha explícita do geocoder, gravação autorizada e uso condicionado ao endereço de referência ainda coincidir com o evento.
 
@@ -94,6 +94,14 @@ Configurações têm abas e cards de destinatários com grupos visuais Canais (e
 **A Central usa dados reais mesmo no modo Desenho.** Histórico inicia no fim, carrega lotes de 100–200 mensagens ao rolar para cima e preserva a âncora. Cursor usa data/hora e ID. Botão para descer aparece ao sair do fim; novas mensagens indicam atividade sem deslocar quem está lendo. Não reinstalar um paginator acima da conversa.
 
 Central mantém atendimento humano/bot, fila de envio, mídias autorizadas e ocultação de conversa sem apagar histórico. WhatsApp Web e Meta têm contratos diferentes de envio/janela/templates. Consulte a [integração](../cecchin-pizzas-backend/infra/WHATSAPP_INTEGRACAO.md) antes de alterar.
+
+## Eventos solicitados, localidades e marketing
+
+`/admin/pagamentos` chama-se Eventos solicitados na interface: aprovação após sinal pago, pedidos de consulta à Central e cobranças ficam em abas; devoluções têm rota própria. O checkout continua hospedado. NSU e slug de fatura vêm do retorno/webhook; o formulário manual de conferência é contingência se o retorno automático falhar, não campos a inventar a partir do pedido.
+
+`/admin/localidades` edita taxa e minutos separadamente. O ETL histórico preservou 68 taxas de deslocamento e 18 vigências de preços. Os tempos normal/pico da planilha estavam vazios e continuam nulos até decisão administrativa. Ausência de taxa num bairro específico exige investigar a fonte e o registro, sem copiar preço de catálogo para taxa.
+
+Marketing oferece agenda interna, pedidos, biblioteca e concorrência. A visualização Instagram em metade da tela desktop é uma **prévia fictícia**, com alternância no celular; não há conexão com várias contas próprias ou publicação automática. Marcar um conteúdo como publicado registra a conclusão humana. Métricas de concorrentes dependem de credenciais e coleta configuradas.
 
 ## Desempenho e evidências
 

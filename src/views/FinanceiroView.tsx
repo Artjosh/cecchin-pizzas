@@ -18,6 +18,9 @@ import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
 import { comoLeitura } from "../servidor/fonte";
 import { PaginacaoPorParametro } from "../components/painel/PaginacaoPorParametro";
+import { AjustesPagamentos } from "../components/pagamentos/AjustesPagamentos";
+import type { PrecosReserva } from "../components/pagamentos/ConfigurarPrecosReserva";
+import Link from "next/link";
 
 /**
  * Financeiro: o que entrou, o que saiu e o que está a acertar.
@@ -41,10 +44,11 @@ interface Lancamento {
 const LANCAMENTOS_POR_PAGINA = 30;
 const FREELANCE_POR_PAGINA = 30;
 
-export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, paginaAcertos = 1, paginaEscalas = 1 }: { paginaEntradas?: number; paginaDespesas?: number; paginaAcertos?: number; paginaEscalas?: number } = {}) {
+export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, paginaAcertos = 1, paginaEscalas = 1, aba = "hoje" }: { paginaEntradas?: number; paginaDespesas?: number; paginaAcertos?: number; paginaEscalas?: number; aba?: string } = {}) {
   const sessao = await exigirPapel(["gestao"]);
+  const secao = ["hoje", "freelancers", "cartoes", "veiculos", "conciliacao", "lancamentos", "configuracoes"].includes(aba) ? aba : "hoje";
 
-  const [conciliacaoR, entradasR, despesasR, contasR] = await Promise.all([
+  const [conciliacaoR, entradasR, despesasR, contasR, precosR, configR] = await Promise.all([
     consultar<Conciliacao[]>(
       "vw_conciliacao_evento?select=*&or=(acerto_pendente.is.true,sinal_a_conferir.is.true)" +
         "&order=data_evento.desc&limit=100",
@@ -64,6 +68,8 @@ export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, p
       "conta_a_pagar?select=id&limit=1",
       sessao.accessToken,
     ),
+    consultar<PrecosReserva[]>("configuracao_preco_reserva?select=adulto_centavos,crianca_centavos,sinal_percentual,minimo_adultos,taxa_11_centavos,taxa_14_centavos,taxa_22_centavos,taxa_78_centavos&limit=1", sessao.accessToken),
+    consultar<{ handle: string; habilitado: boolean }[]>("configuracao_infinitepay?select=handle,habilitado&limit=1", sessao.accessToken),
   ]);
 
   const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
@@ -103,17 +109,21 @@ export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, p
     (contasR.dados?.length ?? 0) === 0;
 
   return (
-    <div className="flex flex-col gap-space-lg">
+    <div className="flex min-h-0 flex-col gap-4">
       <CabecalhoDoPainel
         titulo="Financeiro"
         descricao="O que ainda não foi acertado, e o que foi lançado."
       />
 
-      {caixaR.ok && resumoR.ok && acertosR.ok && escalasR.ok && cartoesR.ok && faturasR.ok && pessoasR.ok ? <GestaoFinanceira movimentos={caixaR.dados ?? []} resumo={resumoR.dados?.[0] ?? { movimentos: 0, entradas: 0, saidas: 0, saldo: 0, taxas_pendentes: 0 }} acertos={acertosR.dados ?? []} gruposAcertos={gruposR.ok ? gruposR.dados ?? [] : []} totalAcertos={acertosR.total ?? 0} paginaAcertos={paginaAcertos} escalas={escalasR.dados ?? []} totalEscalas={escalasR.total ?? 0} paginaEscalas={paginaEscalas} cartoes={cartoesR.dados ?? []} faturas={faturasR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Os novos módulos financeiros aguardam a migration da branch. Os lançamentos existentes continuam abaixo.</p>}
+      <nav aria-label="Áreas do financeiro" className="flex gap-1 overflow-x-auto rounded-xl bg-surface-container-low p-1 text-sm">
+        {[["hoje","Hoje"],["freelancers","Freelancers"],["cartoes","Cartões"],["veiculos","Veículos"],["conciliacao","Conciliação"],["lancamentos","Lançamentos"],["configuracoes","Configurações"]].map(([id,nome])=><Link key={id} href={`/admin/financeiro?aba=${id}`} aria-current={secao===id?"page":undefined} className={`shrink-0 rounded-lg px-3 py-2 ${secao===id?"bg-surface-container-high font-semibold":"text-on-surface-variant hover:bg-surface-container"}`}>{nome}</Link>)}
+      </nav>
+      <div className="min-h-0 overflow-y-auto">
+      {["hoje","freelancers","cartoes"].includes(secao) && (caixaR.ok && resumoR.ok && acertosR.ok && escalasR.ok && cartoesR.ok && faturasR.ok && pessoasR.ok ? <GestaoFinanceira aba={secao} movimentos={caixaR.dados ?? []} resumo={resumoR.dados?.[0] ?? { movimentos: 0, entradas: 0, saidas: 0, saldo: 0, taxas_pendentes: 0 }} acertos={acertosR.dados ?? []} gruposAcertos={gruposR.ok ? gruposR.dados ?? [] : []} totalAcertos={acertosR.total ?? 0} paginaAcertos={paginaAcertos} escalas={escalasR.dados ?? []} totalEscalas={escalasR.total ?? 0} paginaEscalas={paginaEscalas} cartoes={cartoesR.dados ?? []} faturas={faturasR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Não foi possível carregar esta área do financeiro.</p>)}
 
-      {planosR.ok && veiculosR.ok && usosR.ok && lavagensR.ok && usosResumoR.ok && pessoasR.ok && regraVeiculoR.ok && regraVeiculoR.dados?.[0] ? <ReembolsoVeiculos planos={planosR.dados ?? []} veiculos={veiculosR.dados ?? []} usos={usosR.dados ?? []} lavagens={lavagensR.dados ?? []} resumos={usosResumoR.dados ?? []} pessoas={pessoasR.dados ?? []} regra={regraVeiculoR.dados[0]} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Não foi possível carregar os reembolsos de veículos.</p>}
+      {secao === "veiculos" && (planosR.ok && veiculosR.ok && usosR.ok && lavagensR.ok && usosResumoR.ok && pessoasR.ok && regraVeiculoR.ok && regraVeiculoR.dados?.[0] ? <ReembolsoVeiculos planos={planosR.dados ?? []} veiculos={veiculosR.dados ?? []} usos={usosR.dados ?? []} lavagens={lavagensR.dados ?? []} resumos={usosResumoR.dados ?? []} pessoas={pessoasR.dados ?? []} regra={regraVeiculoR.dados[0]} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Não foi possível carregar os reembolsos de veículos.</p>)}
 
-      {semLancamento && (
+      {secao === "lancamentos" && semLancamento && (
         <LacunaDeDados titulo="Nenhum lançamento financeiro disponível">
           <p>
             Recebimentos confirmados e demais lançamentos aparecerão aqui.
@@ -122,7 +132,7 @@ export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, p
         </LacunaDeDados>
       )}
 
-      <section className="flex flex-col gap-space-sm">
+      {secao === "conciliacao" && <section className="flex flex-col gap-space-sm">
         <div className="flex items-baseline justify-between gap-space-md flex-wrap">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">
             A acertar
@@ -151,9 +161,9 @@ export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, p
         {conciliacao.estado === "ok" && (
           <ConciliacaoTabela pendentes={pendentes}/>
         )}
-      </section>
+      </section>}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-lg">
+      {secao === "lancamentos" && <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-lg">
         <Lancamentos
           titulo="Entradas"
           icone={<ArrowUpRight className="w-5 h-5" />}
@@ -174,6 +184,8 @@ export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, p
           total={despesasR.total ?? 0}
           parametro="despesas"
         />
+      </div>}
+      {secao === "configuracoes" && <AjustesPagamentos conta={configR.dados?.[0] ?? null} precos={precosR.dados?.[0] ?? null} admin={sessao.usuario.papel === "admin"} ambiente={process.env.INFINITEPAY_ENABLED === "true"} />}
       </div>
     </div>
   );

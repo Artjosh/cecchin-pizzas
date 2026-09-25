@@ -58,7 +58,7 @@ export function AprovarCobranca({ reserva, habilitado }: { reserva: ReservaParaC
   </CardReservaPagamento>;
 }
 
-export function AcompanharCobranca({ cobranca }: { cobranca: CobrancaInfinitePay }) {
+export function AcompanharCobranca({ cobranca, reserva }: { cobranca: CobrancaInfinitePay; reserva?: Pick<ReservaParaCobrar, "data_evento" | "horario" | "endereco" | "nome_contato"> }) {
   const router = useRouter(); const [url, setUrl] = useState(""); const [transacao, setTransacao] = useState(""); const [fatura, setFatura] = useState("");
   const [erro, setErro] = useState(""); const [ocupado, setOcupado] = useState(false);
   const [confirmarCancelamento, setConfirmarCancelamento] = useState(false);
@@ -78,6 +78,7 @@ export function AcompanharCobranca({ cobranca }: { cobranca: CobrancaInfinitePay
   return <article className={`${s.card} ${s.financeiro}`}>
     <div className="flex flex-wrap justify-between gap-2"><strong>{ESTADOS_COBRANCA[cobranca.status]}</strong><span>{formatBRL(Number(cobranca.valor_centavos) / 100)}</span></div>
     <p className="text-sm text-on-surface-variant break-all">Pedido {cobranca.id}</p>
+    {reserva && <p className="text-sm text-on-surface-variant">{new Date(`${reserva.data_evento}T12:00:00`).toLocaleDateString("pt-BR")} · {reserva.horario.slice(0, 5)}{reserva.nome_contato ? ` · ${reserva.nome_contato}` : ""}<br />{reserva.endereco}</p>}
     <button type="button" className="text-primary underline" onClick={() => router.refresh()}>Atualizar situação</button>
     {!!cobranca.avisos_pendentes && <p className="text-sm">{cobranca.avisos_pendentes} aviso(s) aguardando conferência{cobranca.ultima_falha ? ` · ${cobranca.ultima_falha.replaceAll("_", " ")}` : ""}. <button type="button" disabled={ocupado} className="text-primary underline" onClick={() => void executar({ acao: "reverificar", pedido: cobranca.id })}>Conferir novamente</button></p>}
     {cobranca.erro_codigo === "checkout_nao_habilitado" && <p role="alert">Habilite o Checkout Integrado no app InfinitePay: Vendas → Checkout → Configurações. A conta recebedora ainda não permite criar links de pagamento.</p>}

@@ -19,6 +19,7 @@ type Dados = {
   localidades: LocalidadeEditavel[];
   total: number;
   incompletas: number;
+  comTaxa: number;
   inicioPico: string;
   fimPico: string;
   porPagina: number;
@@ -112,7 +113,7 @@ export function EditarLocalidades() {
       <div className="relative min-w-[12rem] flex-1"><label htmlFor="busca-localidade" className="sr-only">Buscar cidade ou bairro</label><Search aria-hidden="true" className="absolute left-3 top-3 h-[18px] w-[18px] text-on-surface-variant" /><input id="busca-localidade" type="search" value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(0); }} placeholder="Buscar cidade ou bairro" className="h-11 w-full rounded-lg bg-surface-container-highest pl-9 pr-3 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary" /></div>
       <button type="button" onClick={() => { setSoIncompletas((valor) => !valor); setPagina(0); }} aria-pressed={soIncompletas} className={cn("flex h-11 items-center gap-2 rounded-lg px-4", soIncompletas ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface")}><AlertTriangle className="h-4 w-4" />Só incompletas ({dados?.incompletas ?? 0})</button>
     </div>
-    <p className="text-sm text-on-surface-variant">Deixe a taxa ou um tempo em branco quando ainda não houver uma regra confirmada.</p>
+    <p className="text-sm text-on-surface-variant">{dados ? `${dados.comTaxa} localidades têm taxa cadastrada no banco. ` : ""}A planilha histórica não trouxe tempos de deslocamento; deixe os campos sem regra confirmada em branco.</p>
     {erro && <p role="alert" className="rounded-xl bg-error-container p-3 text-on-error-container">{erro}</p>}
     <p role="status" className="text-sm text-on-surface-variant">{carregando ? "Carregando localidades…" : `${dados?.total ?? 0} localidades encontradas`}</p>
     <ul className="flex flex-col gap-space-xs">{!carregando && dados?.localidades.map((localidade) => <LinhaLocalidade key={localidade.id} localidade={localidade} onSalvo={atualizar} />)}{!carregando && dados?.localidades.length === 0 && <li className="rounded-xl bg-surface-container-low p-space-md text-center text-on-surface-variant">Nenhuma localidade encontrada.</li>}</ul>

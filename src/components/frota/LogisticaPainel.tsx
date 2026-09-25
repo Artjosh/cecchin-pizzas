@@ -116,8 +116,9 @@ function propostasDoDia(dados: Dados, veiculos: VeiculoPlanejavel[]): ResultadoP
   return { ...resultado, pendencias: [...pendenciasPreparacao, ...resultado.pendencias] };
 }
 
-export function LogisticaPainel() {
-  const [dia, setDia] = useState(dataLocal);
+export function LogisticaPainel({ diaInicial }: { diaInicial?: string } = {}) {
+  const [dia, setDia] = useState(diaInicial ?? dataLocal);
+  useEffect(() => { if (diaInicial) setDia(diaInicial); }, [diaInicial]);
   const [dados, setDados] = useState<Dados | null>(null);
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState("");

@@ -1,6 +1,7 @@
 import {PreCadastrosEquipe} from "../components/equipe/PreCadastrosEquipe";
 import Link from "next/link";
 import {EquipeOperacao} from "../components/equipe/EquipeOperacao";
+import { TituloNoHeader } from "../components/layouts/TituloNoHeader";
 import {fonteDeDados} from "../servidor/fonte";
 import { BadgeCheck } from "lucide-react";
 
@@ -156,4 +157,15 @@ async function VinculosOperacao() {
   );
 }
 
-export async function OperacaoEquipeView({vinculos=false}:{vinculos?:boolean}={}){await exigirPapel(["gestao"]);const demo=(await fonteDeDados())==="mock";if(vinculos&&!demo)return <div className="space-y-4"><Link href="/admin/operacao" className="text-sm text-primary">Voltar aos integrantes</Link><PreCadastrosEquipe/><VinculosOperacao/></div>;return <EquipeOperacao demo={demo}/>;}
+export async function OperacaoEquipeView({aba="integrantes"}:{aba?:string}={}){
+  await exigirPapel(["gestao"]);
+  const demo=(await fonteDeDados())==="mock";
+  const atual=aba==="pre-cadastros" || aba==="vinculos" ? aba : "integrantes";
+  return <div className="flex min-h-0 flex-col gap-4">
+    <TituloNoHeader>Equipe de operação</TituloNoHeader>
+    <nav aria-label="Áreas da equipe de operação" className="flex flex-wrap gap-2 rounded-xl bg-surface-container-low p-1">
+      {[["integrantes","Integrantes"],["pre-cadastros","Pré-cadastros"],["vinculos","Vínculos da agenda"]].map(([id,nome])=><Link key={id} href={id==="integrantes"?"/admin/operacao":`/admin/operacao?aba=${id}`} aria-current={atual===id?"page":undefined} className={`rounded-lg px-3 py-2 text-sm ${atual===id?"bg-surface-container-high font-semibold text-on-surface":"text-on-surface-variant hover:bg-surface-container"}`}>{nome}</Link>)}
+    </nav>
+    <div className="min-h-0 overflow-y-auto">{atual==="vinculos"&&!demo?<VinculosOperacao/>:atual==="pre-cadastros"&&!demo?<PreCadastrosEquipe/>:<EquipeOperacao demo={demo}/>}</div>
+  </div>;
+}
