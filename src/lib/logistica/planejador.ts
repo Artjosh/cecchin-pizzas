@@ -141,8 +141,9 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
     if (dono) ocupacaoMotorista.set(dono, [...(ocupacaoMotorista.get(dono) ?? []), intervalo]);
   }
   const carrosCompativeis = new Map(eventos.map((evento) => [evento, disponibilidade.filter((carro) => elegivel(evento, carro)).length]));
+  const saidasBase = new Map(eventos.map((evento) => [evento, saidaBase(evento, config)]));
   const ordenados = [...eventos].sort((a, b) =>
-    saidaBase(a, config) - saidaBase(b, config) ||
+    saidasBase.get(a)! - saidasBase.get(b)! ||
     (carrosCompativeis.get(a) ?? 0) - (carrosCompativeis.get(b) ?? 0) ||
     a.rotaMinutos - b.rotaMinutos,
   );
@@ -150,13 +151,17 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
   const deslocamentos = [0];
   for (let ajuste = 5; ajuste <= flex; ajuste += 5) deslocamentos.push(-ajuste, ajuste);
   if (flex % 5) deslocamentos.push(-flex, flex);
+  const futuros = ordenados.map((_, indice) => ordenados.slice(indice + 1));
+  const exclusivosFuturos = futuros.map((restantes) => restantes
+    .filter((outro) => (carrosCompativeis.get(outro) ?? 0) === 1)
+    .map((outro) => ({ evento: outro, carroId: disponibilidade.find((carro) => elegivel(outro, carro))!.id, ultimaSaida: saidasBase.get(outro)! })));
 
-  for (const evento of ordenados) {
+  for (const [indiceEvento, evento] of ordenados.entries()) {
     if (!Number.isFinite(evento.inicioMs) || evento.rotaMinutos <= 0 || evento.rotaKm <= 0 || evento.pessoas < 1) {
       pendencias.push({ eventoId: evento.id, motivo: "Informe horário, localização, rota e quantidade de pessoas da equipe." });
       continue;
     }
-    const base = saidaBase(evento, config);
+    const base = saidasBase.get(evento)!;
     const candidatos: { proposta: PropostaLogistica; prioridade: number }[] = [];
     const material = evento.forno !== "nenhum" || evento.bebida !== "nenhuma";
     for (const carro of disponibilidade) {
@@ -175,7 +180,7 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
         if (saida + viagem * minuto > evento.inicioMs - montagem * minuto) continue;
         const chegada = saida + viagem * minuto;
         const retornoLevar = chegada + trechoMinutos(evento.rotaMinutos, config, chegada) * minuto;
-        const precisaReutilizar = ordenados.some((outro) => outro.id !== evento.id && saidaBase(outro, config) >= retornoLevar + config.minutosCarregar * minuto && saidaBase(outro, config) < terminaServico + viagem * minuto);
+        const precisaReutilizar = futuros[indiceEvento].some((outro) => saidasBase.get(outro)! >= retornoLevar + config.minutosCarregar * minuto && saidasBase.get(outro)! < terminaServico + viagem * minuto);
         for (const modo of (["equipe", "levar"] as const)) {
           if (segundo && modo === "levar") continue; // mesma equipe e mesmo carro na dupla
           if (modo === "levar" && carro.limiteLevar < 1) continue;
@@ -191,8 +196,12 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
           if (segundo) alertas.push("Dupla: mesma equipe, saída do QG contabilizada uma vez; confirme tempo de desmontagem entre os eventos.");
           if (ajuste) alertas.push(`Saída ${ajuste < 0 ? "antecipada" : "adiada"} em ${Math.abs(ajuste)} minutos para encaixar a logística.`);
           const proposta: PropostaLogistica = { eventoId: evento.id, segundoEventoId: evento.segundoEventoId, veiculoId: carro.id, modo, saidaPrevista: new Date(saida).toISOString(), retornoPrevisto: new Date(retorno).toISOString(), rotaMinutos: viagem, distanciaTotalKm: Math.round(kmTotal * 100) / 100, custoCentavos, alertas };
-          // Prefere custo baixo e frota própria; só ajusta a saída quando ajuda a reutilizar o carro ou resolve conflito.
-          candidatos.push({ proposta, prioridade: custoCentavos + (carro.proprietarioId ? 100 : 0) + (modo === "levar" ? (precisaReutilizar ? -300 : 150) : 0) + Math.round(evento.rotaMinutos) + Math.abs(ajuste) });
+          // Reservar o único carro capaz de atender outro evento vale mais que
+          // economizar nesta saída. Isso inclui eventos cuja saída vem minutos depois.
+          const bloqueiaExclusivo = exclusivosFuturos[indiceEvento].some(({ evento: outro, carroId, ultimaSaida }) =>
+            carroId === carro.id && retorno + config.minutosCarregar * minuto > ultimaSaida
+            && saida < outro.inicioMs + config.duracaoEventoMinutos * minuto);
+          candidatos.push({ proposta, prioridade: custoCentavos + (bloqueiaExclusivo ? 1_000_000_000 : 0) + (carro.proprietarioId ? 100 : 0) + (modo === "levar" ? (precisaReutilizar ? -300 : 150) : 0) + Math.round(evento.rotaMinutos) + Math.abs(ajuste) });
         }
       }
     }
