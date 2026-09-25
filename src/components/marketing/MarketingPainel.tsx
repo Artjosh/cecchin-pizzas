@@ -87,7 +87,7 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
     if (!concorrenteAberto) return;
     const controller = new AbortController();
     fetch(`/api/operacao/marketing/publicacoes?concorrente=${concorrenteAberto}`, { cache: "no-store", signal: controller.signal })
-      .then(async (resposta) => { const corpo = await resposta.json() as { publicacoes?: Publicacao[]; mensagem?: string }; if (!resposta.ok) throw new Error(corpo.mensagem ?? "Falha ao carregar publicações"); setPublicacoes(corpo.publicacoes ?? []); })
+      .then(async (resposta) => { const corpo = await resposta.json() as { publicacoes?: Publicacao[]; mensagem?: string }; if (!resposta.ok) throw new Error(corpo.mensagem ?? "Falha ao carregar publicações"); if (!controller.signal.aborted) setPublicacoes(corpo.publicacoes ?? []); })
       .catch((falha) => { if (!controller.signal.aborted) setErroPublicacoes(falha instanceof Error ? falha.message : "Falha ao carregar publicações"); })
       .finally(() => { if (!controller.signal.aborted) setCarregandoPublicacoes(false); });
     return () => controller.abort();
