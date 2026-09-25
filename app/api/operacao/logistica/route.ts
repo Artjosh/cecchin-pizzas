@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
   if (!data.test(dia) || Number.isNaN(Date.parse(`${dia}T12:00:00Z`))) return NextResponse.json({ mensagem: "Data inválida" }, { status: 400 });
   const token = sessao.accessToken;
   const [eventos, veiculos, configuracao, capacidade, regra, pessoas] = await Promise.all([
-    consultar<Array<{ id: string; cliente_nome: string; data_evento: string; horario: string; inteiros: number; meios: number }>>(`vw_eventos_montagem?select=id,cliente_nome,data_evento,horario,inteiros,meios&data_evento=eq.${dia}&order=horario.asc,id.asc&limit=100`, token),
+    consultar<Array<{ id: string; cliente_nome: string; data_evento: string; horario: string; inteiros: number; meios: number }>>(`vw_eventos_montagem?select=id,cliente_nome,data_evento,horario,inteiros,meios&data_evento=eq.${dia}&order=horario.asc,id.asc&limit=200`, token),
     consultar("veiculo_operacional?select=id,placa,modelo,forno_maximo,bebida_maxima,lugares,limite_eventos_levar,proprietario_id,ativo&ativo=is.true&order=modelo.asc&limit=200", token),
     consultar<Array<Record<string, unknown>>>("configuracao_logistica?select=*&limit=1", token),
     consultar<Array<{ duracao_minutos: number }>>("configuracao_capacidade?select=duracao_minutos&limit=1", token),
@@ -102,9 +102,9 @@ export async function GET(request: NextRequest) {
   amanha.setUTCDate(amanha.getUTCDate() + 1);
   const fimDia = amanha.toISOString().slice(0, 10);
   const [requisitos, rotas, locais, planos, buscasEvento, duplos, disponibilidades, disponibilidadesPessoas] = await Promise.all([
-    consultar<Array<Record<string, unknown>>>(`requisito_logistico_evento?select=*${idsFiltro}&limit=100`, token),
-    consultar<Array<Record<string, unknown>>>(`trajeto_logistico_evento?select=*${idsFiltro}&limit=100`, token),
-    consultar<Array<Record<string, unknown>>>(`localizacao_evento?select=evento_id,latitude,longitude${idsFiltro}&limit=100`, token),
+    consultar<Array<Record<string, unknown>>>(`requisito_logistico_evento?select=*${idsFiltro}&limit=200`, token),
+    consultar<Array<Record<string, unknown>>>(`trajeto_logistico_evento?select=*${idsFiltro}&limit=200`, token),
+    consultar<Array<Record<string, unknown>>>(`localizacao_evento?select=evento_id,latitude,longitude${idsFiltro}&limit=200`, token),
     consultar<Array<{ id: string }>>(`plano_logistico?select=*&saida_prevista=lt.${fimDia}T00:00:00-03:00&retorno_previsto=gt.${dia}T00:00:00-03:00&situacao=neq.cancelado&limit=200`, token),
     consultar<Array<{ id: string }>>(`plano_logistico?select=*&modo=eq.buscar&situacao=eq.aprovado${idsFiltro}&limit=100`, token),
     consultar(`evento_duplo?select=*&or=(primeiro_evento_id.in.(${ids.length ? ids.join(",") : "00000000-0000-0000-0000-000000000000"}),segundo_evento_id.in.(${ids.length ? ids.join(",") : "00000000-0000-0000-0000-000000000000"}))&limit=100`, token),

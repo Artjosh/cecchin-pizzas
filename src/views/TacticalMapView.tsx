@@ -24,12 +24,12 @@ async function MapaDoBanco(data?: string) {
   const r = await consultar<EventoNoMapa[]>(
     "vw_evento?select=id,cliente_nome,endereco,bairro,cidade,horario," +
       "horario_texto,horario_saida,inteiros,meios,responsavel_nome" +
-      `&data_evento=eq.${dia}&status=eq.confirmado&order=horario.asc&limit=30`,
+      `&data_evento=eq.${dia}&status=eq.confirmado&order=horario.asc&limit=200`,
     sessao.accessToken,
   );
   const ids = (r.dados ?? []).map((evento) => evento.id);
   const locais = ids.length ? await consultar<Array<{ evento_id: string; latitude: number; longitude: number; endereco_referencia: string }>>(
-    `localizacao_evento?select=evento_id,latitude,longitude,endereco_referencia&evento_id=in.(${ids.join(",")})&limit=100`,
+    `localizacao_evento?select=evento_id,latitude,longitude,endereco_referencia&evento_id=in.(${ids.join(",")})&limit=200`,
     sessao.accessToken,
   ) : { ok: true, dados: [] as Array<{ evento_id: string; latitude: number; longitude: number; endereco_referencia: string }> };
   const coordenadas = new Map((locais.dados ?? []).map((local) => [local.evento_id, local]));
