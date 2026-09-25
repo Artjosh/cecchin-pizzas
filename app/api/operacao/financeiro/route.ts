@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   let funcao: string; let args: Record<string, unknown>;
   switch (corpo.acao) {
     case "cartao":
-      if (typeof corpo.nome !== "string" || corpo.nome.trim().length < 2 || corpo.nome.length > 100 || ![corpo.fechamento, corpo.vencimento].every(v => Number.isInteger(v) && v >= 1 && v <= 28)) return NextResponse.json({ mensagem: "Confira nome, fechamento e vencimento" }, { status: 400 });
+      if (typeof corpo.nome !== "string" || corpo.nome.trim().length < 2 || corpo.nome.length > 100 || ![corpo.fechamento, corpo.vencimento].every(v => Number.isInteger(v) && v >= 1 && v <= 31)) return NextResponse.json({ mensagem: "Confira nome, fechamento e vencimento" }, { status: 400 });
       funcao = "cadastrar_cartao_empresa"; args = { p_nome: corpo.nome, p_fechamento: corpo.fechamento, p_vencimento: corpo.vencimento }; break;
     case "compra":
       if (typeof corpo.cartao !== "string" || !uuid.test(corpo.cartao) || typeof corpo.data !== "string" || !data.test(corpo.data) || typeof corpo.descricao !== "string" || corpo.descricao.trim().length < 2 || corpo.descricao.length > 300 || typeof corpo.valor !== "number" || !Number.isFinite(corpo.valor) || corpo.valor <= 0 || corpo.valor > 1000000) return NextResponse.json({ mensagem: "Confira os dados da compra" }, { status: 400 });
