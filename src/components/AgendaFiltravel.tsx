@@ -354,6 +354,7 @@ function CartaoEvento({
   const [aberto, setAberto] = useState(false);
   const [alocando, setAlocando] = useState(false);
   const [falha, setFalha] = useState<string | null>(null);
+  const [editandoResponsavel, setEditandoResponsavel] = useState(false);
 
   /*
    * Alocar responsável é o outro lado do elo conta-responsável. Sem isto, a
@@ -430,7 +431,7 @@ function CartaoEvento({
             <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">
               Responsável
             </span>
-            {podeAlocar && responsaveis.length > 0 ? (
+            {podeAlocar && responsaveis.length > 0 && editandoResponsavel ? (
               <>
                 <label className="sr-only" htmlFor={`resp-${evento.id}`}>
                   Responsável por {evento.cliente_nome ?? "este evento"}
@@ -439,7 +440,9 @@ function CartaoEvento({
                   id={`resp-${evento.id}`}
                   value={evento.responsavel_id ?? ""}
                   disabled={alocando}
-                  onChange={(e) => void alocar(e.target.value)}
+                  autoFocus
+                  onBlur={() => setEditandoResponsavel(false)}
+                  onChange={(e) => void alocar(e.target.value).then(() => setEditandoResponsavel(false))}
                   className="font-label-md text-label-md text-on-surface bg-surface-container-high border border-on-surface/20 px-2 py-1.5 rounded max-w-[11rem] truncate focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                 >
                   <option className="bg-surface-container-high text-on-surface" value="">não alocado</option>
@@ -450,6 +453,10 @@ function CartaoEvento({
                   ))}
                 </select>
               </>
+            ) : podeAlocar && responsaveis.length > 0 ? (
+              <button type="button" aria-label={`Alterar responsável por ${evento.cliente_nome ?? "este evento"}`} onClick={() => setEditandoResponsavel(true)} className="max-w-[11rem] truncate rounded bg-surface-container-high px-2 py-1.5 text-left font-label-md text-label-md text-on-surface hover:bg-primary-container focus:outline-none focus:ring-1 focus:ring-primary">
+                {evento.responsavel_nome ?? "não alocado"}
+              </button>
             ) : (
               <span className="font-label-md text-label-md text-on-surface truncate">
                 {evento.responsavel_nome ?? "não alocado"}
