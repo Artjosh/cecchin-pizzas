@@ -2,6 +2,15 @@ export type PerfilEquipe={garcom:boolean;forno:boolean;endereco:string|null;bair
 export type PessoaEquipe={id:string;nome:string;telefone:string|null;foto_url:string|null;nota:number|null;avaliacoes:number;bloqueado:boolean;teste_operacional?:boolean;perfil?:PerfilEquipe|null};
 export type EventoEquipe={id:string;cliente_nome:string|null;data_evento:string;inteiros:number|null;meios:number|null;horario?:string|null;horario_texto?:string|null;horario_saida?:string|null;endereco?:string|null;bairro?:string|null;cidade?:string|null;latitude?:number|null;longitude?:number|null;descricao_extra?:string|null;observacao?:string|null};
 export type SugestaoEquipe={pessoas:PessoaEquipe[];lideres:string[]};
+export function calcularBaseEquipe(convidados:number,porIntegrante:number,minimo:number,pessoas:PessoaEquipe[],lideres:number){
+ const padrao=Math.max(minimo,Math.ceil(convidados/porIntegrante));
+ const reduzido=padrao-1;
+ const excedente=convidados-reduzido*porIntegrante;
+ const aperto=reduzido>=minimo&&reduzido>=lideres&&excedente>=1&&excedente<=3
+  &&sugerirEquipes(pessoas,padrao,lideres).length===0
+  &&sugerirEquipes(pessoas,reduzido,lideres).length>0;
+ return {base:aperto?reduzido:padrao,padrao,excedente:aperto?excedente:0};
+}
 export function sugerirEquipes(pessoas:PessoaEquipe[],vagas:number,lideres:number):SugestaoEquipe[]{
  if(!Number.isInteger(vagas)||!Number.isInteger(lideres)||vagas<1||lideres<1||lideres>vagas)return [];
  const disponiveis=pessoas.filter(p=>!p.bloqueado),fornos=disponiveis.filter(p=>p.perfil?.forno),resultado:SugestaoEquipe[]=[];

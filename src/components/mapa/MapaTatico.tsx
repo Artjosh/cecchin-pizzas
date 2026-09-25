@@ -213,15 +213,20 @@ function MapaReal({ eventos, base, selecionado, aoSelecionar, rascunho, aoMoverR
     const rotaSelecionada = pontoSelecionado ? chaveDaRota([base, pontoSelecionado]) : null;
     const rotasDoDia = [...new Set(eventosComLocal.map((evento) => chaveDaRota([base, pontoDoEvento(evento)!])))];
     const camadas = [
-      { id: "rotas-possiveis", geometrias: rotasDoDia.filter((chave) => chave !== rotaSelecionada).map((chave) => rotas[chave]).filter((rota): rota is LineString => Boolean(rota)), cor: "#f1a58f", largura: 2, opacidade: 0.5 },
-      { id: "rotas-aprovadas", geometrias: rotasAprovadas, cor: "#55b69c", largura: 4, opacidade: 0.8 },
-      { id: "rota-selecionada", geometrias: rotaSelecionada && rotas[rotaSelecionada] ? [rotas[rotaSelecionada]] : [], cor: "#e77651", largura: 5, opacidade: 0.95 },
+      { id: "rotas-possiveis", geometrias: rotasDoDia.filter((chave) => chave !== rotaSelecionada).map((chave) => rotas[chave]).filter((rota): rota is LineString => Boolean(rota)), cor: "#27b9ff", largura: 3, opacidade: 0.78 },
+      { id: "rotas-aprovadas", geometrias: rotasAprovadas, cor: "#37f4a8", largura: 5, opacidade: 0.95 },
+      { id: "rota-selecionada", geometrias: rotaSelecionada && rotas[rotaSelecionada] ? [rotas[rotaSelecionada]] : [], cor: "#ff4f68", largura: 6, opacidade: 1 },
     ];
     for (const camada of camadas) {
       if (!instancia.getSource(camada.id)) {
         instancia.addSource(camada.id, { type: "geojson", data: colecao(camada.geometrias) });
         instancia.addLayer({ id: camada.id, type: "line", source: camada.id, paint: { "line-color": camada.cor, "line-width": camada.largura, "line-opacity": camada.opacidade } });
-      } else (instancia.getSource(camada.id) as import("maplibre-gl").GeoJSONSource).setData(colecao(camada.geometrias));
+      } else {
+        (instancia.getSource(camada.id) as import("maplibre-gl").GeoJSONSource).setData(colecao(camada.geometrias));
+        instancia.setPaintProperty(camada.id, "line-color", camada.cor);
+        instancia.setPaintProperty(camada.id, "line-width", camada.largura);
+        instancia.setPaintProperty(camada.id, "line-opacity", camada.opacidade);
+      }
     }
   }, [pronto, eventos, base.lat, base.lng, selecionado, rotas, rotasAprovadas]);
 
@@ -239,9 +244,9 @@ function MapaReal({ eventos, base, selecionado, aoSelecionar, rascunho, aoMoverR
       {legendaAberta && <div id="legenda-mapa-tatico" className="rounded-xl bg-surface-container/95 p-3 text-xs shadow-md backdrop-blur-sm">
         <p className="mb-2 font-semibold">Legenda do mapa</p>
         <div className="grid gap-1.5 text-on-surface-variant">
-          <span className="flex items-center gap-2"><i className="h-0.5 w-5 bg-[#e77651]" /> Evento selecionado</span>
-          <span className="flex items-center gap-2"><i className="h-0.5 w-5 bg-[#55b69c]" /> Viagem aprovada</span>
-          <span className="flex items-center gap-2"><i className="h-0.5 w-5 bg-[#f1a58f]" /> Trajeto possível</span>
+          <span className="flex items-center gap-2"><i className="h-0.5 w-5 bg-[#ff4f68]" /> Evento selecionado</span>
+          <span className="flex items-center gap-2"><i className="h-0.5 w-5 bg-[#37f4a8]" /> Viagem aprovada</span>
+          <span className="flex items-center gap-2"><i className="h-0.5 w-5 bg-[#27b9ff]" /> Trajeto possível</span>
         </div>
       </div>}
       <button type="button" aria-label={legendaAberta ? "Recolher legenda" : "Mostrar legenda"} aria-expanded={legendaAberta} aria-controls="legenda-mapa-tatico" onClick={() => setLegendaAberta((atual) => !atual)} className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-container text-on-surface shadow-md hover:bg-surface-container-high"><Info className="h-4 w-4" /></button>
