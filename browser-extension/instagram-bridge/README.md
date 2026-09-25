@@ -6,7 +6,7 @@ Extensão Chromium local que mostra na central de marketing o feed e a bandeja d
 
 1. Abra `brave://extensions` (ou `chrome://extensions`), confirme que quer adicionar a extensão local e habilite **Modo do desenvolvedor**.
 2. Escolha **Carregar sem compactação** e selecione esta pasta.
-3. Volte a `http://localhost:3000/operacional/marketing`, atualize e use **Atualizar Instagram**.
+3. Volte a `http://localhost:3000/operacional/marketing`, recarregue a aba para o Brave injetar o script da extensão e use **Atualizar Instagram**.
 4. Se não houver sessão, abra Instagram.com, entre no site oficial normalmente e volte à central.
 
 O login e qualquer verificação continuam no Instagram. A extensão não lê nem copia cookies: as chamadas autenticadas de leitura são executadas dentro da aba `www.instagram.com` já aberta. Para a página passam só perfil, feed e Stories normalizados.
