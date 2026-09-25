@@ -112,16 +112,18 @@ export async function GET(request: NextRequest) {
   const amanha = new Date(`${dia}T12:00:00Z`);
   amanha.setUTCDate(amanha.getUTCDate() + 1);
   const fimDia = amanha.toISOString().slice(0, 10);
-  const [requisitos, rotas, locais, planos, duplos, disponibilidades, disponibilidadesPessoas] = await Promise.all([
+  const [requisitos, rotas, locais, planos, buscasEvento, duplos, disponibilidades, disponibilidadesPessoas] = await Promise.all([
     consultar<Array<Record<string, unknown>>>(`requisito_logistico_evento?select=*${idsFiltro}&limit=100`, token),
     consultar<Array<Record<string, unknown>>>(`trajeto_logistico_evento?select=*${idsFiltro}&limit=100`, token),
     consultar<Array<Record<string, unknown>>>(`localizacao_evento?select=evento_id,latitude,longitude${idsFiltro}&limit=100`, token),
-    consultar(`plano_logistico?select=*&saida_prevista=lt.${fimDia}T00:00:00-03:00&retorno_previsto=gt.${dia}T00:00:00-03:00&situacao=neq.cancelado&limit=200`, token),
+    consultar<Array<{ id: string }>>(`plano_logistico?select=*&saida_prevista=lt.${fimDia}T00:00:00-03:00&retorno_previsto=gt.${dia}T00:00:00-03:00&situacao=neq.cancelado&limit=200`, token),
+    consultar<Array<{ id: string }>>(`plano_logistico?select=*&modo=eq.buscar&situacao=eq.aprovado${idsFiltro}&limit=100`, token),
     consultar(`evento_duplo?select=*&or=(primeiro_evento_id.in.(${ids.length ? ids.join(",") : "00000000-0000-0000-0000-000000000000"}),segundo_evento_id.in.(${ids.length ? ids.join(",") : "00000000-0000-0000-0000-000000000000"}))&limit=100`, token),
     consultar(`disponibilidade_veiculo?select=veiculo_id,semana,dias&semana=in.(${semanas})&limit=600`, token),
     consultar(`disponibilidade_semanal?select=usuario_id,semana,dias&semana=in.(${semanas})&limit=1000`, token),
   ]);
-  if ([requisitos, rotas, locais, planos, duplos, disponibilidades, disponibilidadesPessoas].some((r) => !r.ok)) return NextResponse.json({ mensagem: "Não foi possível carregar os planos e a disponibilidade." }, { status: 503 });
+  if ([requisitos, rotas, locais, planos, buscasEvento, duplos, disponibilidades, disponibilidadesPessoas].some((r) => !r.ok)) return NextResponse.json({ mensagem: "Não foi possível carregar os planos e a disponibilidade." }, { status: 503 });
+  const planosDoDia = [...new Map([...(planos.dados ?? []), ...(buscasEvento.dados ?? [])].map((plano) => [(plano as { id: string }).id, plano])).values()];
   const idsDuplos = ((duplos.dados ?? []) as Array<{ id: string }>).map((item) => item.id);
   const segundosForaDoDia = [...new Set(((duplos.dados ?? []) as Array<{ segundo_evento_id: string }>).map((item) => item.segundo_evento_id).filter((id) => !ids.includes(id)))];
   const filtroSegundos = segundosForaDoDia.join(",");
@@ -134,10 +136,10 @@ export async function GET(request: NextRequest) {
   if ([eventosVinculados, requisitosVinculados, rotasVinculadas, locaisVinculados].some((r) => !r.ok)) return NextResponse.json({ mensagem: "Não foi possível carregar o segundo evento das duplas." }, { status: 503 });
   const trechosDuplos = idsDuplos.length ? await consultar(`trajeto_logistico_duplo?select=*&evento_duplo_id=in.(${idsDuplos.join(",")})&limit=100`, token) : { ok: true, dados: [] };
   if (!trechosDuplos.ok) return NextResponse.json({ mensagem: "Não foi possível carregar os trajetos entre eventos." }, { status: 503 });
-  const idsPlanos = ((planos.dados ?? []) as Array<{ id: string }>).map((plano) => plano.id);
+  const idsPlanos = (planosDoDia as Array<{ id: string }>).map((plano) => plano.id);
   const paradas = idsPlanos.length ? await consultar(`parada_viagem_levar?select=plano_id,evento_id,ordem,chegada_prevista&plano_id=in.(${idsPlanos.join(",")})&order=ordem.asc&limit=200`, token) : { ok: true, dados: [] };
   if (!paradas.ok) return NextResponse.json({ mensagem: "Não foi possível carregar as paradas das viagens." }, { status: 503 });
-  return NextResponse.json({ eventos: eventos.dados ?? [], eventosVinculados: eventosVinculados.dados ?? [], veiculos: veiculos.dados ?? [], pessoas: pessoas.dados ?? [], configuracao: configuracao.dados?.[0] ?? null, capacidade: capacidade.dados?.[0] ?? null, regra: regra.dados?.[0] ?? null, requisitos: [...(requisitos.dados ?? []), ...(requisitosVinculados.dados ?? [])], rotas: [...(rotas.dados ?? []), ...(rotasVinculadas.dados ?? [])], locais: [...(locais.dados ?? []), ...(locaisVinculados.dados ?? [])], planos: planos.dados ?? [], paradas: paradas.dados ?? [], duplos: duplos.dados ?? [], trechosDuplos: trechosDuplos.dados ?? [], disponibilidades: disponibilidades.dados ?? [], disponibilidadesPessoas: disponibilidadesPessoas.dados ?? [], inicioSemana }, { headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json({ eventos: eventos.dados ?? [], eventosVinculados: eventosVinculados.dados ?? [], veiculos: veiculos.dados ?? [], pessoas: pessoas.dados ?? [], configuracao: configuracao.dados?.[0] ?? null, capacidade: capacidade.dados?.[0] ?? null, regra: regra.dados?.[0] ?? null, requisitos: [...(requisitos.dados ?? []), ...(requisitosVinculados.dados ?? [])], rotas: [...(rotas.dados ?? []), ...(rotasVinculadas.dados ?? [])], locais: [...(locais.dados ?? []), ...(locaisVinculados.dados ?? [])], planos: planosDoDia, paradas: paradas.dados ?? [], duplos: duplos.dados ?? [], trechosDuplos: trechosDuplos.dados ?? [], disponibilidades: disponibilidades.dados ?? [], disponibilidadesPessoas: disponibilidadesPessoas.dados ?? [], inicioSemana }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(request: NextRequest) {
@@ -177,6 +179,8 @@ export async function POST(request: NextRequest) {
     resultado = await chamarFuncao("desvincular_evento_duplo", { p_duplo: corpo.duplo }, sessao.accessToken);
   } else if (acao === "cancelar_plano" && uuid.test(corpo.plano) && typeof corpo.motivo === "string") {
     resultado = await chamarFuncao("cancelar_plano_logistico", { p_plano: corpo.plano, p_motivo: corpo.motivo }, sessao.accessToken);
+  } else if (acao === "busca" && uuid.test(corpo.evento) && uuid.test(corpo.veiculo_id) && uuid.test(corpo.motorista_id) && typeof corpo.saida_prevista === "string" && Number.isFinite(Date.parse(corpo.saida_prevista))) {
+    resultado = await chamarFuncao("salvar_busca_equipe_logistica", { p_evento: corpo.evento, p_veiculo: corpo.veiculo_id, p_motorista: corpo.motorista_id, p_saida: corpo.saida_prevista }, sessao.accessToken);
   } else if (acao === "rota" && uuid.test(corpo.evento)) {
     const ponto = await consultar<Array<{ latitude: number; longitude: number }>>(`localizacao_evento?select=latitude,longitude&evento_id=eq.${corpo.evento}&limit=1`, sessao.accessToken);
     if (!ponto.ok || !ponto.dados?.[0]) return NextResponse.json({ mensagem: "Localize o evento no mapa antes de calcular a rota." }, { status: 400 });

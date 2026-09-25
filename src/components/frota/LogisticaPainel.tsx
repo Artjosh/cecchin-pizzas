@@ -9,7 +9,7 @@ type Requisito = { evento_id: string; forno_necessario: string; bebida_necessari
 type Rota = { evento_id: string; distancia_km: number; duracao_minutos: number; medido_em: string; latitude: number; longitude: number };
 type Duplo = { id: string; primeiro_evento_id: string; segundo_evento_id: string };
 type TrechoDuplo = { evento_duplo_id: string; primeira_latitude: number; primeira_longitude: number; segunda_latitude: number; segunda_longitude: number; distancia_km: number; duracao_minutos: number; medido_em: string };
-type Plano = { id: string; evento_id: string; evento_duplo_id: string | null; situacao: string; veiculo_id: string; motorista_id: string | null; modo: string; saida_prevista: string; retorno_previsto: string; ajuda_solicitada: string | null };
+type Plano = { id: string; evento_id: string; evento_duplo_id: string | null; situacao: string; veiculo_id: string; motorista_id: string | null; modo: string; saida_prevista: string; retorno_previsto: string; ajuda_solicitada: string | null; distancia_km: number | null; custo_estimado: number | null };
 type Parada = { plano_id: string; evento_id: string; ordem: number; chegada_prevista: string };
 type ViagemPrevista = { eventos: string[]; veiculo_id: string; saida_prevista: string; retorno_previsto: string; distancia_km: number; custo_estimado: number; paradas: Array<{ eventoId: string; nome: string; chegadaPrevista: string; prazo: string }> };
 type Veiculo = { id: string; modelo: string; placa: string; forno_maximo: TipoForno; bebida_maxima: TipoBebida; lugares: number; limite_eventos_levar: number; proprietario_id: string | null };
@@ -185,22 +185,25 @@ export function LogisticaPainel() {
         const trecho = dupla ? trechoAtual(dados, dupla) : undefined;
         const paradaDaViagem = dados.paradas.find((parada) => parada.evento_id === evento.id);
         const planos = dados.planos.filter((item) => item.evento_id === evento.id || item.id === paradaDaViagem?.plano_id);
+        const buscaAprovada = planos.some((item) => item.modo === "buscar" && item.situacao === "aprovado");
+        const levarAprovado = planos.some((item) => item.modo === "levar" && item.situacao === "aprovado");
         const proposta = propostas.get(evento.id);
         const opcoes = proposta ? [proposta, ...(planejamento.alternativas[evento.id] ?? [])] : [];
         const chave = (item: PropostaLogistica) => `${item.veiculoId}:${item.modo}`;
         const propostaSelecionada = opcoes.find((item) => chave(item) === opcaoPorEvento[evento.id]) ?? proposta;
         return <article key={evento.id} className="space-y-3 rounded-2xl bg-surface-container-lowest p-4 ring-1 ring-outline-variant/30">
           <div><h3 className="font-semibold">{evento.horario?.slice(0, 5)} · {evento.cliente_nome || "Evento"}</h3><p className="text-xs text-on-surface-variant">{(evento.inteiros ?? 0) + (evento.meios ?? 0)} convidados{dupla ? " · Evento duplo" : ""}</p></div>
-          <div className="space-y-1 text-sm"><p>{requisito ? `${requisito.pessoas_transportar} pessoas · forno ${requisito.forno_necessario} · bebida ${requisito.bebida_necessaria}` : "Carga ainda não informada"}</p><p>{rota ? `${rota.distancia_km} km · ${rota.duracao_minutos} min desde o QG` : "Rota rodoviária ainda não calculada"}</p><p>{planos.length ? planos.map((plano) => `${dados.veiculos.find((v) => v.id === plano.veiculo_id)?.modelo ?? "Carro"}: ${plano.situacao}${paradaDaViagem?.plano_id === plano.id ? ` · parada ${paradaDaViagem.ordem}` : ""}`).join(" · ") : "Nenhum carro planejado"}</p>{paradaDaViagem && <p className="text-xs text-on-surface-variant">Chegada prevista {new Date(paradaDaViagem.chegada_prevista).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })} · custo compartilhado entre as paradas</p>}</div>
+          <div className="space-y-1 text-sm"><p>{requisito ? `${requisito.pessoas_transportar} pessoas · forno ${requisito.forno_necessario} · bebida ${requisito.bebida_necessaria}` : "Carga ainda não informada"}</p><p>{rota ? `${rota.distancia_km} km · ${rota.duracao_minutos} min desde o QG` : "Rota rodoviária ainda não calculada"}</p><p>{planos.length ? planos.map((plano) => `${plano.modo === "buscar" ? "Busca" : "Ida"} · ${dados.veiculos.find((v) => v.id === plano.veiculo_id)?.modelo ?? "Carro"}: ${plano.situacao}${paradaDaViagem?.plano_id === plano.id ? ` · parada ${paradaDaViagem.ordem}` : ""}`).join(" · ") : "Nenhum carro planejado"}</p>{paradaDaViagem && <p className="text-xs text-on-surface-variant">Chegada prevista {new Date(paradaDaViagem.chegada_prevista).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })} · custo compartilhado entre as paradas</p>}</div>
           <RequisitoForm evento={evento} atual={requisito} bloqueado={Boolean(ocupado)} salvar={(valores) => acao("requisito", { evento: evento.id, dados: valores })} />
           {planos.filter((plano) => plano.situacao === "aprovado").map((plano) => <div key={plano.id} className="rounded-xl bg-surface-container p-3 text-xs">
-            <p>Plano aprovado para {dados.veiculos.find((carro) => carro.id === plano.veiculo_id)?.modelo ?? "o carro"}. O cancelamento preserva o registro e libera o carro para um novo planejamento.</p>
-            {plano.modo === "levar" && <div className="mt-2 rounded-lg bg-primary/10 p-2"><strong>Busca da equipe a organizar</strong><p className="mt-1">{plano.ajuda_solicitada || "Defina quem buscará a equipe e o material após o evento."}</p><p className="mt-1 text-on-surface-variant">Esta aprovação reserva somente a viagem de ida e o retorno do carro ao QG. A busca, seu motorista, horário e custo precisam de planejamento separado.</p></div>}
+            <p>{plano.modo === "buscar" ? "Busca" : "Ida"} aprovada para {dados.veiculos.find((carro) => carro.id === plano.veiculo_id)?.modelo ?? "o carro"}. Saída {new Date(plano.saida_prevista).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" })}{plano.custo_estimado != null ? ` · custo estimado R$ ${Number(plano.custo_estimado).toFixed(2).replace(".", ",")}` : ""}. O cancelamento preserva o registro e libera o carro para novo planejamento.</p>
+            {plano.modo === "levar" && !buscaAprovada && <div className="mt-2 rounded-lg bg-primary/10 p-2"><strong>Busca da equipe a organizar</strong><p className="mt-1">{plano.ajuda_solicitada || "Defina quem buscará a equipe e o material após o evento."}</p><p className="mt-1 text-on-surface-variant">Esta aprovação reserva somente a viagem de ida e o retorno do carro ao QG. A busca, seu motorista, horário e custo precisam de planejamento separado.</p></div>}
             {new Date(plano.saida_prevista).getTime() <= Date.now() ? <p className="mt-2 text-on-surface-variant">A saída prevista já passou. Confira a viagem com a operação.</p> : cancelarPlanoId === plano.id ? <div className="mt-2 space-y-2">
               <label className="grid gap-1">Motivo do cancelamento<textarea value={motivoCancelamento} onChange={(ev) => setMotivoCancelamento(ev.target.value)} maxLength={500} className={campo} rows={2} placeholder="Explique por que o carro precisa ser replanejado" /></label>
               <div className="flex flex-wrap gap-2"><button disabled={Boolean(ocupado) || motivoCancelamento.trim().length < 10} onClick={() => { setCancelarPlanoId(null); void acao("cancelar_plano", { plano: plano.id, motivo: motivoCancelamento.trim() }); }} className="rounded-lg bg-primary px-3 py-2 text-on-primary disabled:opacity-50">Confirmar cancelamento</button><button onClick={() => setCancelarPlanoId(null)} className="rounded-lg px-3 py-2">Manter plano</button></div>
             </div> : <button disabled={Boolean(ocupado)} onClick={() => { setMotivoCancelamento(""); setCancelarPlanoId(plano.id); }} className="mt-2 rounded-lg bg-surface-container-high px-3 py-2 disabled:opacity-50">Cancelar plano aprovado</button>}
           </div>)}
+          {levarAprovado && !buscaAprovada && requisito && rota && dados.capacidade && dados.configuracao && <BuscaEquipeForm key={evento.id} evento={evento} requisito={requisito} rota={rota} dados={dados} ocupado={Boolean(ocupado)} salvar={(veiculo, motorista, saida) => void acao("busca", { evento: evento.id, veiculo_id: veiculo, motorista_id: motorista, saida_prevista: saida })} />}
           <button disabled={Boolean(ocupado)} onClick={() => void acao("rota", { evento: evento.id })} className="rounded-xl bg-surface-container px-3 py-2 text-xs disabled:opacity-50">{ocupado === "rota" ? "Calculando…" : rota ? "Atualizar rota" : "Calcular rota"}</button>
           {dupla?.primeiro_evento_id === evento.id && <div className="space-y-2 text-xs">
             <p>{trecho ? `${trecho.distancia_km} km · ${trecho.duracao_minutos} min até o segundo evento` : "Trecho entre os eventos ainda não calculado"}</p>
@@ -219,6 +222,41 @@ export function LogisticaPainel() {
       {dados.eventos.length > 1 && <div className="flex flex-wrap items-end gap-2 rounded-xl bg-surface-container p-3 text-sm"><div className="mr-auto"><strong>Ligar dois eventos consecutivos</strong><p className="text-xs text-on-surface-variant">Exige a mesma equipe e líderes confirmados nos dois eventos.</p></div><select className={campo} value={primeiro} onChange={(evento) => setPrimeiro(evento.target.value)}><option value="">Primeiro evento</option>{dados.eventos.map((evento) => <option key={evento.id} value={evento.id}>{evento.horario?.slice(0, 5)} · {evento.cliente_nome}</option>)}</select><select className={campo} value={segundo} onChange={(evento) => setSegundo(evento.target.value)}><option value="">Segundo evento</option>{dados.eventos.filter((evento) => evento.id !== primeiro).map((evento) => <option key={evento.id} value={evento.id}>{evento.horario?.slice(0, 5)} · {evento.cliente_nome}</option>)}</select><button disabled={!primeiro || !segundo || Boolean(ocupado)} onClick={() => void acao("vincular", { primeiro, segundo })} className="rounded-xl bg-primary px-3 py-2 text-on-primary disabled:opacity-50">Vincular</button></div>}
     </>}
   </section>;
+}
+
+function BuscaEquipeForm({ evento, requisito, rota, dados, ocupado, salvar }: { evento: Evento; requisito: Requisito; rota: Rota; dados: Dados; ocupado: boolean; salvar: (veiculo: string, motorista: string, saida: string) => void }) {
+  const inicio = Date.parse(`${evento.data_evento}T${evento.horario.slice(0, 5)}:00-03:00`);
+  const fim = inicio + (dados.capacidade?.duracao_minutos ?? 240) * 60_000;
+  const duracaoIda = Math.ceil(rota.duracao_minutos * Math.max(100, dados.configuracao?.fator_pico_percentual ?? 100) / 100);
+  const sugestao = new Date(fim - duracaoIda * 60_000 - 3 * 60 * 60_000).toISOString().slice(0, 16);
+  const [saidaLocal, setSaidaLocal] = useState(sugestao);
+  const [veiculoId, setVeiculoId] = useState("");
+  const carro = dados.veiculos.find((item) => item.id === veiculoId);
+  const [motoristaId, setMotoristaId] = useState("");
+  const saidaMs = Date.parse(`${saidaLocal}:00-03:00`);
+  const chegadaMs = saidaMs + duracaoIda * 60_000;
+  const retornoMs = Math.max(chegadaMs, fim) + duracaoIda * 60_000;
+  const horarioValido = Number.isFinite(saidaMs) && saidaMs > Date.now() && saidaMs >= inicio && saidaMs <= fim + 2 * 60 * 60_000 && chegadaMs >= fim - 60 * 60_000 && chegadaMs <= fim + 2 * 60 * 60_000;
+  const saidaIso = horarioValido ? new Date(saidaMs).toISOString() : "";
+  const retornoIso = horarioValido ? new Date(retornoMs).toISOString() : "";
+  const carros = dados.veiculos.filter((item) => item.lugares >= requisito.pessoas_transportar && ordemForno.indexOf(item.forno_maximo) >= ordemForno.indexOf(requisito.forno_necessario as TipoForno) && ordemBebida.indexOf(item.bebida_maxima) >= ordemBebida.indexOf(requisito.bebida_necessaria as TipoBebida));
+  const motoristaPronto = Boolean(carro && horarioValido && motoristaDisponivel(dados, motoristaId, saidaIso, retornoIso, Boolean(carro.proprietario_id)));
+  const carroLivre = Boolean(carro && horarioValido && !dados.planos.some((plano) => plano.situacao === "aprovado" && plano.veiculo_id === carro.id && saidaMs < Date.parse(plano.retorno_previsto) && retornoMs > Date.parse(plano.saida_prevista)));
+  const carroPlanejavel = !carro?.proprietario_id || veiculosDoDia(dados, evento.data_evento).some((item) => item.id === carro.id && item.disponivel);
+  const km = Number(rota.distancia_km) * 2;
+  const material = requisito.forno_necessario !== "nenhum" || requisito.bebida_necessaria !== "nenhuma";
+  const custoCentavos = carro?.proprietario_id
+    ? Math.max(dados.regra?.minimo_centavos ?? 0, Math.round(km * (material ? dados.regra?.material_centavos_km ?? 0 : dados.regra?.pessoas_centavos_km ?? 0))) + (material ? dados.regra?.adicional_material_centavos ?? 0 : 0)
+    : Math.round(km * (dados.configuracao?.custo_frota_centavos_km ?? 0));
+  return <form onSubmit={(ev) => { ev.preventDefault(); if (carro && horarioValido && motoristaPronto && carroLivre && carroPlanejavel) salvar(carro.id, motoristaId, saidaIso); }} className="space-y-2 rounded-xl bg-primary/10 p-3 text-xs">
+    <strong>Planejar a busca da equipe</strong>
+    <p className="text-on-surface-variant">Registre outra viagem do QG ao evento e de volta com a equipe. A busca ocupa carro e motorista e soma um custo próprio.</p>
+    <div className="grid gap-2 sm:grid-cols-2"><label className="grid gap-1">Saída do QG<input className={campo} type="datetime-local" value={saidaLocal} onChange={(ev) => setSaidaLocal(ev.target.value)} /></label><label className="grid gap-1">Carro<select className={campo} value={veiculoId} onChange={(ev) => { const escolhido = dados.veiculos.find((item) => item.id === ev.target.value); setVeiculoId(ev.target.value); setMotoristaId(escolhido?.proprietario_id ?? ""); }}><option value="">Selecione</option>{carros.map((item) => <option key={item.id} value={item.id}>{item.modelo} · {item.placa}</option>)}</select></label></div>
+    <label className="grid gap-1">Motorista<select className={campo} value={motoristaId} disabled={Boolean(carro?.proprietario_id)} onChange={(ev) => setMotoristaId(ev.target.value)}><option value="">Selecione</option>{dados.pessoas.map((item) => <option key={item.id} value={item.id} disabled={!horarioValido || !motoristaDisponivel(dados, item.id, saidaIso, retornoIso, Boolean(carro?.proprietario_id))}>{item.nome}</option>)}</select></label>
+    {horarioValido ? <p>Chegada estimada {new Date(chegadaMs).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })} · retorno ao QG {new Date(retornoMs).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })} · {km.toFixed(2).replace(".", ",")} km{carro ? ` · custo estimado R$ ${(custoCentavos / 100).toFixed(2).replace(".", ",")}` : ""}</p> : <p className="text-on-surface-variant">A chegada precisa ficar entre uma hora antes e duas horas após o fim previsto do evento.</p>}
+    {carro && (!carroLivre || !carroPlanejavel || (motoristaId && !motoristaPronto)) && <p className="text-on-surface-variant">Confira disponibilidade do carro e do motorista nesse horário.</p>}
+    <button disabled={ocupado || !carro || !horarioValido || !carroLivre || !carroPlanejavel || !motoristaPronto} className="rounded-xl bg-primary px-3 py-2 font-semibold text-on-primary disabled:opacity-50">Aprovar busca</button>
+  </form>;
 }
 
 function RequisitoForm({ evento, atual, bloqueado, salvar }: { evento: Evento; atual?: Requisito; bloqueado: boolean; salvar: (dados: Record<string, unknown>) => void }) {
