@@ -258,7 +258,12 @@ function BuscaEquipeForm({ evento, requisito, rota, dados, ocupado, salvar }: { 
   const inicio = Date.parse(`${evento.data_evento}T${evento.horario.slice(0, 5)}:00-03:00`);
   const fim = inicio + (dados.capacidade?.duracao_minutos ?? 240) * 60_000;
   const duracaoIda = Math.ceil(rota.duracao_minutos * Math.max(100, dados.configuracao?.fator_pico_percentual ?? 100) / 100);
-  const sugestao = new Date(fim - duracaoIda * 60_000 - 3 * 60 * 60_000).toISOString().slice(0, 16);
+  // O carro deve chegar pouco antes do fim. datetime-local espera o horario de Sao Paulo,
+  // enquanto toISOString() mostraria UTC e deslocaria a sugestao em tres horas.
+  const sugestao = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).format(new Date(fim - duracaoIda * 60_000 - 15 * 60_000)).replace(" ", "T");
   const [saidaLocal, setSaidaLocal] = useState(sugestao);
   const [veiculoId, setVeiculoId] = useState("");
   const carro = dados.veiculos.find((item) => item.id === veiculoId);
