@@ -7,7 +7,7 @@ import { carroEMotoristaCoincidemNoDia, janelasCarro, janelasPessoa, type DiaPes
 type Evento = { id: string; cliente_nome: string; data_evento: string; horario: string; inteiros: number; meios: number };
 type Requisito = { evento_id: string; forno_necessario: string; bebida_necessaria: string; bebida_comeca_antes: boolean; pessoas_transportar: number };
 type Rota = { evento_id: string; distancia_km: number; duracao_minutos: number; medido_em: string; latitude: number; longitude: number };
-type Duplo = { id: string; primeiro_evento_id: string; segundo_evento_id: string };
+type Duplo = { id: string; codigo: string; primeiro_evento_id: string; segundo_evento_id: string };
 type TrechoDuplo = { evento_duplo_id: string; primeira_latitude: number; primeira_longitude: number; segunda_latitude: number; segunda_longitude: number; distancia_km: number; duracao_minutos: number; medido_em: string };
 type Plano = { id: string; evento_id: string; evento_duplo_id: string | null; situacao: string; veiculo_id: string; motorista_id: string | null; modo: string; saida_prevista: string; retorno_previsto: string; ajuda_solicitada: string | null; distancia_km: number | null; custo_estimado: number | null };
 type Parada = { plano_id: string; evento_id: string; ordem: number; chegada_prevista: string };
@@ -222,7 +222,7 @@ export function LogisticaPainel() {
         const chave = (item: PropostaLogistica) => `${item.veiculoId}:${item.modo}`;
         const propostaSelecionada = opcoes.find((item) => chave(item) === opcaoPorEvento[evento.id]) ?? proposta;
         return <article key={evento.id} className="space-y-3 rounded-2xl bg-surface-container-lowest p-4 ring-1 ring-outline-variant/30">
-          <div><h3 className="font-semibold">{evento.horario?.slice(0, 5)} · {evento.cliente_nome || "Evento"}</h3><p className="text-xs text-on-surface-variant">{(evento.inteiros ?? 0) + (evento.meios ?? 0)} convidados{dupla ? " · Evento duplo" : ""}</p></div>
+          <div><h3 className="font-semibold">{evento.horario?.slice(0, 5)} · {evento.cliente_nome || "Evento"}</h3><p className="text-xs text-on-surface-variant">{(evento.inteiros ?? 0) + (evento.meios ?? 0)} convidados{dupla ? ` · Dupla ${dupla.codigo} · ${dupla.primeiro_evento_id === evento.id ? "1º evento" : "2º evento"}` : ""}</p></div>
           <div className="space-y-1 text-sm"><p>{requisito ? `${requisito.pessoas_transportar} pessoas · forno ${requisito.forno_necessario} · bebida ${requisito.bebida_necessaria}` : "Carga ainda não informada"}</p><p>{rota ? `${rota.distancia_km} km · ${rota.duracao_minutos} min desde o QG` : "Rota rodoviária ainda não calculada"}</p><p>{planos.length ? planos.map((plano) => `${plano.modo === "buscar" ? "Busca" : "Ida"} · ${dados.veiculos.find((v) => v.id === plano.veiculo_id)?.modelo ?? "Carro"}: ${plano.situacao}${paradaDaViagem?.plano_id === plano.id ? ` · parada ${paradaDaViagem.ordem}` : ""}`).join(" · ") : "Nenhum carro planejado"}</p>{paradaDaViagem && <p className="text-xs text-on-surface-variant">Chegada prevista {new Date(paradaDaViagem.chegada_prevista).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })} · custo compartilhado entre as paradas</p>}</div>
           <RequisitoForm evento={evento} atual={requisito} bloqueado={Boolean(ocupado)} salvar={(valores) => acao("requisito", { evento: evento.id, dados: valores })} />
           {planos.filter((plano) => plano.situacao === "aprovado").map((plano) => <div key={plano.id} className="rounded-xl bg-surface-container p-3 text-xs">
