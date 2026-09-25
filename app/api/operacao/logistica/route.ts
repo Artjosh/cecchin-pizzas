@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { sessaoAtual } from "@/src/servidor/auth/sessao-atual";
 import { chamarFuncao, consultar, consultarComoServico } from "@/src/servidor/supabase";
 import { QG_CECCHIN } from "@/src/lib/operacao";
+import { preverViagemComParadas } from "@/src/lib/logistica/viagemParadas";
 
 export const dynamic = "force-dynamic";
 
@@ -60,25 +61,13 @@ async function prepararViagem(ids: string[], veiculoId: string, token: string) {
     return inicio - Number(carga.bebida_comeca_antes ? config.montagem_bebida_antes_minutos : config.montagem_padrao_minutos) * 60_000;
   });
   if (prazos.some((p) => !Number.isFinite(p))) throw new Error("Horário de evento inválido.");
-  const calcularSaida = (fator: number) => {
-    let acumulado = 0;
-    return Math.min(...prazos.map((prazo,indice) => { acumulado += Math.ceil(pernas[indice].minutos * fator / 100) * 60_000; return prazo - acumulado; }));
-  };
-  const fatorNoHorario = (saida: number) => {
-    const hora = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", hour: "numeric", hourCycle: "h23" }).format(new Date(saida)));
-    return (hora >= 7 && hora < 9) || (hora >= 17 && hora < 20) ? Number(config.fator_pico_percentual) : 100;
-  };
-  const candidatos = [...new Set([100, Number(config.fator_pico_percentual)])].map(calcularSaida).sort((a,b) => b-a);
-  const saida = candidatos.find((instante) => instante <= calcularSaida(fatorNoHorario(instante))) ?? candidatos[candidatos.length-1];
-  const fator = fatorNoHorario(saida);
-  let acumulado = 0;
-  const paradas = ids.map((id, indice) => { acumulado += Math.ceil(pernas[indice].minutos * fator / 100) * 60_000; return { eventoId: id, nome: eventos[indice]!.cliente_nome, chegadaPrevista: new Date(saida + acumulado).toISOString(), prazo: new Date(prazos[indice]).toISOString() }; });
-  if (paradas.some((p) => Date.parse(p.chegadaPrevista) > Date.parse(p.prazo))) throw new Error("Essa ordem não chega a tempo a todos os eventos. Altere a sequência.");
-  const retorno = saida + acumulado + Math.ceil(pernas[ids.length].minutos * fator / 100) * 60_000;
+  const previsao = preverViagemComParadas(pernas.map((perna) => perna.minutos), prazos, Number(config.fator_pico_percentual));
+  if (!previsao) throw new Error("Essa ordem não chega a tempo a todos os eventos. Altere a sequência.");
+  const paradas = ids.map((id, indice) => ({ eventoId: id, nome: eventos[indice]!.cliente_nome, chegadaPrevista: new Date(previsao.chegadasMs[indice]).toISOString(), prazo: new Date(prazos[indice]).toISOString() }));
   const distanciaKm = Math.round(pernas.reduce((total, perna) => total + perna.km, 0) * 100) / 100;
   const material = cargas.some((c) => c!.forno_necessario !== "nenhum" || c!.bebida_necessaria !== "nenhuma");
   const custoCentavos = carro.proprietario_id ? Math.max(Number(regra.minimo_centavos), Math.round(distanciaKm * Number(material ? regra.material_centavos_km : regra.pessoas_centavos_km))) + (material ? Number(regra.adicional_material_centavos) : 0) : Math.round(distanciaKm * Number(config.custo_frota_centavos_km));
-  return { eventos: ids, veiculo_id: veiculoId, pontos: pontos.map(({ latitude, longitude }) => ({ latitude, longitude })), pernas, saida_prevista: new Date(saida).toISOString(), retorno_previsto: new Date(retorno).toISOString(), distancia_km: distanciaKm, custo_estimado: custoCentavos / 100, paradas };
+  return { eventos: ids, veiculo_id: veiculoId, pontos: pontos.map(({ latitude, longitude }) => ({ latitude, longitude })), pernas, saida_prevista: new Date(previsao.saidaMs).toISOString(), retorno_previsto: new Date(previsao.retornoMs).toISOString(), distancia_km: distanciaKm, custo_estimado: custoCentavos / 100, paradas };
 }
 
 async function gestao() {
