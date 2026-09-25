@@ -41,24 +41,27 @@ async function requisicao(tabId, path, method = "GET", body) {
   return payload;
 }
 
-function itemMidia(raw) {
+function itemMidia(raw, fallbackUser = {}) {
   const media = raw?.media_or_ad ?? raw?.media ?? raw;
   if (!media || typeof media !== "object") return null;
   const primeiro = media.carousel_media?.[0] ?? media;
   const imagem = primeiro.image_versions2?.candidates?.[0]?.url ?? primeiro.thumbnail_url ?? media.image_versions2?.candidates?.[0]?.url ?? media.thumbnail_url;
   const video = primeiro.video_versions?.[0]?.url ?? primeiro.video_url ?? media.video_versions?.[0]?.url ?? media.video_url;
-  const username = media.user?.username ?? raw?.user?.username ?? "";
+  const user = media.user ?? raw?.user ?? fallbackUser;
+  const username = user.username ?? "";
   const shortcode = media.code;
   const stamp = Number(media.taken_at ?? media.taken_at_ts ?? 0);
   const caption = media.caption?.text ?? media.caption_text ?? "";
+  const isVideo = Number(primeiro.media_type ?? media.media_type) === 2 || Boolean(video);
   return {
     id: String(media.pk ?? media.id ?? `${username}-${stamp}`),
+    userId: String(user.pk ?? user.id ?? raw?.user_id ?? fallbackUser.pk ?? ""),
     username,
-    nome: media.user?.full_name ?? raw?.user?.full_name ?? username,
-    fotoPerfil: media.user?.profile_pic_url ?? raw?.user?.profile_pic_url ?? null,
+    nome: user.full_name ?? username,
+    fotoPerfil: user.profile_pic_url ?? user.profile_pic_url_hd ?? null,
     legenda: caption,
-    tipo: video ? "video" : "image",
-    urlMidia: video ?? imagem ?? null,
+    tipo: isVideo && video ? "video" : "image",
+    urlMidia: isVideo ? video ?? imagem ?? null : imagem ?? video ?? null,
     miniatura: imagem ?? null,
     permalink: shortcode ? `${BASE}/p/${shortcode}/` : null,
     timestamp: stamp ? new Date(stamp * 1000).toISOString() : null,
@@ -71,15 +74,33 @@ function itemMidia(raw) {
   };
 }
 
-function normalizarFeed(payload) {
+function normalizarFeed(payload, fotosStories = new Map()) {
   const itens = payload.feed_items ?? payload.items ?? payload.sections?.flatMap((section) => section.layout_content?.medias ?? section.media ?? []) ?? [];
-  return itens.map(itemMidia).filter(Boolean).slice(0, 30);
+  return itens.map(itemMidia).filter(Boolean).slice(0, 30).map((post) => ({
+    ...post,
+    fotoPerfil: post.fotoPerfil ?? fotosStories.get(post.userId) ?? fotosStories.get(post.username) ?? null,
+  }));
+}
+
+async function completarFotosPerfil(tabId, posts) {
+  const faltantes = [...new Map(posts.filter((post) => !post.fotoPerfil && post.userId).map((post) => [post.userId, post])).values()].slice(0, 10);
+  const perfis = await Promise.all(faltantes.map(async (post) => {
+    try {
+      const resposta = await requisicao(tabId, `/api/v1/users/${encodeURIComponent(post.userId)}/info/`);
+      const user = resposta.user ?? resposta.data?.user ?? {};
+      return [post.userId, user.profile_pic_url ?? user.profile_pic_url_hd ?? null];
+    } catch {
+      return [post.userId, null];
+    }
+  }));
+  const fotos = new Map(perfis.filter(([, foto]) => foto));
+  return posts.map((post) => ({ ...post, fotoPerfil: post.fotoPerfil ?? fotos.get(post.userId) ?? null }));
 }
 
 function normalizarStories(payload) {
   return (payload.tray ?? payload.items ?? []).map((entry) => {
     const user = entry.user ?? entry.owner ?? {};
-    const id = String(user.pk ?? entry.user_id ?? "");
+    const id = String(user.pk ?? entry.user_id ?? entry.id ?? "");
     if (!id) return null;
     return {
       id,
@@ -103,13 +124,25 @@ async function executar(acao, tabId, argumentos = {}) {
       requisicao(tabId, "/api/v1/accounts/current_user/?edit=true").catch(() => null),
     ]);
     const user = perfil?.user ?? {};
-    return { perfil: { id: String(user.pk ?? ""), username: user.username ?? "", nome: user.full_name ?? "", foto: user.profile_pic_url ?? null }, feed: normalizarFeed(feed), stories: normalizarStories(bandeja), atualizadoEm: new Date().toISOString() };
+    const stories = normalizarStories(bandeja);
+    const fotosStories = new Map(stories.flatMap((story) => [[story.id, story.foto], [story.username, story.foto]]));
+    const publicacoes = await completarFotosPerfil(tabId, normalizarFeed(feed, fotosStories));
+    return { perfil: { id: String(user.pk ?? ""), username: user.username ?? "", nome: user.full_name ?? "", foto: user.profile_pic_url ?? user.profile_pic_url_hd ?? null }, feed: publicacoes, stories, atualizadoEm: new Date().toISOString() };
   }
   if (acao === "story") {
     const id = String(argumentos.userId ?? "");
     if (!/^\d{1,32}$/.test(id)) throw new Error("Perfil de Story inválido.");
-    const payload = await requisicao(tabId, `/api/v1/feed/user/${id}/reel_media/`);
-    const items = (payload.items ?? payload.reel_items ?? []).map(itemMidia).filter(Boolean);
+    const fallbackUser = { pk: id, username: String(argumentos.username ?? ""), profile_pic_url: String(argumentos.foto ?? "") };
+    const extrairItens = (payload) => {
+      const reel = payload.reels?.[id] ?? payload.reels_media?.find((item) => String(item.user?.pk ?? item.user_id ?? "") === id);
+      return (payload.items ?? payload.reel_items ?? reel?.items ?? []).map((item) => itemMidia(item, fallbackUser)).filter((item) => item?.urlMidia);
+    };
+    let items = [];
+    try { items = extrairItens(await requisicao(tabId, `/api/v1/feed/user/${id}/reel_media/`)); } catch { /* tenta o endpoint em lote abaixo */ }
+    if (!items.length) {
+      const payload = await requisicao(tabId, "/api/v1/feed/reels_media/", "POST", { user_ids: JSON.stringify([id]), source: "feed_timeline" });
+      items = extrairItens(payload);
+    }
     return { stories: items };
   }
   throw new Error("Ação da extensão desconhecida.");

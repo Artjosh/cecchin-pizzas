@@ -1,5 +1,6 @@
 export type InstagramBrowserItem = {
   id: string;
+  userId?: string;
   username: string;
   nome: string;
   fotoPerfil: string | null;
