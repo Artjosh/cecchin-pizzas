@@ -1,55 +1,69 @@
-# Integração oficial do Instagram
+# Instagram na central de marketing
 
-## Estado desta entrega
+Atualizado em 25/09/2026. Este documento separa a ponte local do navegador da API oficial da Meta. A palavra "Instagram" na UI nao significa que todas as funcoes usam a API oficial.
 
-`/operacional/marketing` oferece dois caminhos separados. Para **ver feed e Stories de perfis seguidos**, a extensão local `browser-extension/instagram-bridge` usa a aba autenticada do próprio Instagram e repassa dados normalizados à página. Não lê nem copia cookies; chamadas são feitas dentro da aba oficial. A extensão precisa ser carregada no perfil Chromium/Brave que tem a sessão do Instagram. O guia está em `browser-extension/instagram-bridge/README.md`.
+## Arquitetura
 
-Para **publicar conteúdo da empresa**, permanece a conexão OAuth server-side da Instagram API com Instagram Login: leitura da conta profissional, upload de uma imagem e fila para publicação/agendamento. A fila separa `agendado`, `preparando`, `publicando`, `publicado` e `falhou`; só confirma publicação depois da resposta/reconciliação remota. Esse fluxo ainda depende da configuração Meta descrita abaixo.
+`/operacional/marketing` oferece dois fluxos:
 
-O banco local recebeu as migrations `20260925125_125_instagram_marketing.sql` e `20260925126_126_instagram_serializar_publicador.sql`. Elas criam contas, publicações, auditoria e RPCs; RLS está habilitado e o cliente não recebe acesso direto às tabelas/token. A migration canônica correspondente está em `../cecchin-pizzas-backend/migracao/sql/103_instagram_marketing.sql` e `104_instagram_serializar_publicador.sql`.
+1. **Sessao do Instagram ja aberta no Brave/Chrome:** `browser-extension/instagram-bridge` consulta a aba `www.instagram.com` usando endpoints web internos do Instagram e passa dados normalizados para a central. Nao copia cookies nem pede a senha dentro do Cecchin. Essa ponte nao e a Instagram Graph API nem a API oficial de Login.
+2. **Conta profissional da Cecchin para publicar:** o backend usa OAuth server-side do Instagram Login, token cifrado, Storage privado, fila e worker. Esse fluxo oficial e independente da extensao.
 
-O navegador já tinha sessão ativa do Instagram. A implementação da extensão e da interface foi escrita, mas a extensão ainda não foi carregada no Brave; feed/Stories dentro do Cecchin aguardam essa autorização do navegador. O OAuth de publicação e um post não foram executados. Os containers locais do worker ainda usam imagem anterior a esta implementação. Portanto publicação via API e execução no runtime não estão ativas.
+A ponte so funciona quando a extensao esta instalada e atualizada no mesmo perfil do navegador, e existe uma aba autenticada do Instagram. Alteracoes em `service-worker.js` exigem clicar em **Recarregar** na pagina de extensoes do Brave/Chrome e depois atualizar a pagina de marketing.
 
-## Configuração necessária
+## Funcionalidades da ponte
 
-Para publicação via API, configurar no runtime do frontend/BFF e no worker, sem expor valores ao navegador:
+O codigo da extensao e da central implementa:
 
-- `INSTAGRAM_APP_ID` e `INSTAGRAM_APP_SECRET` do app Meta;
-- `INSTAGRAM_REDIRECT_URI`, URL HTTPS cadastrada exatamente como callback (exceto localhost de desenvolvimento);
-- `INSTAGRAM_TOKEN_ENCRYPTION_KEY`, 32 bytes aleatórios codificados como 64 caracteres hexadecimais, igual no BFF e worker;
-- `INSTAGRAM_GRAPH_API_VERSION`, versão Graph suportada e ainda vigente;
-- no worker, `SUPABASE_URL` e `SUPABASE_SECRET_KEY` (ou compatibilidade `SUPABASE_SERVICE_ROLE_KEY`) para gerar URLs assinadas de curta duração do bucket privado.
+- Feed de contas seguidas, normalizado a partir da timeline.
+- Stories recentes e visualizador com navegacao pelos itens retornados, controles anterior/proximo e tecla `Esc` para fechar.
+- Perfil dentro da central e grade de publicacoes do perfil.
+- Modal para ler comentarios e formulario para publicar comentario.
+- Curtir e remover curtida de uma publicacao.
+- Carregamento da proxima pagina ao rolar ate o fim do feed, usando cursor `next_max_id` e IDs ja exibidos.
+- Remocao de itens sem imagem/video e preenchimento de avatares a partir do usuario da publicacao ou de uma consulta complementar em serie com cache.
 
-O app Meta precisa do produto/permissões de Instagram Login, conta profissional de teste e acesso de revisão apropriado para o uso pretendido. O callback solicita `instagram_business_basic` e `instagram_business_content_publish`; a coluna `scopes` registra escopos solicitados e **não prova** Advanced Access nem permissão efetiva. Erros reais da Meta são apresentados na conexão/publicação. O limite de 25 publicações API por janela móvel de 24 horas é verificado na criação e imediatamente antes do envio, serializando publicador por conta entre containers.
+Essas acoes usam endpoints web internos e nao documentados, tais como `feed/timeline`, `feed/reels_tray`, `feed/reels_media`, `feed/user/{id}`, `media/{id}/comments`, `media/{id}/like`, `media/{id}/unlike` e `media/{id}/comment`. Eles podem mudar sem aviso e nao sao garantidos pela Meta. Curtidas e comentarios sao escritas reais na conta quando acionadas pela UI; nao clicar em controles de envio durante uma validacao visual.
 
-## Ponte de leitura do navegador
+## Validacao observada no navegador
 
-- Não precisa de App ID/Secret, `.env` ou backend novo. Precisa da extensão local instalada no mesmo perfil Brave/Chrome que está autenticado no Instagram.
-- As permissões são limitadas a `www.instagram.com` e `http://localhost:3000`; o content script só roda na rota local de marketing. A ponte responde apenas às mensagens com origem local esperada.
-- Ela pede acesso de scripting para consultar a aba oficial; não usa permissão de cookies, não pede senha e não persiste sessão. A saída para a aplicação contém apenas perfil, feed e Stories transformados para o modelo da interface.
-- A implementação usa formatos de leitura descritos no [mapa público de API web do SpeedGram](https://github.com/aryasarukkai/instagram-fast-react-client/blob/main/speedgram/docs/web-api-surface.md). O SpeedGram é GPL; seu código não foi copiado.
-- Os endpoints usados pelo próprio site podem mudar. A ponte é apenas de leitura e não curte, segue, comenta, envia mensagens ou publica.
+- A central autenticada carregou timeline e bandeja de Stories no Brave.
+- O visualizador abriu dois itens retornados para um Story; o controle **Proximo** avancou ao segundo, e `Esc` fechou a modal.
+- Uma tentativa de perfil falhou com HTTP 429. O worker anterior fazia ate dez consultas complementares de avatar em paralelo por atualizacao; isso e um candidato a rajada desnecessaria de requisicoes. O codigo foi alterado para usar cache e ate quatro consultas sequenciais por pagina, mas a causa do 429 ainda precisa ser comprovada apos recarregar a extensao.
+- Houve cartoes sem midia na timeline antes da correcao do filtro. A filtragem foi alterada, mas a ausencia dos cartoes vazios ainda precisa ser verificada com a extensao recarregada.
+- A paginacao por scroll foi implementada no codigo, mas o carregamento da pagina seguinte ainda nao foi confirmado no navegador.
+- A modal de comentarios foi exibida anteriormente, mas a instancia antiga da extensao respondeu "Acao da extensao desconhecida". Leitura de comentarios, envio de comentario, curtida, perfil e publicacoes do perfil continuam sem validacao ponta a ponta nesta versao.
+- A curtida nao foi enviada durante os testes. Nenhum comentario foi publicado.
 
-## Segurança e fluxo de publicação API
+**Proxima verificacao:** recarregar a extensao atualizada, atualizar Instagram na central, conferir avatares e ausencia de cartoes vazios, rolar para carregar mais e abrir um perfil e comentarios. Nao enviar comentario nem curtir uma publicacao real como parte do teste. Registrar um resultado 429 como erro da chamada e verificar qual endpoint o causou; nao declarar bloqueio da conta sem evidencias do proprio Instagram.
 
-- Login OAuth é iniciado apenas por gestão/admin; usa `state` aleatório em cookie HttpOnly/SameSite com vida curta e callback verificado.
-- Access token é cifrado com AES-256-GCM antes de persistir. BFF/worker decifram somente em memória. Não registrar tokens nos logs ou respostas.
-- A conta pode ser desconectada por gestão; token cifrado é apagado e publicações pendentes são encerradas.
-- O bucket `marketing-conteudos` permanece privado. O worker cria URL assinada temporária só para o objeto da organização e a envia à Meta para processamento.
-- A fila tem chave idempotente, reserva por publicação, bloqueio distribuído por conta e reconciliação após resultado ambíguo. Se a reconciliação não encontra exatamente um post compatível, a publicação falha para revisão; não é repetida automaticamente.
+## Configuracao da API oficial para publicacao
 
-## Limites conhecidos
+Configurar no runtime do frontend/BFF e no worker, sem expor valores ao navegador:
 
-- A UI envia somente uma imagem JPEG/PNG/WebP no feed. Reels, carrossel e Stories não estão habilitados. A leitura de Stories depende de endpoint, tipo da conta e concessão real da Meta; Stories de concorrentes não são oferecidos.
-- Insights, comentários, mensagens, monitoramento de seguidores/concorrentes e sincronização paginada em banco não fazem parte desta entrega.
-- A central apresenta as superfícies pedidas para observação — feed seguido e Stories — dentro da própria página. Mensagens e interações não são incluídas nesta ponte.
-- A correção do bot de veículos foi feita no código backend mas o worker container ativo é antigo. A integração Instagram também não executará até reconstruir e reiniciar/deployar os serviços com as novas variáveis.
-- Não rodamos typecheck/linter, conforme preferência registrada no workspace. Nenhuma conta ou publicação real foi acessada.
+- `INSTAGRAM_APP_ID` e `INSTAGRAM_APP_SECRET` do app Meta.
+- `INSTAGRAM_REDIRECT_URI`, callback HTTPS cadastrado exatamente.
+- `INSTAGRAM_TOKEN_ENCRYPTION_KEY`, 32 bytes aleatorios em 64 caracteres hexadecimais, igual no BFF e worker.
+- `INSTAGRAM_GRAPH_API_VERSION`, versao suportada no momento do deploy.
+- `SUPABASE_URL` e `SUPABASE_SECRET_KEY` (ou a compatibilidade `SUPABASE_SERVICE_ROLE_KEY`) no worker, para criar URL temporaria do objeto privado.
 
-## Referências oficiais
+O app Meta precisa do produto/permissoes de Instagram Login e do nivel de acesso aprovado para a conta pretendida. O callback solicita `instagram_business_basic` e `instagram_business_content_publish`; os escopos registrados nao provam que a Meta concedeu acesso. O OAuth e a publicacao real nao foram testados nesta entrega.
 
-- [Instagram API with Instagram Login — coleção oficial Meta](https://www.postman.com/meta/instagram/folder/1z5vxzu/instagram-api-with-instagram-login)
-- [Instagram API — documentação Meta](https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api?entity=request-23987686-3fe78620-2258-44b6-893f-42d76c7200d7)
-- [Exemplo oficial Meta de publicação de Reels](https://github.com/fbsamples/reels_publishing_apis) (referência de ciclo assíncrono; não é a arquitetura de login adotada aqui).
+O composer oficial aceita uma imagem JPEG/PNG/WebP por publicacao no feed. Reels, carrossel e publicacao de Story ainda nao estao habilitados nesta UI. A fila registra `rascunho`, `agendado`, `preparando`, `publicando`, `publicado` e `falhou`, com idempotencia e reconciliacao. Isso nao prova que o worker/container em execucao recebeu esta versao. As migrations `20260925125` e `20260925126` foram registradas como aplicadas apenas no Supabase local; nenhum ambiente remoto foi confirmado.
 
-Antes de liberar produção, concluir revisão de permissões/termos da Meta e provar conexão, leitura e publicação de teste aprovada por responsável da conta.
+## Seguranca e limites
+
+- A extensao declara `scripting` e host permissions para `www.instagram.com` e `http://localhost:3000`. O content script roda apenas na pagina local de marketing.
+- Nao ha permissao de cookies; a extensao executa `fetch` dentro da aba oficial, autenticada pelo proprio navegador. A senha nao e lida nem enviada ao Cecchin.
+- A ponte entrega dados da conta autenticada e pode realizar curtida/comentario quando o usuario aciona esses botoes. Mantenha validacao de origem e limite cada origem explicitamente.
+- Feed, perfis, Stories, comentarios e curtidas pela ponte nao sao API oficial, nem uma incorporacao do app Instagram. O Instagram pode rejeitar chamadas, limitar frequencia, mudar esquemas ou remover endpoints.
+- A ponte nao consulta DM, nao envia mensagens, nao segue contas e nao publica midia.
+- A API oficial/worker ainda depende de credenciais, aprovacao da Meta, callback HTTPS e secrets de runtime. Nao registrar tokens, cookies, nomes ou payloads de sessoes reais em documentacao versionada.
+
+## Referencias
+
+- [Colecao oficial Meta: Instagram API with Instagram Login](https://www.postman.com/meta/instagram/folder/1z5vxzu/instagram-api-with-instagram-login)
+- [Documentacao oficial da Instagram API](https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api?entity=request-23987686-3fe78620-2258-44b6-893f-42d76c7200d7)
+- [Implementacao da ponte local](browser-extension/instagram-bridge/README.md)
+
+Antes de liberar publicacao em producao, revisar acesso/termos atuais da Meta e provar OAuth, leitura e publicacao de teste autorizada pela pessoa responsavel pela conta.

@@ -1,20 +1,33 @@
 # Cecchin Instagram Bridge
 
-Extensão Chromium local que mostra na central de marketing o feed e a bandeja de Stories da sessão Instagram já aberta no mesmo perfil do Brave/Chrome.
+Extensao Chromium local da central de marketing. Ela usa a sessao ja aberta do Instagram no mesmo perfil do Brave/Chrome; nao faz login e nao recebe a senha.
 
-## Ativar
+## Instalar ou atualizar
 
-1. Abra `brave://extensions` (ou `chrome://extensions`), confirme que quer adicionar a extensão local e habilite **Modo do desenvolvedor**.
-2. Escolha **Carregar sem compactação** e selecione esta pasta.
-3. Volte a `http://localhost:3000/operacional/marketing`, recarregue a aba para o Brave injetar o script da extensão e use **Atualizar Instagram**.
-4. Se não houver sessão, abra Instagram.com, entre no site oficial normalmente e volte à central.
+1. Abra `brave://extensions` (ou `chrome://extensions`), habilite o modo do desenvolvedor e use **Carregar sem compactacao** para instalar esta pasta, se ainda nao estiver instalada.
+2. Para aplicar alteracoes posteriores em `service-worker.js`, clique em **Recarregar** no card desta extensao.
+3. Recarregue `http://localhost:3000/operacional/marketing` e use **Atualizar Instagram**.
+4. Mantenha uma aba autenticada em `https://www.instagram.com/` aberta no mesmo perfil do navegador.
 
-O login e qualquer verificação continuam no Instagram. A extensão não lê nem copia cookies: as chamadas autenticadas de leitura são executadas dentro da aba `www.instagram.com` já aberta. Para a página passam só perfil, feed e Stories normalizados.
+## O que faz
 
-O acesso está restrito ao Instagram e à página local de marketing em `localhost:3000`. A extensão faz leituras; ela não curte, segue, comenta, envia mensagens ou publica.
+- Le feed e bandeja de Stories pela sessao web ja autenticada.
+- Busca perfis, publicacoes, comentarios e mais paginas da timeline quando solicitado pela central.
+- A interface oferece navegacao entre itens de Story e fecha a modal com `Esc`.
+- Pode curtir/remover curtida e publicar comentarios quando a pessoa usa os respectivos controles da UI. Esses pedidos alteram a conta real do Instagram.
 
-## Referência técnica
+As consultas e acoes sao executadas dentro da aba do Instagram. A extensao nao copia nem armazena cookies. A ponte entrega a pagina local dados normalizados de perfil, feed, Stories e comentarios.
 
-Implementação própria baseada nos formatos de leitura web descritos em [SpeedGram: Instagram web (Polaris) API surface](https://github.com/aryasarukkai/instagram-fast-react-client/blob/main/speedgram/docs/web-api-surface.md). O código GPL do SpeedGram não foi copiado. A API web pode mudar; respostas de expiração, bloqueio ou limitação aparecem na central sem repetição automática.
+## Permissoes e limites
 
-Para outra origem da aplicação, revise primeiro `matches`, `host_permissions` e as verificações de origem em `content.js`/`service-worker.js`; mantenha cada origem explícita.
+A extensao pede `scripting` e acesso a `https://www.instagram.com/*` e `http://localhost:3000/*`. O content script e limitado a `/operacional/marketing`; a mensagem valida a origem local antes de consultar a aba do Instagram. Nao ha permissao de cookies.
+
+A implementacao usa endpoints web internos nao documentados do Instagram. Eles podem mudar, retornar erros HTTP ou limitar frequencia. Isso nao e a API Graph oficial e nao e garantido pela Meta. A extensao nao envia DMs, nao segue contas e nao publica midia.
+
+A conexao OAuth da conta profissional da Cecchin e a publicacao via API oficial sao outro fluxo. Consulte [Instagram na central de marketing](../../INSTAGRAM_INTEGRACAO.md).
+
+## Referencia de formato
+
+O codigo e uma implementacao propria inspirada em formatos publicos descritos por [SpeedGram: Instagram web (Polaris) API surface](https://github.com/aryasarukkai/instagram-fast-react-client/blob/main/speedgram/docs/web-api-surface.md). O codigo GPL do SpeedGram nao foi copiado.
+
+Para outra origem, revise `matches`, `host_permissions` e as validacoes em `content.js` e `service-worker.js`; mantenha cada origem explicita.

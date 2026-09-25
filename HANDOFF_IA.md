@@ -18,11 +18,15 @@ Leia primeiro [AGENTS.md](AGENTS.md) do frontend e o `AGENTS.md` do backend. Est
 - `/admin/operacao`: `OperacaoEquipeView.tsx` separou Integrantes, Pré-cadastros e Vínculos. `EquipeOperacao.tsx` não deve mais fazer fetch/render de pré-cadastros na aba principal. O banco local auditado tinha 4 staff ativos, então a promessa de “10 integrantes” não pode ser feita por UI.
 - `/admin/pagamentos`: agora chamado **Eventos solicitados** na tela/sidebar, com abas Para aprovar, Consultar disponibilidade e Cobranças. Configuração da conta e preço/equipe mudou para `/admin/financeiro?aba=configuracoes`. Devoluções seguem em rota própria com badge. Cards de cobranças usam largura uniforme e mostram data/endereço da solicitação quando disponíveis. Revise query/filtro e paginação ao mudar de aba.
 - `/admin/financeiro`: ganhou navegação por Hoje, Freelancers, Cartões, Veículos, Conciliação, Lançamentos e Configurações, com rolagem interna. `GestaoFinanceira` oculta blocos por aba. Ainda há consultas de várias seções no render; otimizar por aba e medir RSC é trabalho posterior.
-- `MarketingPainel.tsx` incorpora `InstagramCentral`: feed e Stories dos perfis seguidos via extensão Chromium/Brave local (`browser-extension/instagram-bridge`), além do OAuth e composer/agendamento de imagem via API Meta. A extensão ainda deve ser carregada no navegador para compartilhar os dados da sessão local com a página. OAuth/publicação não foram executados porque faltam credenciais Meta/Storage.
+- `MarketingPainel.tsx` incorpora `InstagramCentral`: feed e Stories da sessão autenticada no navegador via extensão local (`browser-extension/instagram-bridge`), com perfil, comentários, curtidas e navegação entre Stories implementados na ponte. A API oficial Meta Login/publicação é outro fluxo; OAuth e postagem ainda não foram executados por falta de configuração/credenciais. Ver a verificação parcial abaixo e [INSTAGRAM_INTEGRACAO.md](INSTAGRAM_INTEGRACAO.md).
 - `/admin/montar-equipe`: a Base real vem da regra da organização ou dos valores iniciais da migration 124 (30 convidados por integrante, mínimo 1, 50 por líder), com ajuste manual e pequena margem de escala apertada. A montagem agora tem abas no topo **Equipe** e **Carro e saída**; os cards da equipe rolam em painéis separados e a logística abre o evento diretamente, sem ficar depois de dezenas de pessoas. Foi inspecionada visualmente em desktop e celular no banco local; não houve prova de alocação com carro real, pois nenhum estava cadastrado naquele momento.
-- `skills/desenhar-interface/SKILL.md` é o procedimento de UI/UX do projeto. A ponte de feed/Stories e o publicador OAuth estão descritos em [INSTAGRAM_INTEGRACAO.md](INSTAGRAM_INTEGRACAO.md). A ponte requer carregar a extensão no navegador; publicar via API aguarda configuração Meta e rebuild/deploy dos containers.
+- `skills/desenhar-interface/SKILL.md` é o procedimento de UI/UX do projeto. A ponte local e o publicador OAuth estão descritos em [INSTAGRAM_INTEGRACAO.md](INSTAGRAM_INTEGRACAO.md). Mudanças recentes no service worker exigem recarregar a extensão antes de validar o filtro de posts vazios, avatares e paginação; a publicação oficial aguarda configuração Meta e rebuild/deploy dos containers.
 - Localidades: a inspeção visual do banco local confirmou **582 localidades e 68 com taxa**. O ETL documenta as 68 taxas e 18 vigências de preço; tempos normal/pico da fonte vieram vazios. A tela agora mostra a contagem real de localidades com taxa. Não confundir preço de evento com taxa do bairro.
 - NSU e slug: o fluxo normal recebe via webhook/callback e valida via payment_check. Campos manuais do admin são contingência de recuperação; não preencher sinteticamente.
+
+## Instagram - verificação parcial em 25/09/2026
+
+A sessão do Instagram no navegador alimentou o feed e a bandeja de Stories. O visualizador mostrou dois itens retornados e avançou ao segundo; `Esc` fechou a modal. A tentativa de abrir um perfil retornou HTTP 429. Antes disso, a extensão fazia até dez consultas de avatar em paralelo; a redução para consultas sequenciais com cache e uma hipótese de mitigação, não uma causa confirmada do 429. Não houve teste confirmado do perfil/grade, comentários ponta a ponta, curtida ou paginação nessa versão; nenhuma curtida ou comentário foi enviado. O filtro de cards sem mídia, a busca de avatar e a paginação foram alterados no código e precisam de recarga da extensão e nova verificação no navegador. A API oficial para publicar segue independente e não foi autenticada nem usada.
 
 ## Próximos passos de revisão
 
@@ -30,7 +34,7 @@ Leia primeiro [AGENTS.md](AGENTS.md) do frontend e o `AGENTS.md` do backend. Est
 2. Inspecionar especialmente o fluxo de marketing em mobile, alternância de abas do financeiro, navegação por data no mapa, geocoding de eventos históricos e datas/dados vazios na frota. Corrigir defeitos observados.
 3. Otimizar a leitura do Financeiro por aba para não buscar tudo a cada navegação. Em frota, o GET logístico traz mais dados que os cards precisam; considerar endpoint de disponibilidade enxuto.
 4. Resolver HTTP 403 dos e-mails e rebuildar/deployar workers para aplicar a reconciliação de veículos WhatsApp; o reenvio manual já existe na tela administrativa.
-5. Configurar aplicativo Meta, callback HTTPS e secrets conforme [INSTAGRAM_INTEGRACAO.md](INSTAGRAM_INTEGRACAO.md); reconstruir API/worker e então validar OAuth/feed/publicação com conta profissional autorizada.
+5. Recarregar a extensão e concluir a verificação da ponte local conforme [INSTAGRAM_INTEGRACAO.md](INSTAGRAM_INTEGRACAO.md), sem curtir nem comentar em conteúdo real durante o teste. Em separado, configurar aplicativo Meta, callback HTTPS e secrets, reconstruir API/worker e validar OAuth/publicação com conta profissional autorizada.
 6. Atualizar docs de arquitetura/infra com qualquer diferença encontrada, registrando claramente código implementado, migration aplicada, serviço atualizado e transação confirmada.
 
 ### Inventário físico de fornos ainda pendente
@@ -47,7 +51,7 @@ Leia primeiro [AGENTS.md](AGENTS.md) do frontend e o `AGENTS.md` do backend. Est
 | Bot e Central | `cecchin-pizzas-backend/infra/WHATSAPP_INTEGRACAO.md` |
 | Schema e ETL histórico | `cecchin-pizzas-backend/migracao/README.md`, `ETL.md`, `DECISOES.md` |
 | Checkout incorporado **não implementado** | `cecchin-pizzas-backend/infra/PLANO_CHECKOUT_PROXY.md` |
-| Instagram próprio **não implementado** | `cecchin-pizzas/INSTAGRAM_INTEGRACAO.md` |
+| Instagram - ponte local parcial; OAuth/publicação oficial pendente | `cecchin-pizzas/INSTAGRAM_INTEGRACAO.md` |
 | UI/UX e revisão visual | `cecchin-pizzas/skills/desenhar-interface/SKILL.md` e `skills/verificar-tela/SKILL.md` |
 
 Não registrar dados de clientes, números de telefone, tokens, screenshots privados ou payloads autenticados neste handoff.
