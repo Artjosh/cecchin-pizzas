@@ -29,6 +29,10 @@ Leia primeiro [AGENTS.md](AGENTS.md) do frontend e o `AGENTS.md` do backend. Est
 4. Fazer correções de negócio da [auditoria](AUDITORIA_SISTEMA_2026-09-25.md) em trabalho separado, priorizando fila de e-mail travada e troca de veículo no WhatsApp. Isso requer backend, migrations e verificação de persistência.
 5. Atualizar docs de arquitetura/infra com qualquer diferença encontrada, registrando claramente código implementado, migration aplicada, serviço atualizado e transação confirmada.
 
+### Inventário físico de fornos ainda pendente
+
+`modelo_forno` é um catálogo de tipos usados pelo evento; não representa cada forno da empresa. A tela de frota direciona para esse catálogo e informa a limitação. Para cadastrar unidades físicas de verdade, criar migration incremental com `organizacao_id`, modelo, identificador único, estado/atividade e RLS de gestão; depois ligar cada unidade à alocação do evento, com bloqueio por janela de saída/retorno. Sem esse vínculo, um cadastro visual permitiria prometer o mesmo forno a eventos simultâneos. Conferir histórico de migrations e ambiente antes de aplicar qualquer DDL; não tratar o link do catálogo como inventário concluído.
+
 ## Mapa de documentação
 
 | Assunto | Fonte principal |
