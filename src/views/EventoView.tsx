@@ -112,9 +112,8 @@ export async function EventoView({ id }: { id: string }) {
 
   const [permissaoAtencao, vinculoDuplo] = await Promise.all([
     chamarFuncao<boolean>("pode_marcar_atencao", {}, sessao.accessToken),
-    consultar<Array<{ codigo: string; primeiro_evento_id: string; segundo_evento_id: string }>>(
-      `evento_duplo?select=codigo,primeiro_evento_id,segundo_evento_id&or=(primeiro_evento_id.eq.${encodeURIComponent(id)},segundo_evento_id.eq.${encodeURIComponent(id)})&limit=1`,
-      sessao.accessToken,
+    chamarFuncao<Array<{ codigo: string; primeiro_evento_id: string; segundo_evento_id: string }>>(
+      "consultar_numero_evento_duplo", { p_evento: id }, sessao.accessToken,
     ),
   ]);
   const dupla = vinculoDuplo.dados?.[0];
