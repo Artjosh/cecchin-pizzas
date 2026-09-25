@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Check, Clock3, Plus, RefreshCw, Send } from "lucide-react";
 import { dataSaoPaulo, horarioSaoPauloParaIso, inicioSemana, somarDias } from "../../lib/agenda-marketing-data";
+import { BibliotecaMarketing } from "./BibliotecaMarketing";
 
 type Pessoa = { id: string; nome: string; papel: string };
 type Perfil = { usuario_id: string; ativo: boolean };
@@ -171,5 +172,6 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
         {!!publicacoes.length && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{publicacoes.map((post) => <a key={post.instagram_media_id} href={post.permalink} target="_blank" rel="noopener noreferrer" className="overflow-hidden rounded-xl bg-surface-container text-sm hover:bg-surface-container-high">{(post.miniatura_url || (post.tipo !== "VIDEO" ? post.midia_url : null)) && <img src={post.miniatura_url || post.midia_url!} alt={post.legenda?.slice(0, 100) || "Publicação do Instagram"} loading="lazy" className="aspect-square w-full object-cover" />}<div className="p-3"><p className="line-clamp-3">{post.legenda || "Abrir publicação"}</p><p className="mt-2 text-xs text-on-surface-variant">{rotuloData(post.publicado_em)} · {post.tipo.toLowerCase().replaceAll("_", " ")}</p></div></a>)}</div>}
       </div>}
     </section>
+    {(souMarketing || gestor) && <BibliotecaMarketing />}
   </div>;
 }
