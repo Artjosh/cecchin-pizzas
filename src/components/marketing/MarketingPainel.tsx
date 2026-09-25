@@ -5,6 +5,7 @@ import { CalendarDays, Check, Clock3, Plus, RefreshCw, Send } from "lucide-react
 import { dataSaoPaulo, horarioSaoPauloParaIso, inicioSemana, somarDias } from "../../lib/agenda-marketing-data";
 import { BibliotecaMarketing } from "./BibliotecaMarketing";
 import { TituloNoHeader } from "../layouts/TituloNoHeader";
+import { InstagramCentral } from "./InstagramCentral";
 
 type Pessoa = { id: string; nome: string; papel: string };
 type Perfil = { usuario_id: string; ativo: boolean };
@@ -151,21 +152,16 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
 
   return <div className="flex min-h-0 flex-col gap-3">
     <header className="flex flex-wrap items-center justify-between gap-2">
-      <div><TituloNoHeader>Marketing</TituloNoHeader><p className="text-xs text-on-surface-variant">Prévia do Instagram e organização interna de conteúdo</p></div>
+      <div><TituloNoHeader>Marketing</TituloNoHeader><p className="text-xs text-on-surface-variant">Central do Instagram e organização interna de conteúdo</p></div>
       <div className="flex items-center gap-2"><button className={`${botao} bg-surface-container text-on-surface`} onClick={() => setSemana((atual) => somarDias(atual, -7))}>Anterior</button><span className="min-w-28 text-center font-label-md">{semana}</span><button className={`${botao} bg-surface-container text-on-surface`} onClick={() => setSemana((atual) => somarDias(atual, 7))}>Próxima</button><button aria-label="Atualizar agenda" className={`${botao} bg-surface-container text-on-surface`} onClick={() => void carregar()}><RefreshCw className={`h-4 w-4 ${carregando ? "animate-spin" : ""}`} /></button></div>
     </header>
     <nav aria-label="Áreas do marketing" className="flex gap-1 overflow-x-auto rounded-xl bg-surface-container-low p-1 text-sm">
       {([ ["agenda","Agenda"],["pedidos","Pedidos"],["biblioteca","Biblioteca"],["concorrencia","Concorrência"],["equipe","Equipe"] ] as const).map(([id,nome])=><button key={id} type="button" onClick={()=>{setAba(id);setMobilePreview(false);}} aria-current={aba===id?"page":undefined} className={`shrink-0 rounded-lg px-3 py-2 ${aba===id?"bg-surface-container-high font-semibold":"text-on-surface-variant hover:bg-surface-container"}`}>{nome}</button>)}
-      <button type="button" className="ml-auto shrink-0 rounded-lg bg-primary-container px-3 py-2 text-on-primary-container lg:hidden" onClick={()=>setMobilePreview(v=>!v)}>{mobilePreview?"Ver gestão":"Ver prévia"}</button>
+      <button type="button" className="ml-auto shrink-0 rounded-lg bg-primary-container px-3 py-2 text-on-primary-container lg:hidden" onClick={()=>setMobilePreview(v=>!v)}>{mobilePreview?"Ver gestão":"Ver Instagram"}</button>
     </nav>
     <div className="grid min-h-0 gap-3 lg:grid-cols-2">
-      <section aria-label="Prévia visual do Instagram" className={`${mobilePreview?"":"hidden lg:block"} min-h-[65dvh] overflow-y-auto rounded-2xl bg-surface-container-low p-3`}>
-        <div className="mx-auto max-w-md overflow-hidden rounded-[2rem] bg-surface-container-lowest shadow-xl ring-1 ring-outline-variant/30">
-          <div className="flex items-center justify-between border-b border-outline-variant/20 px-5 py-4"><strong className="text-lg tracking-tight">cecchinpizzas</strong><span className="rounded-full bg-surface-container px-2 py-1 text-[10px] text-on-surface-variant">Prévia · sem conexão</span></div>
-          <div className="flex items-center gap-4 px-5 py-5"><span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary via-tertiary to-primary-container text-3xl">🍕</span><div><strong className="block text-lg">Cecchin Pizzas</strong><span className="text-xs text-on-surface-variant">Rodízio artesanal em casa · Porto Alegre</span><p className="mt-2 text-xs text-on-surface-variant">Feed e stories ilustrativos. Nenhuma conta conectada ou publicação automática.</p></div></div>
-          <div className="flex gap-3 overflow-x-auto px-5 pb-5">{["Eventos","Bastidores","Cardápio","Equipe"].map((nome,i)=><div key={nome} className="grid shrink-0 justify-items-center gap-1 text-xs"><span className={`flex h-14 w-14 items-center justify-center rounded-full ring-2 ring-primary/50 ${i%2?"bg-tertiary-container":"bg-primary-container"}`}>{["✦","●","◈","✶"][i]}</span>{nome}</div>)}</div>
-          <div className="grid grid-cols-3 gap-1">{["Da massa ao forno","Sua festa em casa","Bastidores da equipe","Sabores da semana","Feito ao vivo","Momentos especiais"].map((titulo,i)=><div key={titulo} className={`relative aspect-square overflow-hidden bg-gradient-to-br ${i%2?"from-tertiary-container to-surface-container":"from-primary-container to-surface-container-high"}`}><div className="absolute inset-x-0 bottom-0 bg-black/35 p-2 text-xs font-semibold text-white">{titulo}</div></div>)}</div>
-        </div>
+      <section aria-label="Central do Instagram" className={`${mobilePreview?"":"hidden lg:block"} min-h-[65dvh] overflow-y-auto rounded-2xl bg-surface-container-low p-3`}>
+        <InstagramCentral gestor={gestor} />
       </section>
       <div className={`${mobilePreview?"hidden lg:block":""} min-h-0 max-h-[72dvh] space-y-3 overflow-y-auto rounded-2xl bg-surface-container-low p-3`}>
     {erro && <p role="alert" className="rounded-xl bg-error-container p-3 text-on-error-container">{erro}</p>}

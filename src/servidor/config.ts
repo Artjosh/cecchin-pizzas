@@ -39,6 +39,14 @@ export const config = {
     timeoutMs: inteiro("SUPABASE_TIMEOUT_MS", 8000),
   },
 
+  instagram: {
+    appId: process.env.INSTAGRAM_APP_ID ?? "",
+    appSecret: process.env.INSTAGRAM_APP_SECRET ?? "",
+    redirectUri: process.env.INSTAGRAM_REDIRECT_URI ?? "",
+    tokenEncryptionKey: process.env.INSTAGRAM_TOKEN_ENCRYPTION_KEY ?? "",
+    graphVersion: process.env.INSTAGRAM_GRAPH_API_VERSION ?? "",
+  },
+
   auth: {
     /** Base pública deste app. Entra no `redirect_to` do magic link. */
     urlPublica:

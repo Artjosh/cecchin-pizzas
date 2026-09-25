@@ -14,7 +14,7 @@ Esta é a memória da auditoria solicitada em 25/09/2026. A inspeção original 
 | 4 | Pequenos ajustes sugeridos 🟡 | Requisitos e saídas podem ser editados no painel logístico. | Não detecta/projeta automaticamente troca de forno, pessoa ou saída por poucos minutos para desbloquear uma solução. Apresentar ajustes como propostas antes de gravar. |
 | 5 | Carro particular com material ⚠️ | `regra_veiculo_particular`, `uso_veiculo_particular`, `ReembolsoVeiculos.tsx` e RPCs registram R$ 1,75/km, mínimo, adicional e ciclos de lavagem/bônus. | A informação `transportou_material` depende de registro humano; não é inferida com segurança do plano. Conferir vínculo do requisito logístico e autorização do acerto. Unicidade por plano/uso impede bônus duplicado para a mesma ocorrência. |
 | 6 | Carro particular só pessoas ✅ | Mesmas RPCs e tela distinguem tarifa de R$ 1,50/km e ausência do adicional de material; uso é numerado e registrado. | Ainda requer conferência operacional da quilometragem real. |
-| 7 | WhatsApp: pessoa e carro ⚠️ | Bot consulta ficha ativa e pergunta disponibilidade do carro; tabelas de disponibilidade semanal são separadas. | A troca da escolha entre vários carros pode deixar disponibilidade anterior ativa. Ao confirmar uma escolha, atualizar/limpar atomicamente todas as fichas da semana. |
+| 7 | WhatsApp: pessoa e carro 🟡 | Bot consulta ficha ativa e pergunta disponibilidade do carro; em `whatsapp.service.ts`, a confirmação agora percorre todos os carros ativos da pessoa e grava/limpa a semana de forma reconciliada. | Código corrigido, mas ainda não executado no worker Docker ativo. Confirmar persistência após reconstruir/deployar worker. |
 | 21 | Saída e deslocamento 🟡 | `plano_logistico`, rotas e janela de ocupação calculam saída/retorno. | Estimativa de estrada não inclui todas as tarefas reais de carga/descarga e espera. Ajustar marcos operacionais por tipo de serviço. |
 | 22 | Pico/trânsito ⚠️ | `localidade`, `janela_pico` e fator de rota têm configuração administrativa. | OSRM não traz trânsito ao vivo; fator fixo não representa congestionamento real. Expor como estimativa e calibrar dados próprios. |
 | 23 | Carro de funcionário/terceiro 🟡 | `veiculo_operacional.proprietario_id`, perfil/CNH e disponibilidade do carro são independentes. | Não há ciclo completo de aceite/autorização de terceiro e veículo externo ocasional. |
@@ -40,7 +40,7 @@ Esta é a memória da auditoria solicitada em 25/09/2026. A inspeção original 
 | 11 | Agenda de marketing 🟡 | `MarketingPainel` e API de marketing gravam compromissos por semana. | Não publica de fato no Instagram; “publicado” é registro operacional. |
 | 12 | Anexos de marketing 🟡 | Upload/consulta de mídia autorizada e `midia_caminho` na agenda. | Não converte nem publica o anexo no provedor. Validar armazenamento/permissões no alvo. |
 | 13 | Solicitação de serviço marketing 🟡 | Formulário e estados de recebimento/prazo em `MarketingPainel`. | Fluxo humano existe, mas sem integração de postagem automática. |
-| 14 | Instagram ⚠️ | `MarketingPainel.tsx` mostra prévia fictícia e agenda interna; concorrentes podem ter publicações coletadas quando o worker dispõe de credenciais. [INSTAGRAM_INTEGRACAO.md](INSTAGRAM_INTEGRACAO.md) define a implementação proposta. | Não há central de múltiplas contas próprias, conexão OAuth, feed próprio real nem publicação pela API. “Registrar manualmente” não prova postagem externa. |
+| 14 | Instagram 🟡 | `/operacional/marketing` agora tem contas OAuth, feed/Stories autorizados, biblioteca privada, fila auditável e worker para imagem de feed; migrations 125–126 aplicadas ao banco local. A UI foi conferida em desktop e celular, em estado sem credenciais. | Não foi possível conectar uma conta nem publicar: faltam App ID/Secret, callback HTTPS, chave AES, versão Graph configurada e segredo Storage no runtime. O worker Docker ainda executa imagem antiga. Sem prova externa, continua não pronto para produção. Stories/reels/carrossel, insights e concorrentes não são entregues. |
 | 15 | Concorrência 🟡 | Cadastro e job de coleta existem; erros/última coleta são exibidos. | Sem chaves/ambiente e dados coletados, métricas ficam vazias. Não tratar cadastro como coleta comprovada. |
 | 16 | Biblioteca de conteúdos 🟡 | `BibliotecaMarketing` existe e é conectada à área de marketing. | Não está ligada a publicação automática no Instagram. |
 | 17 | Clientes Broto 🟡 | Tabelas/API/UI de Brotos. | Cadastro ainda exige CNPJ, limitando clientes pessoa física; revisar contrato. Banco local da auditoria não tinha clientes Broto. |
@@ -52,28 +52,32 @@ Esta é a memória da auditoria solicitada em 25/09/2026. A inspeção original 
 
 | # | Requisito e estado | Evidência no código/banco | Lacuna e correção necessária |
 |---:|---|---|---|
-| 35 | Banco e migrations 🟡 | A checagem original encontrou 122/122 até `20260924122`. Depois, as versões 123 e 124 foram versionadas e registradas como aplicadas ao banco local; há **124 arquivos** em `supabase/migrations/`. Há RLS/RPC/views para os fluxos principais. | Nesta atualização não foi consultado o histórico nem o catálogo do banco. Produção não foi conferida; confirmar schema efetivo e dados do alvo. Várias tabelas operacionais locais estavam vazias. |
+| 35 | Banco e migrations 🟡 | Além das migrations até 124, `20260925125` criou as tabelas/RPCs Instagram e `20260925126` o bloqueio por conta; ambas foram aplicadas sem reset ao banco local nesta tarefa. | Produção não foi conferida. Confirmar schema alvo e aplicar migrations pelo processo normal de deploy. Tabelas Instagram ainda vazias. |
 | 36 | APIs 🟡 | Route handlers Vinext, PostgREST com JWT, Nest e RPCs fazem validação de sessão/domínio. | Auditoria de todos os endpoints e cenários de erro não equivale a cobertura total. Evitar confundir HTTP 200 com efeito persistido. |
-| 37 | Automações/notificações ⚠️ | Worker, fila WhatsApp e e-mail existem; auditoria local viu 28 envios WhatsApp registrados. | Havia 15 notificações e-mail com HTTP 403 e `attempts=5`, enquanto a seleção do worker busca `<5`: ficam paradas. Corrigir credencial/canal e dar caminho explícito de recuperação. Dois workers simultâneos devem ser avaliados. |
+| 37 | Automações/notificações ⚠️ | Consulta local nesta tarefa: 30 mensagens WhatsApp enviadas; 15 notificações de e-mail em falha após cinco tentativas com HTTP 403. A tela administrativa já oferece reenvio explícito via RPC `reenfileirar_notificacao`; nenhum reenvio foi acionado. |
 | 38 | Ponta a ponta ❓ | Havia evidência local de um checkout real administrativo de R$ 1,00 confirmado via Pix e convertido em evento; migrations/testes versionados cobrem partes. | Não prova cartão, estorno, produção, todas as telas, carga, concorrência nem liquidação em extrato. Teste real exige autorização e ambiente controlado. |
-| 39 | Funcionalidades “fake” ⚠️ | Modo Desenho e `src/servidor/fonte.ts` oferecem mock; marketing tem integração parcial; mapa sem GPS real. | Não usar visual mock como evidência de persistência. Rotular prévias e conferir fonte real em cada tela. A Central WhatsApp continua real mesmo no Desenho. |
+| 39 | Funcionalidades “fake” 🟡 | A prévia fictícia do Instagram foi substituída por uma central conectada ao estado real do banco/API; quando sem configuração, a UI informa isso explicitamente. Modo Desenho e `src/servidor/fonte.ts` ainda oferecem mock; mapa continua sem GPS real. | A central não deve ser anunciada como integração pronta até OAuth e publicação externa serem validados em conta autorizada. |
 
 ## Achados transversais e ordem sugerida
+
+### Segurança de RLS observada nesta tarefa
+
+`npx supabase db query --local` sinalizou as tabelas `public.disponibilidade_carro_conversa` e `public.disponibilidade_conversa` como críticas por estarem sem RLS e sugeriu habilitá-lo. A consulta direta a `pg_class.relacl`, porém, mostrou somente o grant de `postgres` nas duas tabelas (nenhum grant direto para `anon`/`authenticated`). Não foi feita alteração: antes de habilitar RLS, revisar acesso do backend/bot e definir políticas apropriadas; o aviso do scanner e a ACL devem ser reconciliados para o ambiente alvo.
 
 ### Mudanças posteriores à inspeção inicial
 
 - O Mapa Tático passou a mostrar os eventos do dia com coordenadas estáveis, rotas rodoviárias em lotes e uma aba lateral de saídas. Isso melhora a leitura e o planejamento; não valida todos os endereços históricos, nem converte estimativa OSRM em trânsito ao vivo ou rastreio GPS.
 - A montagem passou a calcular Base no Banco, oferecer pequena margem de escala apertada e separar Equipe de Carro e saída em abas no topo. A troca de abas foi vista no navegador em desktop e celular; o banco local observado não tinha carro para verificar uma alocação completa.
 - A skill [desenhar-interface](skills/desenhar-interface/SKILL.md) formaliza hierarquia, densidade, estados e revisão responsiva. É procedimento de projeto, não evidência de que todas as telas foram redesenhadas.
-- O plano de [Instagram](INSTAGRAM_INTEGRACAO.md) descreve OAuth, contas, mídia e publicação; continua sem implementação. A agenda identifica a conclusão manual com o rótulo “Registrar manualmente”.
+- A integração Instagram tem implementação inicial de OAuth, feed da conta, imagem de feed e fila. Configuração Meta/runtime ausente e imagem dos workers antiga impedem execução externa; ver [INSTAGRAM_INTEGRACAO.md](INSTAGRAM_INTEGRACAO.md).
 
 ### Prioridades de correção
 
-1. Corrigir a fila de e-mail permanentemente parada e a escolha de múltiplos carros no bot; ambos podem produzir estado operacional enganoso.
+1. Corrigir HTTP 403 de e-mail e reconstruir/deployar worker para levar a correção da seleção de múltiplos carros ao runtime.
 2. Cadastrar veículos e conferir disponibilidade/planos no banco alvo. Sem frota, uma UI bonita não valida logística.
 3. Formalizar decisões assistidas da escala e comparar alternativas completas; a heurística atual é ponto de partida.
 4. Fechar conciliação financeira e comprovantes de freelancers/cartões/InfinitePay antes de automatizar status.
-5. Integrar Instagram somente com contrato/credenciais apropriados. Até lá a central é uma prévia visual, e os compromissos são internos.
+5. Configurar e revisar o app Meta, secrets e callback; reconstruir worker/API e validar OAuth, leitura e uma publicação de teste autorizada antes de declarar o Instagram ativo.
 
 Valores de localidades: [ETL](../cecchin-pizzas-backend/migracao/ETL.md) documenta 68 taxas de deslocamento e 18 vigências de preço preservadas da planilha. Os minutos normal/pico vieram vazios e permanecem nulos. **Preço de catálogo**, **taxa de localidade** e **tempo de rota** são campos diferentes; não copiar um para outro nem gerar minutos artificiais. Se a UI mostra taxa de localidade vazia, conferir registro específico e importação antes de gravar valor.
 
