@@ -140,7 +140,12 @@ export function planejarLogistica(eventos: EventoPlanejavel[], veiculos: Veiculo
     const dono = donoPorCarro.get(plano.veiculoId);
     if (dono) ocupacaoMotorista.set(dono, [...(ocupacaoMotorista.get(dono) ?? []), intervalo]);
   }
-  const ordenados = [...eventos].sort((a, b) => saidaBase(a, config) - saidaBase(b, config) || a.rotaMinutos - b.rotaMinutos);
+  const carrosCompativeis = new Map(eventos.map((evento) => [evento, disponibilidade.filter((carro) => elegivel(evento, carro)).length]));
+  const ordenados = [...eventos].sort((a, b) =>
+    saidaBase(a, config) - saidaBase(b, config) ||
+    (carrosCompativeis.get(a) ?? 0) - (carrosCompativeis.get(b) ?? 0) ||
+    a.rotaMinutos - b.rotaMinutos,
+  );
   const flex = Number.isFinite(config.flexSaidaMinutos) ? Math.min(30, Math.max(0, config.flexSaidaMinutos)) : 0;
   const deslocamentos = [0];
   for (let ajuste = 5; ajuste <= flex; ajuste += 5) deslocamentos.push(-ajuste, ajuste);

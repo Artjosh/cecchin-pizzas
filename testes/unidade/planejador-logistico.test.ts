@@ -61,6 +61,18 @@ describe("planejador logístico", () => {
     expect(incapaz.pendencias[0].motivo).toMatch(/lugares/i);
   });
 
+  it("reserva o único carro compatível para o evento que depende dele", () => {
+    const flexivel = { ...evento, id: "evento-flexivel" };
+    const exigeMedio = { ...evento, id: "evento-medio", forno: "medio" as const };
+    const miniParticular = { ...particular, forno: "mini" as const };
+    const resultado = planejarLogistica([flexivel, exigeMedio], [empresa, miniParticular], config);
+
+    expect(resultado.pendencias).toHaveLength(0);
+    expect(resultado.propostas).toHaveLength(2);
+    expect(resultado.propostas.find((p) => p.eventoId === exigeMedio.id)?.veiculoId).toBe(empresa.id);
+    expect(resultado.propostas.find((p) => p.eventoId === flexivel.id)?.veiculoId).toBe(miniParticular.id);
+  });
+
   it("usa uma única saída do QG para a dupla e rejeita ligação inviável", () => {
     const dupla: EventoPlanejavel = { ...evento, segundoEventoId: "evento-b", segundoInicioMs: Date.parse("2026-10-06T18:00:00-03:00"), trechoSegundoMinutos: 20, trechoSegundoKm: 12, segundaRotaKm: 15, segundaRotaMinutos: 25, segundoBebidaAntes: false };
     const possivel = planejarLogistica([dupla], [empresa], config);
