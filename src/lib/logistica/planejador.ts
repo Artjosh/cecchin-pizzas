@@ -76,17 +76,33 @@ const pesoForno: Record<TipoForno, number> = { nenhum: 0, mini: 1, mini_medio: 2
 const pesoBebida: Record<TipoBebida, number> = { nenhuma: 0, isopor_pequeno: 1, isopor_grande: 2 };
 const formatadorHoraSaoPaulo = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Sao_Paulo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
   hour: "numeric",
+  minute: "2-digit",
   hourCycle: "h23",
 });
 
-function pico(saidaMs: number): boolean {
-  const hora = Number(formatadorHoraSaoPaulo.format(new Date(saidaMs)));
-  return (hora >= 7 && hora < 9) || (hora >= 17 && hora < 20);
+function horarioLocal(ms: number) {
+  const partes = Object.fromEntries(formatadorHoraSaoPaulo.formatToParts(new Date(ms)).map((parte) => [parte.type, Number(parte.value)]));
+  return { dia: Date.UTC(partes.year, partes.month - 1, partes.day) / minuto / 1440, minuto: partes.hour * 60 + partes.minute };
 }
 
-function trechoMinutos(minutos: number, config: ConfiguracaoPlanejador, saidaMs: number) {
-  return Math.ceil(minutos * (pico(saidaMs) ? config.fatorPicoPercentual / 100 : 1));
+function pico(saidaMs: number, minutos: number): boolean {
+  const inicio = horarioLocal(saidaMs);
+  const fim = horarioLocal(saidaMs + minutos * minuto);
+  const fimRelativo = (fim.dia - inicio.dia) * 1440 + fim.minuto;
+  for (let dia = 0; dia <= fim.dia - inicio.dia; dia++) {
+    const base = dia * 1440;
+    if ((inicio.minuto < base + 9 * 60 && fimRelativo > base + 7 * 60) ||
+        (inicio.minuto < base + 20 * 60 && fimRelativo > base + 17 * 60)) return true;
+  }
+  return false;
+}
+
+export function trechoMinutos(minutos: number, config: ConfiguracaoPlanejador, saidaMs: number) {
+  return Math.ceil(minutos * (pico(saidaMs, minutos) ? config.fatorPicoPercentual / 100 : 1));
 }
 
 function viagemMinutos(evento: EventoPlanejavel, config: ConfiguracaoPlanejador, saidaMs: number) {

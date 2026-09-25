@@ -1,11 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { planejarLogistica, type ConfiguracaoPlanejador, type EventoPlanejavel, type VeiculoPlanejavel } from "../../src/lib/logistica/planejador";
+import { planejarLogistica, trechoMinutos, type ConfiguracaoPlanejador, type EventoPlanejavel, type VeiculoPlanejavel } from "../../src/lib/logistica/planejador";
 import { carroEMotoristaCoincidemNoDia, janelasCarro, janelasPessoa } from "../../src/lib/logistica/janelasDisponibilidade";
 
 const config: ConfiguracaoPlanejador = { minutosCarregar: 10, flexSaidaMinutos: 30, montagemPadraoMinutos: 60, montagemBebidaAntesMinutos: 120, fatorPicoPercentual: 135, custoFrotaCentavosKm: 70, materialCentavosKm: 175, pessoasCentavosKm: 150, minimoCentavos: 4000, adicionalMaterialCentavos: 3000, duracaoEventoMinutos: 240 };
 const evento: EventoPlanejavel = { id: "evento-a", inicioMs: Date.parse("2026-10-06T12:00:00-03:00"), convidados: 30, forno: "mini", bebida: "isopor_pequeno", bebidaAntes: false, pessoas: 3, rotaMinutos: 30, rotaKm: 20 };
 const empresa: VeiculoPlanejavel = { id: "empresa", modelo: "Kombi", placa: "ABC1234", proprietarioId: null, forno: "medio", bebida: "isopor_grande", lugares: 5, limiteLevar: 3, disponivel: true };
 const particular: VeiculoPlanejavel = { ...empresa, id: "particular", proprietarioId: "motorista" };
+
+it("aplica pico ao trecho que atravessa o início da faixa, como o banco", () => {
+  const duracao = (hora: string, minutos = 20) => trechoMinutos(minutos, config, Date.parse(`2026-10-06T${hora}:00-03:00`));
+  expect(duracao("06:40")).toBe(20);
+  expect(duracao("06:50")).toBe(27);
+  expect(duracao("08:50")).toBe(27);
+  expect(duracao("16:50")).toBe(27);
+  expect(duracao("19:50")).toBe(27);
+  expect(duracao("20:00")).toBe(20);
+});
 
 it("conta carro particular apenas quando carro e dono coincidem no dia escolhido", () => {
   const carro = janelasCarro("2026-10-05", [false, true, false, false, false, false, false]);
