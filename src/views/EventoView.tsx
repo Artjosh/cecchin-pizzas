@@ -110,7 +110,14 @@ export async function EventoView({ id }: { id: string }) {
    */
   if (!evento) notFound();
 
-  const permissaoAtencao = await chamarFuncao<boolean>("pode_marcar_atencao", {}, sessao.accessToken);
+  const [permissaoAtencao, vinculoDuplo] = await Promise.all([
+    chamarFuncao<boolean>("pode_marcar_atencao", {}, sessao.accessToken),
+    consultar<Array<{ codigo: string; primeiro_evento_id: string; segundo_evento_id: string }>>(
+      `evento_duplo?select=codigo,primeiro_evento_id,segundo_evento_id&or=(primeiro_evento_id.eq.${encodeURIComponent(id)},segundo_evento_id.eq.${encodeURIComponent(id)})&limit=1`,
+      sessao.accessToken,
+    ),
+  ]);
+  const dupla = vinculoDuplo.dados?.[0];
   const pessoas = evento.inteiros === null && evento.meios === null ? null : (evento.inteiros ?? 0) + (evento.meios ?? 0);
   const saidaR = podeAcessar(sessao.usuario.papel,["gestao"]) ? await consultar<Array<{liberado_em:string}>>(`evento_saida?select=liberado_em&evento_id=eq.${id}`,sessao.accessToken) : null;
   const zap = podeAcessar(sessao.usuario.papel, ["gestao"]) ? linkCentralWhatsApp(evento.cliente_telefone) : linkWhatsApp(evento.cliente_telefone);
@@ -123,7 +130,7 @@ export async function EventoView({ id }: { id: string }) {
         titulo={evento.cliente_nome ?? "Evento sem cliente"}
         descricao={
           [
-            evento.codigo_legado,
+            dupla?.codigo ?? evento.codigo_legado,
             evento.tipo_evento_nome,
             evento.dia_da_semana,
           ]
@@ -146,6 +153,7 @@ export async function EventoView({ id }: { id: string }) {
       />
 
       <div className="flex items-center gap-space-xs flex-wrap">
+        {dupla && <Link href={`/operacional/eventos/${dupla.primeiro_evento_id === id ? dupla.segundo_evento_id : dupla.primeiro_evento_id}`} className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary hover:bg-primary/20">Dupla {dupla.codigo} · abrir {dupla.primeiro_evento_id === id ? "2º" : "1º"} evento</Link>}
         <AtencaoEvento key={`${evento.id}-${evento.atencao}`} evento={evento.id} marcada={!!evento.atencao} permitido={permissaoAtencao.dados === true} />
         <Etiqueta tom={evento.atencao ? "atencao" : "neutro"}>
           {evento.situacao ?? "sem situação"}
