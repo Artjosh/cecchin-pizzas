@@ -74,9 +74,14 @@ export type OcupacaoAprovada = { veiculoId: string; saidaMs: number; retornoMs: 
 const minuto = 60_000;
 const pesoForno: Record<TipoForno, number> = { nenhum: 0, mini: 1, mini_medio: 2, medio: 3 };
 const pesoBebida: Record<TipoBebida, number> = { nenhuma: 0, isopor_pequeno: 1, isopor_grande: 2 };
+const formatadorHoraSaoPaulo = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Sao_Paulo",
+  hour: "numeric",
+  hourCycle: "h23",
+});
 
 function pico(saidaMs: number): boolean {
-  const hora = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", hour: "numeric", hourCycle: "h23" }).format(new Date(saidaMs)));
+  const hora = Number(formatadorHoraSaoPaulo.format(new Date(saidaMs)));
   return (hora >= 7 && hora < 9) || (hora >= 17 && hora < 20);
 }
 
