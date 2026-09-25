@@ -155,12 +155,12 @@ export async function POST(request: NextRequest) {
       if (acao === "prever_viagem") return NextResponse.json(viagem, { headers: { "Cache-Control": "no-store" } });
       const motorista = typeof corpo.motorista_id === "string" ? corpo.motorista_id : "";
       const justificativa = typeof corpo.justificativa === "string" ? corpo.justificativa.trim() : "";
-      if (!uuid.test(motorista) || justificativa.length < 10 || justificativa.length > 500) return NextResponse.json({ mensagem: "Informe motorista e como as equipes serão buscadas." }, { status: 400 });
+      if (!uuid.test(motorista) || justificativa.length > 500) return NextResponse.json({ mensagem: "Informe motorista e uma observação de até 500 caracteres." }, { status: 400 });
       // Esta gravacao usa service_role somente depois de medir a rota aqui. A
       // funcao direta nao e acessivel ao JWT do gestor, pois aceita as pernas.
       const resultado = await consultarComoServico<string>("rpc/salvar_viagem_levar_servidor", {
         method: "POST",
-        body: JSON.stringify({ p_usuario: sessao.usuario.id, p_dados: { eventos: viagem.eventos, pontos: viagem.pontos, pernas: viagem.pernas, veiculo_id: viagem.veiculo_id, saida_prevista: viagem.saida_prevista, motorista_id: motorista, justificativa } }),
+        body: JSON.stringify({ p_usuario: sessao.usuario.id, p_dados: { eventos: viagem.eventos, pontos: viagem.pontos, pernas: viagem.pernas, veiculo_id: viagem.veiculo_id, saida_prevista: viagem.saida_prevista, motorista_id: motorista, justificativa: justificativa.length >= 10 ? justificativa : `Busca da equipe pendente de planejamento separado.${justificativa ? ` Observação: ${justificativa}` : ""}` } }),
       });
       if (!resultado.ok) {
         let mensagem = "Não foi possível aprovar a viagem. Confira capacidade, horários e disponibilidade do carro.";
@@ -199,7 +199,12 @@ export async function POST(request: NextRequest) {
     catch (falha) { return NextResponse.json({ mensagem: falha instanceof Error ? falha.message : "Rota indisponível" }, { status: 502 }); }
     resultado = await consultarComoServico("rpc/salvar_trajeto_duplo_servidor", { method: "POST", body: JSON.stringify({ p_usuario: sessao.usuario.id, p_duplo: corpo.duplo, p_primeira_lat: primeiro.dados[0].latitude, p_primeira_lng: primeiro.dados[0].longitude, p_segunda_lat: segundo.dados[0].latitude, p_segunda_lng: segundo.dados[0].longitude, p_km: rota.km, p_minutos: rota.minutos }) });
   } else if (acao === "plano" && corpo.dados && typeof corpo.dados === "object" && uuid.test(corpo.dados.evento_id) && uuid.test(corpo.dados.veiculo_id)) {
-    resultado = await chamarFuncao("salvar_plano_logistico", { p_dados: corpo.dados }, sessao.accessToken);
+    const plano = { ...corpo.dados };
+    if (plano.modo === "levar") {
+      const observacao = typeof plano.justificativa === "string" ? plano.justificativa.trim() : "";
+      if (observacao.length < 10) plano.justificativa = `Busca da equipe pendente de planejamento separado.${observacao ? ` Observação: ${observacao}` : ""}`;
+    }
+    resultado = await chamarFuncao("salvar_plano_logistico", { p_dados: plano }, sessao.accessToken);
   } else return NextResponse.json({ mensagem: "Ação inválida" }, { status: 400 });
   if (!resultado.ok) {
     let mensagem = "Não foi possível salvar. Confira horário, capacidade, equipe e disponibilidade.";
