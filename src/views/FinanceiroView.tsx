@@ -12,7 +12,7 @@ import {
 } from "../components/painel/Painel";
 import { comoData } from "../lib/formato";
 import { formatBRL } from "../lib/moeda";
-import { GestaoFinanceira, type MovimentoHoje, type ResumoCaixa, type Acerto, type EscalaFreelance, type Cartao, type Fatura } from "../components/financeiro/GestaoFinanceira";
+import { GestaoFinanceira, type MovimentoHoje, type ResumoCaixa, type Acerto, type GrupoAcerto, type EscalaFreelance, type Cartao, type Fatura } from "../components/financeiro/GestaoFinanceira";
 import { ReembolsoVeiculos, type PlanoVeiculo, type VeiculoFinanceiro, type UsoVeiculo, type ResumoUsoVeiculo, type RegraVeiculoParticular } from "../components/financeiro/ReembolsoVeiculos";
 import { exigirPapel } from "../servidor/auth/guarda";
 import { consultar } from "../servidor/supabase";
@@ -83,6 +83,11 @@ export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, p
     consultar<RegraVeiculoParticular[]>("regra_veiculo_particular?select=lavagem_cada,lavagem_valor_centavos,bonus_cada,bonus_valor_centavos&limit=1", sessao.accessToken),
   ]);
 
+  const usuariosComAcerto = [...new Set((acertosR.dados ?? []).map((acerto) => acerto.usuario_id))];
+  const gruposR = usuariosComAcerto.length
+    ? await consultar<GrupoAcerto[]>(`vw_acertos_freelance_por_pix?select=usuario_id,chave_pix_retrato,quantidade,total&usuario_id=in.(${usuariosComAcerto.join(",")})&order=usuario_id.asc,chave_pix_retrato.asc&limit=1000`, sessao.accessToken)
+    : { ok: true, dados: [] as GrupoAcerto[] };
+
   const conciliacao = comoLeitura(conciliacaoR);
   const pendentes = conciliacao.estado === "ok" ? conciliacao.linhas : [];
 
@@ -104,7 +109,7 @@ export async function FinanceiroView({ paginaEntradas = 1, paginaDespesas = 1, p
         descricao="O que ainda não foi acertado, e o que foi lançado."
       />
 
-      {caixaR.ok && resumoR.ok && acertosR.ok && escalasR.ok && cartoesR.ok && faturasR.ok && pessoasR.ok ? <GestaoFinanceira movimentos={caixaR.dados ?? []} resumo={resumoR.dados?.[0] ?? { movimentos: 0, entradas: 0, saidas: 0, saldo: 0 }} acertos={acertosR.dados ?? []} totalAcertos={acertosR.total ?? 0} paginaAcertos={paginaAcertos} escalas={escalasR.dados ?? []} totalEscalas={escalasR.total ?? 0} paginaEscalas={paginaEscalas} cartoes={cartoesR.dados ?? []} faturas={faturasR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Os novos módulos financeiros aguardam a migration da branch. Os lançamentos existentes continuam abaixo.</p>}
+      {caixaR.ok && resumoR.ok && acertosR.ok && escalasR.ok && cartoesR.ok && faturasR.ok && pessoasR.ok ? <GestaoFinanceira movimentos={caixaR.dados ?? []} resumo={resumoR.dados?.[0] ?? { movimentos: 0, entradas: 0, saidas: 0, saldo: 0 }} acertos={acertosR.dados ?? []} gruposAcertos={gruposR.ok ? gruposR.dados ?? [] : []} totalAcertos={acertosR.total ?? 0} paginaAcertos={paginaAcertos} escalas={escalasR.dados ?? []} totalEscalas={escalasR.total ?? 0} paginaEscalas={paginaEscalas} cartoes={cartoesR.dados ?? []} faturas={faturasR.dados ?? []} pessoas={pessoasR.dados ?? []} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Os novos módulos financeiros aguardam a migration da branch. Os lançamentos existentes continuam abaixo.</p>}
 
       {planosR.ok && veiculosR.ok && usosR.ok && lavagensR.ok && usosResumoR.ok && pessoasR.ok && regraVeiculoR.ok && regraVeiculoR.dados?.[0] ? <ReembolsoVeiculos planos={planosR.dados ?? []} veiculos={veiculosR.dados ?? []} usos={usosR.dados ?? []} lavagens={lavagensR.dados ?? []} resumos={usosResumoR.dados ?? []} pessoas={pessoasR.dados ?? []} regra={regraVeiculoR.dados[0]} /> : <p role="status" className="rounded-xl bg-surface-container-low p-4 text-on-surface-variant">Não foi possível carregar os reembolsos de veículos.</p>}
 

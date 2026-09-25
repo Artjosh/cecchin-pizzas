@@ -21,6 +21,9 @@ export async function POST(request: NextRequest) {
     case "quitar_freelance":
       if (!Array.isArray(corpo.ids) || corpo.ids.length < 1 || corpo.ids.length > 100 || !corpo.ids.every((v: unknown) => typeof v === "string" && uuid.test(v)) || typeof corpo.data !== "string" || !data.test(corpo.data) || typeof corpo.comprovante !== "string" || corpo.comprovante.length > 300) return NextResponse.json({ mensagem: "Confira os acertos selecionados" }, { status: 400 });
       funcao = "quitar_acertos_freelance"; args = { p_ids: corpo.ids, p_data: corpo.data, p_comprovante: corpo.comprovante }; break;
+    case "quitar_freelance_grupo":
+      if (typeof corpo.usuario !== "string" || !uuid.test(corpo.usuario) || typeof corpo.pix !== "string" || !corpo.pix.trim() || corpo.pix.length > 200 || !Number.isInteger(corpo.quantidade) || corpo.quantidade < 1 || typeof corpo.total !== "number" || !Number.isFinite(corpo.total) || corpo.total <= 0 || typeof corpo.data !== "string" || !data.test(corpo.data) || typeof corpo.comprovante !== "string" || corpo.comprovante.length > 300) return NextResponse.json({ mensagem: "Confira o total e a chave Pix do grupo" }, { status: 400 });
+      funcao = "quitar_acertos_freelance_por_pix"; args = { p_usuario: corpo.usuario, p_pix: corpo.pix, p_quantidade: corpo.quantidade, p_total: corpo.total, p_data: corpo.data, p_comprovante: corpo.comprovante }; break;
     case "concluir_freelance":
       if (!Array.isArray(corpo.ids) || corpo.ids.length < 1 || corpo.ids.length > 100 || !corpo.ids.every((v: unknown) => typeof v === "string" && uuid.test(v))) return NextResponse.json({ mensagem: "Selecione as participações concluídas" }, { status: 400 });
       funcao = "concluir_escalas_freelance"; args = { p_ids: corpo.ids }; break;
