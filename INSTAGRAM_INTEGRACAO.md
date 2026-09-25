@@ -2,15 +2,17 @@
 
 ## Estado desta entrega
 
-`/operacional/marketing` inclui uma central de conta própria, alimentada pela Instagram API oficial com Instagram Login. O escopo implementado é conexão OAuth server-side, leitura do perfil/feed da conta autorizada, tentativa de leitura de Stories quando o endpoint permitir, upload de uma imagem para a biblioteca privada e criação/agendamento de publicação de imagem no feed. A fila separa `agendado`, `preparando`, `publicando`, `publicado` e `falhou`; só marca como publicada depois de confirmação/reconciliação remota.
+`/operacional/marketing` oferece dois caminhos separados. Para **ver feed e Stories de perfis seguidos**, a extensão local `browser-extension/instagram-bridge` usa a aba autenticada do próprio Instagram e repassa dados normalizados à página. Não lê nem copia cookies; chamadas são feitas dentro da aba oficial. A extensão precisa ser carregada no perfil Chromium/Brave que tem a sessão do Instagram. O guia está em `browser-extension/instagram-bridge/README.md`.
+
+Para **publicar conteúdo da empresa**, permanece a conexão OAuth server-side da Instagram API com Instagram Login: leitura da conta profissional, upload de uma imagem e fila para publicação/agendamento. A fila separa `agendado`, `preparando`, `publicando`, `publicado` e `falhou`; só confirma publicação depois da resposta/reconciliação remota. Esse fluxo ainda depende da configuração Meta descrita abaixo.
 
 O banco local recebeu as migrations `20260925125_125_instagram_marketing.sql` e `20260925126_126_instagram_serializar_publicador.sql`. Elas criam contas, publicações, auditoria e RPCs; RLS está habilitado e o cliente não recebe acesso direto às tabelas/token. A migration canônica correspondente está em `../cecchin-pizzas-backend/migracao/sql/103_instagram_marketing.sql` e `104_instagram_serializar_publicador.sql`.
 
-A UI foi aberta em `http://localhost:3000/operacional/marketing` em desktop e viewport móvel. Como não há credenciais, mostrou “Configuração do servidor pendente”; nenhum OAuth, leitura de conta real ou post foi executado. Os containers locais do worker ainda usam uma imagem anterior a esta implementação. Portanto o código e schema locais não significam integração ativa ou pronta para produção.
+O navegador já tinha sessão ativa do Instagram. A implementação da extensão e da interface foi escrita, mas a extensão ainda não foi carregada no Brave; feed/Stories dentro do Cecchin aguardam essa autorização do navegador. O OAuth de publicação e um post não foram executados. Os containers locais do worker ainda usam imagem anterior a esta implementação. Portanto publicação via API e execução no runtime não estão ativas.
 
 ## Configuração necessária
 
-Configurar no runtime do frontend/BFF e no worker, sem expor valores ao navegador:
+Para publicação via API, configurar no runtime do frontend/BFF e no worker, sem expor valores ao navegador:
 
 - `INSTAGRAM_APP_ID` e `INSTAGRAM_APP_SECRET` do app Meta;
 - `INSTAGRAM_REDIRECT_URI`, URL HTTPS cadastrada exatamente como callback (exceto localhost de desenvolvimento);
@@ -20,7 +22,15 @@ Configurar no runtime do frontend/BFF e no worker, sem expor valores ao navegado
 
 O app Meta precisa do produto/permissões de Instagram Login, conta profissional de teste e acesso de revisão apropriado para o uso pretendido. O callback solicita `instagram_business_basic` e `instagram_business_content_publish`; a coluna `scopes` registra escopos solicitados e **não prova** Advanced Access nem permissão efetiva. Erros reais da Meta são apresentados na conexão/publicação. O limite de 25 publicações API por janela móvel de 24 horas é verificado na criação e imediatamente antes do envio, serializando publicador por conta entre containers.
 
-## Segurança e fluxo
+## Ponte de leitura do navegador
+
+- Não precisa de App ID/Secret, `.env` ou backend novo. Precisa da extensão local instalada no mesmo perfil Brave/Chrome que está autenticado no Instagram.
+- As permissões são limitadas a `www.instagram.com` e `http://localhost:3000`; o content script só roda na rota local de marketing. A ponte responde apenas às mensagens com origem local esperada.
+- Ela pede acesso de scripting para consultar a aba oficial; não usa permissão de cookies, não pede senha e não persiste sessão. A saída para a aplicação contém apenas perfil, feed e Stories transformados para o modelo da interface.
+- A implementação usa formatos de leitura descritos no [mapa público de API web do SpeedGram](https://github.com/aryasarukkai/instagram-fast-react-client/blob/main/speedgram/docs/web-api-surface.md). O SpeedGram é GPL; seu código não foi copiado.
+- Os endpoints usados pelo próprio site podem mudar. A ponte é apenas de leitura e não curte, segue, comenta, envia mensagens ou publica.
+
+## Segurança e fluxo de publicação API
 
 - Login OAuth é iniciado apenas por gestão/admin; usa `state` aleatório em cookie HttpOnly/SameSite com vida curta e callback verificado.
 - Access token é cifrado com AES-256-GCM antes de persistir. BFF/worker decifram somente em memória. Não registrar tokens nos logs ou respostas.
@@ -32,7 +42,7 @@ O app Meta precisa do produto/permissões de Instagram Login, conta profissional
 
 - A UI envia somente uma imagem JPEG/PNG/WebP no feed. Reels, carrossel e Stories não estão habilitados. A leitura de Stories depende de endpoint, tipo da conta e concessão real da Meta; Stories de concorrentes não são oferecidos.
 - Insights, comentários, mensagens, monitoramento de seguidores/concorrentes e sincronização paginada em banco não fazem parte desta entrega.
-- A API oficial não é uma reprodução completa do aplicativo Instagram; não há iframe da página inteira.
+- A central apresenta as superfícies pedidas para observação — feed seguido e Stories — dentro da própria página. Mensagens e interações não são incluídas nesta ponte.
 - A correção do bot de veículos foi feita no código backend mas o worker container ativo é antigo. A integração Instagram também não executará até reconstruir e reiniciar/deployar os serviços com as novas variáveis.
 - Não rodamos typecheck/linter, conforme preferência registrada no workspace. Nenhuma conta ou publicação real foi acessada.
 

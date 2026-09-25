@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Cecchin Instagram Bridge",
+  "version": "0.1.0",
+  "description": "Lê feed e Stories da sessão Instagram já aberta para a central local do Cecchin Pizzas.",
+  "permissions": ["scripting"],
+  "host_permissions": [
+    "https://www.instagram.com/*",
+    "http://localhost:3000/*"
+  ],
+  "background": { "service_worker": "service-worker.js" },
+  "content_scripts": [{
+    "matches": ["http://localhost:3000/operacional/marketing*"],
+    "js": ["content.js"],
+    "run_at": "document_start"
+  }]
+}
