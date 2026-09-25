@@ -1,51 +1,78 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+"use client";
+
+import { createContext, useContext, type ReactNode } from "react";
+
+/**
+ * O usuário da sessão, para quem só precisa DESENHAR com ele.
+ *
+ * **Isto não decide acesso.** Quem decide são os layouts, que são Server
+ * Components e leem `usuario` do Postgres sob RLS, e as policies do banco.
+ * O que mora aqui é o que a barra superior precisa para escrever um nome e
+ * esconder um link que não levaria a lugar nenhum.
+ *
+ * A diferença importa, e é a razão desta versão existir: a anterior era
+ * `useState(defaultUsers.cliente)` com um seletor para trocar de papel na mão.
+ * Quem abrisse o DevTools virava admin. Agora o valor entra pelo servidor, e
+ * trocá-lo no cliente muda um rótulo — a consulta seguinte volta a falar a
+ * verdade, e a policy do Postgres nunca viu a mentira.
+ *
+ * Não há `setRole`. Papel muda por `app.promover()`, no banco, chamado por quem
+ * tem direito.
+ */
 
 export type Role = "cliente" | "staff" | "gestao" | "admin";
 
-interface User {
+export interface Usuario {
   id: string;
-  name: string;
-  role: Role;
+  nome: string;
   email: string;
+  papel: Role;
 }
 
-interface AuthContextType {
-  user: User;
-  setRole: (role: Role) => void;
-  canAccess: (allowedRoles: Role[]) => boolean;
+interface ValorDoContexto {
+  /** `null` nas telas públicas — `/entrar` e a confirmação do magic link. */
+  usuario: Usuario | null;
+  /** Atalho de renderização. Nunca use para proteger dado. */
+  podeVer: (papeis: Role[]) => boolean;
 }
 
-const defaultUsers: Record<Role, User> = {
-  cliente: { id: "1", name: "Marina Fontoura", role: "cliente", email: "marina@email.com" },
-  staff: { id: "2", name: "Mateus Cecchin", role: "staff", email: "mateus@cecchin.com.br" },
-  gestao: { id: "3", name: "Ana Gerente", role: "gestao", email: "ana@cecchin.com.br" },
-  admin: { id: "4", name: "Admin Cecchin", role: "admin", email: "admin@cecchin.com.br" },
+const ALCANCE: Record<Role, readonly Role[]> = {
+  cliente: ["cliente"],
+  staff: ["cliente", "staff"],
+  gestao: ["cliente", "staff", "gestao"],
+  admin: ["cliente", "staff", "gestao", "admin"],
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const NOME_DO_PAPEL: Record<Role, string> = {
+  cliente: "Cliente",
+  staff: "Equipe",
+  gestao: "Gestão",
+  admin: "Administração",
+};
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User>(defaultUsers.cliente);
+const Contexto = createContext<ValorDoContexto | undefined>(undefined);
 
-  const setRole = (role: Role) => {
-    setUser(defaultUsers[role]);
-  };
-
-  const canAccess = (allowedRoles: Role[]) => {
-    return allowedRoles.includes(user.role);
-  };
+export function AuthProvider({
+  usuario,
+  children,
+}: {
+  usuario: Usuario | null;
+  children: ReactNode;
+}) {
+  const podeVer = (papeis: Role[]) =>
+    usuario ? papeis.some((p) => ALCANCE[usuario.papel].includes(p)) : false;
 
   return (
-    <AuthContext.Provider value={{ user, setRole, canAccess }}>
+    <Contexto.Provider value={{ usuario, podeVer }}>
       {children}
-    </AuthContext.Provider>
+    </Contexto.Provider>
   );
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+export function useAuth(): ValorDoContexto {
+  const valor = useContext(Contexto);
+  if (valor === undefined) {
+    throw new Error("useAuth precisa estar dentro de <AuthProvider>");
   }
-  return context;
+  return valor;
 }

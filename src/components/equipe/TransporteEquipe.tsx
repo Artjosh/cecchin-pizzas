@@ -1,0 +1,9 @@
+import {Bike,Car,Truck,IdCard,Bus,Footprints} from "lucide-react";
+import type {PerfilEquipe} from "./tipos";
+function Moto({size=16}:{size?:number}){return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="5" cy="17" r="3.5"/><circle cx="19" cy="17" r="3.5"/><path d="m19 17-4-12h-3m4 4h3M5 17l5-7h6M7 10H3m7 0 3 7h3M5 17h8"/></svg>;}
+export const VEICULOS=[{valor:'carro',nome:'Carro',Icone:Car},{valor:'moto',nome:'Moto',Icone:Moto},{valor:'van',nome:'Van',Icone:Truck}] as const;
+export const MEIOS_TRANSPORTE=[{valor:'uber',nome:'Uber / aplicativo',Icone:Car},{valor:'onibus',nome:'Ônibus',Icone:Bus},...VEICULOS,{valor:'empresa',nome:'Transporte da empresa',Icone:Truck},{valor:'bicicleta',nome:'Bicicleta',Icone:Bike},{valor:'a_pe',nome:'A pé',Icone:Footprints}] as const;
+export function TransporteEquipe({perfil}:{perfil?:PerfilEquipe|null}){
+ const meios=MEIOS_TRANSPORTE.filter(v=>perfil?.meios_transporte?.includes(v.valor)),proprios=VEICULOS.filter(v=>perfil?.veiculos?.includes(v.valor));
+ return <div className="space-y-2 text-xs"><div className="flex flex-wrap gap-1.5">{meios.map(({valor,nome,Icone})=><span key={valor} className="flex items-center gap-1.5 rounded-lg bg-tertiary/10 px-2 py-1"><Icone size={15}/>{nome}</span>)}{!meios.length&&<span className="text-on-surface-variant">{perfil?.transporte||'Deslocamento não informado'}</span>}</div><div className="flex flex-wrap gap-1.5">{proprios.map(({valor,nome,Icone})=><span key={valor} className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2 py-1 text-primary"><Icone size={15}/>{nome} próprio</span>)}<span className="flex items-center gap-1.5 rounded-lg bg-surface-container px-2 py-1"><IdCard size={15}/>{perfil?.cnh_categorias?.length?`CNH ${perfil.cnh_categorias.join(' / ')}`:'CNH não informada'}</span></div></div>;
+}

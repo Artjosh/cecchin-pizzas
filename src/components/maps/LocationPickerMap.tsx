@@ -1,233 +1,264 @@
-import React, { useState, useEffect, useRef } from "react";
-import { APIProvider, Map, AdvancedMarker, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
-import { Search, MapPin } from "lucide-react";
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { LocateFixed, Minus, Plus, Search, Timer } from "lucide-react";
+import estilos from "./LocationPickerMap.module.css";
+
 import { cn } from "../../lib/utils";
+import { QG_CECCHIN } from "../../lib/operacao";
+import { aplicarVisualOperacional, deLngLat, ESTILO_MAPA_OPERACIONAL, paraLngLat, type Coordenada } from "./mapa-livre";
 
 interface LocationPickerMapProps {
-  initialAddress?: string;
   onLocationSelect: (location: { address: string; lat: number; lng: number }) => void;
   className?: string;
+  address?: string;
+  addressAction?: React.ReactNode;
+  addressBelow?: React.ReactNode;
+  selectedLocation?: Coordenada | null;
+  markingMode?: boolean;
+  onMarkingModeChange?: (active: boolean) => void;
+  controles?: boolean;
+  autoCentralizarSePermitido?: boolean;
   children?: React.ReactNode;
 }
 
-// POA coordinate roughly
-const DEFAULT_CENTER = { lat: -30.0346, lng: -51.2177 };
+interface LocalEncontrado extends Coordenada { endereco: string }
+interface RotaEncontrada { duracaoSegundos: number }
+type BibliotecaMapa = typeof import("maplibre-gl");
+type MapaMapLibre = any;
+type Marker = any;
+const QG = QG_CECCHIN.coordenada;
+const CENTRO_PORTO_ALEGRE: Coordenada = { lat: -30.0346, lng: -51.2177 };
 
-const AutocompleteInput = ({ onPlaceSelect }: { onPlaceSelect: (place: google.maps.places.PlaceResult) => void }) => {
-  const [inputValue, setInputValue] = useState("");
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [isFocused, setIsFocused] = useState(false);
-  const [sessionToken, setSessionToken] = useState<any>(null);
-  
-  const places = useMapsLibrary("places");
-  const wrapperRef = useRef<HTMLDivElement>(null);
+function estimativa(destino: Coordenada) {
+  const rad = (grau: number) => (grau * Math.PI) / 180;
+  const a = Math.sin(rad(destino.lat - QG.lat) / 2) ** 2 + Math.cos(rad(QG.lat)) * Math.cos(rad(destino.lat)) * Math.sin(rad(destino.lng - QG.lng) / 2) ** 2;
+  const km = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 1.28;
+  return `~ ${Math.max(5, Math.round(km * 60 / 32))} min`;
+}
 
-  useEffect(() => {
-    if (places && !sessionToken) {
-      const placesAPI = places as any;
-      if (placesAPI.AutocompleteSessionToken) {
-        setSessionToken(new placesAPI.AutocompleteSessionToken());
-      }
-    }
-  }, [places, sessionToken]);
+function criarPino() {
+  const elemento = document.createElement("div");
+  elemento.className = "cursor-grab text-primary drop-shadow-lg active:cursor-grabbing";
+  elemento.setAttribute("aria-label", "Local do evento");
+  elemento.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" class="h-9 w-9 fill-current"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/></svg>';
+  return elemento;
+}
 
-  useEffect(() => {
-    // Handle click outside to close dropdown
-    const handleClickOutside = (event: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setIsFocused(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+async function carregarBibliotecaMapa(): Promise<BibliotecaMapa> {
+  if (typeof window === "undefined") throw new Error("Mapa disponível apenas no navegador.");
+  const [modulo] = await Promise.all([
+    import("maplibre-gl"),
+    import("maplibre-gl/dist/maplibre-gl.css"),
+  ]);
+  modulo.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+  return modulo;
+}
 
-  const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setInputValue(val);
-    
-    if (!val.trim() || !places || !sessionToken) {
-      setSuggestions([]);
+function BuscaDeEndereco({ address, addressAction, aoEscolher }: { address?: string; addressAction?: React.ReactNode; aoEscolher: (local: LocalEncontrado) => void }) {
+  const [texto, setTexto] = useState("");
+  const [locais, setLocais] = useState<LocalEncontrado[]>([]);
+  const [estado, setEstado] = useState("");
+  const [buscando, setBuscando] = useState(false);
+  useEffect(() => { if (address) setTexto(address); }, [address]);
+  async function buscar() {
+    if (texto.trim().length < 3) { setEstado("Digite ao menos três caracteres."); return; }
+    setBuscando(true); setEstado(""); setLocais([]);
+    try {
+      const resposta = await fetch(`/api/mapa/buscar?q=${encodeURIComponent(texto.trim())}`);
+      const dados = await resposta.json() as { locais?: LocalEncontrado[]; mensagem?: string };
+      if (!resposta.ok) throw new Error(dados.mensagem);
+      setLocais(dados.locais ?? []);
+      if (!dados.locais?.length) setEstado("Nenhum endereço encontrado.");
+    } catch (erro) { setEstado(erro instanceof Error && erro.message ? erro.message : "Busca indisponível."); }
+    finally { setBuscando(false); }
+  }
+  return <div className="relative z-20">
+    <div className="flex items-stretch gap-2">
+      <div className="relative min-w-0 flex-1"><Search className="absolute left-3.5 top-3.5 h-5 w-5 text-on-surface-variant" /><input value={texto} onChange={(e) => setTexto(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void buscar(); }} className="h-12 w-full rounded-xl bg-surface-container-highest pl-11 pr-4 font-body-md text-body-md text-on-surface shadow-md placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Digite endereço, número ou bairro" /></div>
+      <button type="button" onClick={() => void buscar()} disabled={buscando} className="h-12 rounded-xl bg-surface px-3 font-label-md text-label-md text-on-surface shadow-md hover:bg-surface-container disabled:opacity-70">{buscando ? "Buscando" : "Buscar"}</button>
+      {addressAction}
+    </div>
+    {(locais.length > 0 || estado) && <div className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-highest shadow-lg">
+      {locais.map((local) => <button key={`${local.lat}-${local.lng}`} type="button" onClick={() => { setTexto(local.endereco); setLocais([]); aoEscolher(local); }} className="block w-full border-b border-outline-variant/10 px-4 py-3 text-left font-body-sm text-on-surface hover:bg-surface-container-high">{local.endereco}</button>)}
+      {estado && <p className="px-4 py-3 font-body-sm text-on-surface-variant">{estado}</p>}
+    </div>}
+  </div>;
+}
+
+export function LocationPickerMap({ onLocationSelect, className, address, controles = true, autoCentralizarSePermitido = false, addressAction, addressBelow, selectedLocation, markingMode = false, onMarkingModeChange, children }: LocationPickerMapProps) {
+  const recipiente = useRef<HTMLDivElement>(null);
+  const biblioteca = useRef<BibliotecaMapa | null>(null);
+  const mapa = useRef<MapaMapLibre | null>(null);
+  const pino = useRef<Marker | null>(null);
+  const gps = useRef<Marker | null>(null);
+  const posicaoPendente = useRef<Coordenada | null>(null);
+  const interacaoUsuario = useRef(false);
+  const tentativaAutomatica = useRef(false);
+  const versao = useRef(0);
+  const escolherAtual = useRef<(local: Coordenada, endereco?: string) => Promise<void>>(async () => {});
+  const marcacaoAtual = useRef(markingMode);
+  const [pronto, setPronto] = useState(false);
+  const [bibliotecaCarregada, setBibliotecaCarregada] = useState(false);
+  const [informacaoRota, setInformacaoRota] = useState<{ duration: string; estimated: boolean } | null>(null);
+  const [mensagem, setMensagem] = useState<string | null>(null);
+
+  function mostrarLocalizacao(local: Coordenada, mapaPronto = false) {
+    const modulo = biblioteca.current;
+    const instancia = mapa.current;
+    if (!modulo || !instancia || (!mapaPronto && !instancia.loaded())) {
+      posicaoPendente.current = local;
+      setMensagem("Localização obtida. Aguardando o mapa carregar…");
       return;
     }
-    
-    const placesAPI = places as any;
-    try {
-      const request = { input: val, sessionToken };
-      const response = await placesAPI.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
-      setSuggestions(response.suggestions || []);
-    } catch (err) {
-      console.error("Erro ao buscar sugestões:", err);
-      setSuggestions([]);
-    }
-  };
-
-  const handleSelectSuggestion = async (suggestion: any) => {
-    setIsFocused(false);
-    try {
-      // The prediction has a toPlace() method to get the Place object
-      const place = suggestion.placePrediction.toPlace();
-      await place.fetchFields({
-        fields: ['displayName', 'formattedAddress', 'location'],
-      });
-      
-      setInputValue(place.formattedAddress || place.displayName || "");
-      
-      onPlaceSelect({
-        geometry: {
-          location: {
-            lat: () => place.location.lat(),
-            lng: () => place.location.lng()
-          }
-        } as any,
-        formatted_address: place.formattedAddress,
-        name: place.displayName
-      });
-      
-      // Refresh session token after a selection
-      const placesAPI = places as any;
-      setSessionToken(new placesAPI.AutocompleteSessionToken());
-    } catch (err) {
-      console.error("Erro ao selecionar local:", err);
-    }
-  };
-
-  return (
-    <div className="relative z-20 mb-4" ref={wrapperRef}>
-      <div className="relative">
-        <Search className="absolute left-3.5 top-3.5 text-on-surface-variant w-5 h-5" />
-        <input
-          value={inputValue}
-          onChange={handleInputChange}
-          onFocus={() => setIsFocused(true)}
-          className="w-full h-12 bg-surface-container-highest shadow-md pl-11 pr-4 rounded-xl font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary transition-all placeholder:text-on-surface-variant"
-          placeholder="Digite o endereço para buscar"
-        />
-      </div>
-      
-      {isFocused && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-surface-container-highest rounded-xl shadow-lg overflow-hidden border border-outline-variant/30 flex flex-col max-h-60 overflow-y-auto">
-          {suggestions.map((suggestion, idx) => (
-            <button
-              key={idx}
-              className="w-full text-left px-4 py-3 hover:bg-surface-container-high focus:bg-surface-container-high transition-colors border-b border-outline-variant/10 last:border-b-0"
-              onClick={() => handleSelectSuggestion(suggestion)}
-            >
-              <div className="font-body-md text-on-surface font-medium truncate">
-                {suggestion.placePrediction?.text?.text || suggestion.placePrediction?.mainText?.text || ""}
-              </div>
-              {suggestion.placePrediction?.secondaryText?.text && (
-                <div className="font-body-sm text-on-surface-variant truncate">
-                  {suggestion.placePrediction.secondaryText.text}
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const MapInner = ({ onLocationSelect, children }: { onLocationSelect: (location: { address: string; lat: number; lng: number }) => void, children?: React.ReactNode }) => {
-  const map = useMap();
-  const [markerPosition, setMarkerPosition] = useState<google.maps.LatLngLiteral>(DEFAULT_CENTER);
-  const geocoding = useMapsLibrary("geocoding");
-
-  const handlePlaceSelect = (place: google.maps.places.PlaceResult) => {
-    if (place.geometry?.location) {
-      const location = {
-        lat: place.geometry.location.lat(),
-        lng: place.geometry.location.lng(),
-      };
-      setMarkerPosition(location);
-      map?.panTo(location);
-      map?.setZoom(17);
-      
-      if (place.formatted_address) {
-        onLocationSelect({
-          address: place.formatted_address,
-          ...location,
-        });
-      }
-    }
-  };
-
-  const handleMarkerDragEnd = async (e: google.maps.MapMouseEvent) => {
-    if (e.latLng && geocoding) {
-      const location = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-      setMarkerPosition(location);
-      
-      const geocoder = new geocoding.Geocoder();
-      try {
-        const response = await geocoder.geocode({ location });
-        if (response.results[0]) {
-          onLocationSelect({
-            address: response.results[0].formatted_address,
-            ...location,
-          });
-        }
-      } catch (err) {
-        console.error("Geocoding failed:", err);
-      }
-    }
-  };
-
-  return (
-    <div className="flex flex-col h-full">
-      <AutocompleteInput onPlaceSelect={handlePlaceSelect} />
-      <div className="flex-1 rounded-xl overflow-hidden shadow-sm relative isolate">
-        <Map
-          defaultZoom={12}
-          defaultCenter={DEFAULT_CENTER}
-          mapId="DEMO_MAP_ID"
-          disableDefaultUI={true}
-          gestureHandling="greedy"
-          internalUsageAttributionIds={["gmp_mcp_codeassist_v1_aistudio"]}
-        >
-          <AdvancedMarker 
-            position={markerPosition} 
-            draggable={true}
-            onDragEnd={handleMarkerDragEnd}
-          >
-            <div className="w-10 h-10 -mt-10 flex items-center justify-center filter drop-shadow-md cursor-grab active:cursor-grabbing hover:scale-110 transition-transform">
-              <MapPin className="text-primary w-10 h-10 fill-surface" strokeWidth={1.5} />
-            </div>
-          </AdvancedMarker>
-        </Map>
-        
-        {children}
-        
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-surface/95 backdrop-blur-md px-space-sm py-1 rounded-full font-label-sm text-label-sm text-on-surface shadow-md pointer-events-none">
-          Arraste o pino para ajustar
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export function LocationPickerMap({ onLocationSelect, className, children }: LocationPickerMapProps) {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-  
-  if (!apiKey) {
-    return (
-      <div className={cn("bg-surface-container-high rounded-xl p-6 flex flex-col items-center justify-center text-center", className)}>
-        <MapPin className="w-8 h-8 text-on-surface-variant mb-2" />
-        <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold">Mapa Indisponível</h3>
-        <p className="font-body-sm text-body-sm text-on-surface-variant max-w-sm mt-1">
-          A chave da API do Google Maps não está configurada. Adicione <code>VITE_GOOGLE_MAPS_API_KEY</code> para habilitar o mapa reativo.
-        </p>
-      </div>
-    );
+    if (!gps.current) {
+      const elemento = document.createElement("div");
+      elemento.className = "h-4 w-4 rounded-full border-2 border-surface bg-tertiary shadow-md";
+      gps.current = new modulo.Marker({ element: elemento }).setLngLat(paraLngLat(local)).addTo(instancia);
+    } else gps.current.setLngLat(paraLngLat(local));
+    instancia.flyTo({ center: paraLngLat(local), zoom: 15, duration: 1800, essential: true });
+    setMensagem("Mapa centralizado na sua localização");
   }
 
-  return (
-    <div className={cn("w-full h-full", className)}>
-      <APIProvider apiKey={apiKey}>
-        <MapInner onLocationSelect={onLocationSelect}>
-          {children}
-        </MapInner>
-      </APIProvider>
-    </div>
-  );
+  const escolher = useCallback(async (local: Coordenada, endereco?: string) => {
+    interacaoUsuario.current = true;
+    posicaoPendente.current = null;
+    const atual = ++versao.current;
+    pino.current?.setLngLat(paraLngLat(local));
+    mapa.current?.flyTo({ center: paraLngLat(local), zoom: 16, essential: true });
+    onMarkingModeChange?.(false);
+    if (!endereco) {
+      try { const r = await fetch(`/api/mapa/reverso?lat=${local.lat}&lng=${local.lng}`); endereco = (await r.json() as { endereco?: string }).endereco; } catch { /* Mantém rótulo honesto abaixo. */ }
+    }
+    if (atual === versao.current) onLocationSelect({ ...local, address: endereco || "Ponto marcado no mapa" });
+  }, [onLocationSelect, onMarkingModeChange]);
+  useEffect(() => { escolherAtual.current = escolher; }, [escolher]);
+  useEffect(() => { marcacaoAtual.current = markingMode; }, [markingMode]);
+
+  useEffect(() => {
+    let ativo = true;
+    void carregarBibliotecaMapa().then((modulo) => {
+      if (!ativo) return;
+      biblioteca.current = modulo;
+      setBibliotecaCarregada(true);
+    }).catch(() => {
+      if (ativo) setMensagem("Não foi possível carregar o mapa.");
+    });
+    return () => { ativo = false; };
+  }, []);
+
+  useEffect(() => {
+    const modulo = biblioteca.current;
+    if (!recipiente.current || mapa.current || !modulo) return;
+    const instancia = new modulo.Map({ container: recipiente.current, style: ESTILO_MAPA_OPERACIONAL, center: paraLngLat(selectedLocation ?? CENTRO_PORTO_ALEGRE), zoom: 12, attributionControl: false });
+    mapa.current = instancia;
+    // A base não acompanha o destino: cada local tem seu próprio marcador.
+    const marcador = new modulo.Marker({ element: criarPino(), draggable: true, anchor: "bottom" }).setLngLat(paraLngLat(selectedLocation ?? CENTRO_PORTO_ALEGRE));
+    pino.current = marcador;
+    marcador.on("dragend", () => { void escolherAtual.current(deLngLat(marcador.getLngLat())); });
+    instancia.on("load", () => {
+      aplicarVisualOperacional(instancia);
+      setPronto(true);
+      if (posicaoPendente.current) {
+        const local = posicaoPendente.current;
+        posicaoPendente.current = null;
+        mostrarLocalizacao(local, true);
+      }
+    });
+    instancia.on("click", (evento) => { if (marcacaoAtual.current) void escolherAtual.current(deLngLat(evento.lngLat)); });
+    instancia.on("mousedown", () => { interacaoUsuario.current = true; });
+    instancia.on("touchstart", () => { interacaoUsuario.current = true; });
+    instancia.on("wheel", () => { interacaoUsuario.current = true; });
+    return () => { marcador.remove(); gps.current?.remove(); instancia.remove(); mapa.current = null; pino.current = null; gps.current = null; };
+  }, [bibliotecaCarregada]);
+
+  useEffect(() => {
+    if (!mapa.current || !pino.current) return;
+    pino.current.setDraggable(!markingMode);
+    mapa.current.getCanvas().style.cursor = markingMode ? "crosshair" : "";
+  }, [markingMode]);
+
+  useEffect(() => {
+    if (!selectedLocation || !mapa.current) return;
+    interacaoUsuario.current = true;
+    pino.current?.setLngLat(paraLngLat(selectedLocation)).addTo(mapa.current);
+    mapa.current.flyTo({ center: paraLngLat(selectedLocation), zoom: 15, essential: true });
+  }, [selectedLocation, bibliotecaCarregada]);
+
+  useEffect(() => {
+    if (!autoCentralizarSePermitido || !pronto || tentativaAutomatica.current) return;
+    if (selectedLocation) { tentativaAutomatica.current = true; return; }
+    if (!window.isSecureContext || !navigator.geolocation || !navigator.permissions) return;
+    let cancelado = false;
+    const timer = window.setTimeout(() => {
+      tentativaAutomatica.current = true;
+      void navigator.permissions.query({ name: "geolocation" }).then((permissao) => {
+        if (cancelado || permissao.state !== "granted" || interacaoUsuario.current) return;
+        navigator.geolocation.getCurrentPosition(({ coords }) => {
+          if (!cancelado && !interacaoUsuario.current) mostrarLocalizacao({ lat: coords.latitude, lng: coords.longitude });
+        }, () => { /* A centralização automática é opcional; o controle manual informa erros. */ }, { maximumAge: 300000, timeout: 10000 });
+      }).catch(() => { /* Sem consulta confiável da permissão, não abre um prompt automático. */ });
+    }, 2800);
+    return () => { cancelado = true; window.clearTimeout(timer); };
+  }, [autoCentralizarSePermitido, pronto, selectedLocation]);
+
+  useEffect(() => {
+    if (!selectedLocation || !pronto) { setInformacaoRota(null); return; }
+    let cancelado = false;
+    setInformacaoRota({ duration: estimativa(selectedLocation), estimated: true });
+    void (async () => {
+      try {
+        const qs = new URLSearchParams({ origemLat: String(QG.lat), origemLng: String(QG.lng), destinoLat: String(selectedLocation.lat), destinoLng: String(selectedLocation.lng) });
+        const resposta = await fetch(`/api/mapa/rota?${qs}`);
+        const rota = await resposta.json() as RotaEncontrada;
+        if (!resposta.ok || cancelado) return;
+        setInformacaoRota({ duration: `${Math.max(1, Math.round(rota.duracaoSegundos / 60))} min`, estimated: false });
+      } catch { /* Mantem a estimativa de tempo. */ }
+    })();
+    return () => { cancelado = true; };
+  }, [pronto, selectedLocation]);
+
+  function centralizar() {
+    interacaoUsuario.current = true;
+    if (!window.isSecureContext) {
+      setMensagem(`O navegador bloqueia o GPS em HTTP pela rede. Se este é o computador que roda o app, abra http://localhost:${window.location.port || "80"}. Em outro aparelho, use um endereço HTTPS.`);
+      return;
+    }
+    const politica = document as Document & { permissionsPolicy?: { allowsFeature: (nome: string) => boolean }; featurePolicy?: { allowsFeature: (nome: string) => boolean } };
+    if ((politica.permissionsPolicy ?? politica.featurePolicy)?.allowsFeature("geolocation") === false) {
+      setMensagem("Esta janela bloqueia a localização. Abra o site em uma aba própria do navegador para usar o GPS.");
+      return;
+    }
+    if (!navigator.geolocation) { setMensagem("Localização indisponível neste navegador ou dispositivo."); return; }
+    setMensagem("Buscando sua localização…");
+    try {
+      navigator.geolocation.getCurrentPosition(({ coords }) => {
+        mostrarLocalizacao({ lat: coords.latitude, lng: coords.longitude });
+      }, (erro) => {
+        if (erro.code === 1) setMensagem("Localização bloqueada para este site. No ícone ao lado do endereço, permita Localização e recarregue. Se continuar bloqueada, confira a permissão do navegador e do sistema.");
+        else if (erro.code === 3) setMensagem("O GPS demorou para responder. Tente novamente em um local com sinal ou use a busca de endereço.");
+        else setMensagem("Não foi possível obter a posição do dispositivo. Use a busca de endereço ou tente novamente.");
+      }, { enableHighAccuracy: true, maximumAge: 300000, timeout: 12000 });
+    } catch {
+      setMensagem("O navegador impediu o pedido de localização. Verifique as permissões deste site e tente novamente.");
+    }
+  }
+
+  return <div className={cn("relative h-full w-full isolate overflow-hidden", estilos.mapa, className)}>
+    {/* O CSS do MapLibre define position: relative fora das layers do Tailwind.
+        inset-0 sozinho perde a altura; dimensione o recipiente explicitamente. */}
+    <div ref={recipiente} className="h-full w-full" />
+    {controles && <div className="absolute left-1/2 top-3 z-20 w-[min(92%,38rem)] -translate-x-1/2"><BuscaDeEndereco address={address} addressAction={addressAction} aoEscolher={(local) => void escolher(local, local.endereco)} />{addressBelow && <div className="mt-1.5">{addressBelow}</div>}{informacaoRota && <div className="mt-1.5 flex items-center gap-2 rounded-lg bg-surface/95 px-2.5 py-1.5 shadow-sm backdrop-blur-md"><Timer className="h-4 w-4 shrink-0 text-primary" /><span className="min-w-0 flex-1 truncate font-label-sm text-label-sm text-on-surface">Tempo estimado de deslocamento</span><span className="font-label-sm text-label-sm text-on-surface-variant">{informacaoRota.duration}</span></div>}</div>}
+    {controles && <div role="group" aria-label="Controles do mapa" className="absolute bottom-36 right-3 z-20 flex flex-col gap-3 sm:bottom-24">
+      <div className="overflow-hidden rounded-2xl bg-surface/95 text-on-surface shadow-lg backdrop-blur-md">
+        <button type="button" aria-label="Aproximar mapa" title="Aproximar mapa" disabled={!pronto} onClick={() => mapa.current?.zoomIn()} className="flex h-11 w-11 items-center justify-center hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-40"><Plus className="h-5 w-5" /></button>
+        <div className="mx-2 border-t border-outline-variant/30" />
+        <button type="button" aria-label="Afastar mapa" title="Afastar mapa" disabled={!pronto} onClick={() => mapa.current?.zoomOut()} className="flex h-11 w-11 items-center justify-center hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-40"><Minus className="h-5 w-5" /></button>
+      </div>
+      <button type="button" aria-label="Centralizar na minha localização" title="Centralizar na minha localização" onClick={centralizar} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface/95 text-on-surface shadow-lg backdrop-blur-md hover:bg-surface-container focus-visible:outline-2 focus-visible:outline-primary"><LocateFixed className="h-5 w-5" /></button>
+    </div>}
+    {mensagem && <div role="status" className="absolute bottom-36 left-3 right-16 z-20 mx-auto w-fit max-w-sm rounded-xl bg-on-surface px-3 py-2 text-center font-label-sm text-label-sm text-surface shadow-md sm:bottom-24">{mensagem}</div>}
+    {children}
+    {controles && markingMode && <div className="pointer-events-none absolute bottom-28 left-3 right-16 z-20 mx-auto w-fit rounded-full bg-surface/95 px-space-sm py-1 font-label-sm text-label-sm text-on-surface shadow-md backdrop-blur-md sm:bottom-20">Clique no mapa para marcar o ponto</div>}
+  </div>;
 }

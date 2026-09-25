@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: #fbf9f7;
+  --color-on-background: #1b1c1b;
+  --color-surface: #fbf9f7;
+  --color-surface-dim: #dbdad8;
+  --color-surface-bright: #fbf9f7;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f5f3f1;
+  --color-surface-container: #efedec;
+  --color-surface-container-high: #eae8e6;
+  --color-surface-container-highest: #e4e2e0;
+  --color-on-surface: #1b1c1b;
+  --color-on-surface-variant: #5a413b;
+  --color-inverse-surface: #30302f;
+  --color-inverse-on-surface: #f2f0ee;
+  
+  --color-primary: #a51e06;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #c8381e;
+  --color-on-primary-container: #ffece8;
+  --color-primary-fixed: #ffdad3;
+  --color-primary-fixed-dim: #ffb4a5;
+  --color-on-primary-fixed: #3e0400;
+  
+  --color-secondary: #5e5e60;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #e0dfe2;
+  --color-on-secondary-container: #626265;
+  --color-secondary-fixed: #e3e2e4;
+  --color-on-secondary-fixed: #1b1c1e;
+  
+  --color-tertiary: #814500;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #a45a00;
+  --color-on-tertiary-container: #ffece0;
+  --color-tertiary-fixed: #ffdcc2;
+  --color-tertiary-fixed-dim: #ffb77a;
+  --color-on-tertiary-fixed: #2e1500;
+
+  /* Sucesso — o verde de "rodízio em andamento". Estava hardcoded como
+     #34A853 em DispatchView, fora do sistema de cores. */
+  --color-success: #34a853;
+  --color-on-success: #ffffff;
+  --color-success-container: #d7f0dc;
+  --color-on-success-container: #0b3d1c;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-space-xl: 2rem;
+  --spacing-margin: 1rem;
+  --spacing-margin-tablet: 1.5rem;
+  --spacing-margin-desktop: 2.5rem;
+}
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--color-background);
+    color: var(--color-on-background);
+  }
+}
+
+@utility font-display-lg { font-family: "Plus Jakarta Sans"; font-weight: 800; }
+@utility text-display-lg { font-size: 40px; line-height: 48px; letter-spacing: -0.02em; }
+
+@utility font-headline-lg { font-family: "Plus Jakarta Sans"; font-weight: 700; }
+@utility text-headline-lg { font-size: 32px; line-height: 40px; letter-spacing: -0.015em; }
+
+@utility font-headline-md { font-family: "Plus Jakarta Sans"; font-weight: 600; }
+@utility text-headline-md { font-size: 22px; line-height: 28px; }
+
+@utility font-headline-sm { font-family: "Plus Jakarta Sans"; font-weight: 600; }
+@utility text-headline-sm { font-size: 18px; line-height: 24px; }
+
+@utility font-body-lg { font-family: "Plus Jakarta Sans"; font-weight: 400; }
+@utility text-body-lg { font-size: 16px; line-height: 24px; }
+
+@utility font-body-md { font-family: "Plus Jakarta Sans"; font-weight: 400; }
+@utility text-body-md { font-size: 14px; line-height: 20px; }
+
+@utility font-body-sm { font-family: "Plus Jakarta Sans"; font-weight: 400; }
+@utility text-body-sm { font-size: 12px; line-height: 16px; }
+
+@utility font-label-lg { font-family: "Plus Jakarta Sans"; font-weight: 600; }
+@utility text-label-lg { font-size: 14px; line-height: 20px; letter-spacing: 0.01em; }
+
+@utility font-label-md { font-family: "Plus Jakarta Sans"; font-weight: 600; }
+@utility text-label-md { font-size: 12px; line-height: 16px; letter-spacing: 0.02em; }
+
+@utility font-label-sm { font-family: "Plus Jakarta Sans"; font-weight: 700; }
+@utility text-label-sm { font-size: 10px; line-height: 14px; letter-spacing: 0.04em; }
+/* Os mesmos tokens atualizam pain?is, navega??o e controles junto do mapa. */
+:root { color-scheme: light; }
+:root[data-tema="escuro"] {
+  color-scheme: dark;
+  --color-background: #17191d;
+  --color-on-background: #f1f2f3;
+  --color-surface: #17191d;
+  --color-surface-dim: #111316;
+  --color-surface-bright: #363a41;
+  --color-surface-container-lowest: #121416;
+  --color-surface-container-low: #1e2125;
+  --color-surface-container: #25282d;
+  --color-surface-container-high: #2e3238;
+  --color-surface-container-highest: #383c43;
+  --color-on-surface: #f1f2f3;
+  --color-on-surface-variant: #bbc0c7;
+  --color-inverse-surface: #e4e6e9;
+  --color-inverse-on-surface: #202328;
+  --color-primary: #ffb4a5;
+  --color-on-primary: #571000;
+  --color-primary-container: #7b1b09;
+  --color-on-primary-container: #ffdad3;
+  --color-secondary: #c5c6ca;
+  --color-on-secondary: #2e3034;
+  --color-secondary-container: #404348;
+  --color-on-secondary-container: #e3e4e8;
+  --color-tertiary: #ffb77a;
+  --color-on-tertiary: #482600;
+  --color-tertiary-container: #663700;
+  --color-on-tertiary-container: #ffdcc2;
+  --color-outline-variant: #484c53;
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-success-container: #183e25;
+  --color-on-success-container: #bdecc9;
+}

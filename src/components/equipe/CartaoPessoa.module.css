@@ -1,0 +1,12 @@
+.card { transition: box-shadow 160ms ease, border-color 160ms ease; }
+.card, .card * { user-select: none; -webkit-user-select: none; }
+.card img { -webkit-user-drag: none; }
+.draggable { cursor: grab; touch-action: none; }
+.draggable:hover { border-color: color-mix(in srgb, var(--color-primary, currentColor) 35%, transparent); box-shadow: 0 4px 14px #00000018; }
+.dragging { cursor: grabbing; touch-action: none; box-shadow: 0 12px 28px #00000030; }
+.disabled { cursor: default; }
+.card button { cursor: pointer; }
+.card button[aria-roledescription="draggable"] { cursor: grab; }
+.card button[aria-roledescription="draggable"]:active { cursor: grabbing; }
+.card button:disabled { cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } }

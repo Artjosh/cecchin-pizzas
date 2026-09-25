@@ -1,0 +1,9 @@
+"use client";
+import {memo,useState,useEffect} from "react";
+import estilos from "./AvatarPessoa.module.css";
+export const AvatarPessoa=memo(function AvatarPessoa({id,foto,className="h-12 w-12"}:{id:string;foto?:string|null;className?:string}){
+ const [falhou,setFalhou]=useState(false);useEffect(()=>setFalhou(false),[foto]);
+ let seed=0;for(const letra of id)seed=(seed*31+letra.charCodeAt(0))>>>0;
+ const fundo=['#f4ccb7','#c0dbd3','#cbd5f1','#e1cae9','#f1ddac'][seed%5],pele=['#e8b495','#aa7051','#f6d2b5','#754c38'][seed%4],cabelo=['#392d2c','#5f4333','#242a35','#a27750'][seed%4];
+ return <span className={`inline-flex shrink-0 overflow-hidden rounded-full ${className}`} aria-hidden="true">{foto&&!falhou?<img loading="lazy" decoding="async" src={foto} alt="" draggable={false} onError={()=>setFalhou(true)} className="h-full w-full object-cover"/>:<svg viewBox="0 0 80 80" className="h-full w-full" role="presentation"><rect width="80" height="80" fill={fundo}/><path d="M7 80c2-23 18-29 33-29s31 6 33 29" fill={cabelo}/><path d="M31 48h18v15c-5 6-13 6-18 0" fill={pele}/><ellipse cx="40" cy="32" rx="21" ry="25" fill={cabelo}/><ellipse cx="40" cy="36" rx="17" ry="21" fill={pele}/><path d={seed%2?'M21 31c1-23 32-26 38 0-12-2-20-6-23-13-2 9-8 12-15 13':'M20 27c5-23 36-23 40 3-11-2-20-6-27-12-1 5-6 9-13 9'} fill={cabelo}/><g className={estilos.olhos} style={{animationDelay:`-${seed%5}s`}}><circle cx="33" cy="36" r="1.8" fill="#302b29"/><circle cx="47" cy="36" r="1.8" fill="#302b29"/></g><path d="M34 47q6 5 12 0" fill="none" stroke="#754d40" strokeWidth="2" strokeLinecap="round"/>{seed%3===0&&<g stroke={cabelo} strokeWidth="1.5" fill="none"><rect x="26" y="31" width="13" height="10" rx="4"/><rect x="41" y="31" width="13" height="10" rx="4"/><path d="M39 35h2"/></g>}</svg>}</span>;
+});

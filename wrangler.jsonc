@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cecchin-pizzas",
+  "compatibility_date": "2026-02-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true }
+
+  // account_id vem de CLOUDFLARE_ACCOUNT_ID, ou `wrangler login` resolve.
+  // Segredos (GEMINI_API_KEY) NÃO ficam aqui:
+  //   wrangler secret put GEMINI_API_KEY
+}
