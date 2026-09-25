@@ -12,7 +12,7 @@ type Solicitacao = { id: string; solicitante_id: string; responsavel_id: string 
 type Concorrente = { id: string; nome: string; instagram_usuario: string | null; google_place_id: string | null; seguidores_instagram: number | null; publicacoes_instagram: number | null; nota_google: number | null; avaliacoes_google: number | null; instagram_atualizado_em: string | null; google_atualizado_em: string | null; consulta_erro: string | null };
 type Publicacao = { instagram_media_id: string; tipo: string; legenda: string | null; permalink: string; midia_url: string | null; miniatura_url: string | null; publicado_em: string };
 type Alerta = { agenda_id: string; criado_em: string; lido_em: string | null; agenda_marketing: { agendado_para: string; titulo: string } | null };
-type Dados = { agenda: Agenda[]; maisAgenda: boolean; solicitacoes: Solicitacao[]; perfis: Perfil[]; alertas: Alerta[]; concorrentes: Concorrente[] };
+type Dados = { agenda: Agenda[]; maisAgenda: boolean; solicitacoes: Solicitacao[]; solicitacoesSemana: Solicitacao[]; maisSolicitacoesSemana: boolean; perfis: Perfil[]; alertas: Alerta[]; concorrentes: Concorrente[] };
 
 function rotuloData(iso: string) {
   return new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
@@ -26,6 +26,7 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
   const [dados, setDados] = useState<Dados | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoMais, setCarregandoMais] = useState(false);
+  const [carregandoMaisSolicitacoes, setCarregandoMaisSolicitacoes] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [enviandoMidia, setEnviandoMidia] = useState(false);
   const [erro, setErro] = useState("");
@@ -54,13 +55,13 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
     } catch (e) { if (carga === cargaAtual.current) setErro(e instanceof Error ? e.message : "Falha ao carregar"); }
     finally { if (carga === cargaAtual.current) setCarregando(false); }
   }, [semana]);
-  useEffect(() => { setDados(null); setCarregandoMais(false); void carregar(); return () => { cargaAtual.current++; }; }, [carregar]);
+  useEffect(() => { setDados(null); setCarregandoMais(false); setCarregandoMaisSolicitacoes(false); void carregar(); return () => { cargaAtual.current++; }; }, [carregar]);
   useEffect(() => {
     const controlador = new AbortController();
     let atualizando = false;
     const intervalo = window.setInterval(async () => {
-      if (document.visibilityState !== "visible" || carregandoMais || atualizando || !dados) return;
-      if (dados.agenda.length <= 200) { void carregar(); return; }
+      if (document.visibilityState !== "visible" || carregandoMais || carregandoMaisSolicitacoes || atualizando || !dados) return;
+      if (dados.agenda.length <= 200 && dados.solicitacoesSemana.length <= 200) { void carregar(); return; }
       atualizando = true;
       try {
         const resposta = await fetch("/api/operacao/marketing?somenteAlertas=1", { cache: "no-store", signal: controlador.signal });
@@ -71,7 +72,7 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
       finally { atualizando = false; }
     }, 30000);
     return () => { controlador.abort(); window.clearInterval(intervalo); };
-  }, [carregar, carregandoMais, dados]);
+  }, [carregar, carregandoMais, carregandoMaisSolicitacoes, dados]);
   const carregarMaisAgenda = async () => {
     if (!dados?.maisAgenda || carregandoMais) return;
     const carga = cargaAtual.current;
@@ -85,6 +86,20 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
       if (carga === cargaAtual.current) setDados((atual) => atual ? { ...atual, agenda: [...atual.agenda, ...resultado.agenda], maisAgenda: resultado.maisAgenda } : null);
     } catch (e) { if (carga === cargaAtual.current) setErro(e instanceof Error ? e.message : "Falha ao carregar a agenda"); }
     finally { setCarregandoMais(false); }
+  };
+  const carregarMaisSolicitacoesSemana = async () => {
+    if (!dados?.maisSolicitacoesSemana || carregandoMaisSolicitacoes) return;
+    const carga = cargaAtual.current;
+    const pagina = Math.floor(dados.solicitacoesSemana.length / 200);
+    setCarregandoMaisSolicitacoes(true);
+    setErro("");
+    try {
+      const resposta = await fetch(`/api/operacao/marketing?inicio=${semana}&fim=${somarDias(semana, 7)}&somenteSolicitacoesSemana=1&paginaSolicitacoes=${pagina}`, { cache: "no-store" });
+      if (!resposta.ok) throw new Error("Não foi possível carregar mais solicitações.");
+      const resultado = await resposta.json() as Pick<Dados, "solicitacoesSemana" | "maisSolicitacoesSemana">;
+      if (carga === cargaAtual.current) setDados((atual) => atual ? { ...atual, solicitacoesSemana: [...atual.solicitacoesSemana, ...resultado.solicitacoesSemana], maisSolicitacoesSemana: resultado.maisSolicitacoesSemana } : null);
+    } catch (e) { if (carga === cargaAtual.current) setErro(e instanceof Error ? e.message : "Falha ao carregar solicitações"); }
+    finally { setCarregandoMaisSolicitacoes(false); }
   };
   useEffect(() => {
     if (!concorrenteAberto) return;
@@ -141,6 +156,17 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
     }
     return grupos;
   }, [dados]);
+  const solicitacoesPorDia = useMemo(() => {
+    const grupos = new Map<string, Solicitacao[]>();
+    for (const pedido of dados?.solicitacoesSemana ?? []) {
+      if (!pedido.prazo || !pedido.responsavel_id || !["recebida", "planejada"].includes(pedido.situacao)) continue;
+      if (!gestor && pedido.responsavel_id !== usuarioId) continue;
+      const chave = dataSaoPaulo(new Date(pedido.prazo));
+      grupos.set(chave, [...(grupos.get(chave) ?? []), pedido]);
+    }
+    for (const pedidos of grupos.values()) pedidos.sort((a, b) => a.prazo!.localeCompare(b.prazo!));
+    return grupos;
+  }, [dados?.solicitacoesSemana, gestor, usuarioId]);
   const dias = Array.from({ length: 7 }, (_, indice) => somarDias(semana, indice));
   const diasProgramados = dias.filter((dia) => (agendaPorDia.get(dia) ?? []).some((item) => item.categoria !== "tarefa" && item.situacao !== "cancelado")).length;
   const nome = (id: string) => pessoas.find((p) => p.id === id)?.nome ?? (id === usuarioId ? "Você" : "Integrante");
@@ -154,13 +180,14 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
     {erro && <p role="alert" className="rounded-xl bg-error-container p-3 text-on-error-container">{erro}</p>}
     {aviso && <p role="status" className="rounded-xl bg-tertiary-container p-3 text-on-tertiary-container">{aviso}</p>}
     {dados && (souMarketing || gestor) && <p className="text-sm text-on-surface-variant" role="status">{dados.maisAgenda ? `Ao menos ${diasProgramados} de 7 dias com conteúdo programado. Carregue o restante para conferir a semana.` : `${diasProgramados} de 7 dias com conteúdo programado nesta semana.`}</p>}
+    {dados?.maisSolicitacoesSemana && <button type="button" disabled={carregandoMaisSolicitacoes} onClick={() => void carregarMaisSolicitacoesSemana()} className={`${botao} bg-surface-container-high text-on-surface`}>{carregandoMaisSolicitacoes ? "Carregando solicitações..." : "Carregar mais prazos da semana"}</button>}
     {!!alertasPendentes.size && <div role="status" className="rounded-xl bg-primary-container p-3 text-on-primary-container"><p className="font-label-md">{alertasPendentes.size} {alertasPendentes.size === 1 ? "compromisso precisa" : "compromissos precisam"} da sua confirmação.</p><div className="mt-2 flex flex-wrap gap-2">{(dados?.alertas ?? []).filter((alerta) => alerta.agenda_marketing).slice(0, 5).map((alerta) => <button key={alerta.agenda_id} type="button" className="rounded-lg bg-surface-container-lowest px-3 py-1.5 text-left text-sm text-on-surface hover:bg-surface-container-high" onClick={() => { setAlvoAlerta(alerta.agenda_id); setSemana(inicioSemana(new Date(alerta.agenda_marketing!.agendado_para))); }}>{alerta.agenda_marketing!.titulo} · {rotuloData(alerta.agenda_marketing!.agendado_para)}</button>)}</div>{alertasPendentes.size > 5 && <p className="mt-2 text-xs">Mostrando os cinco lembretes mais recentes.</p>}</div>}
     {!gestor && dados && !souMarketing && <p className="rounded-xl bg-surface-container p-4 text-on-surface-variant">Seu perfil ainda não foi atribuído ao marketing. Peça à gestão para habilitar sua agenda.</p>}
     {gestor && <details className="rounded-2xl bg-surface-container-low p-4"><summary className="cursor-pointer font-title-md">Equipe de marketing · {ids.size} {ids.size === 1 ? "integrante" : "integrantes"}</summary><div className="mt-3 flex flex-wrap gap-2">{pessoas.map((pessoa) => <button key={pessoa.id} disabled={salvando} onClick={() => void enviar({ acao: "atribuir", usuario_id: pessoa.id, ativo: !ids.has(pessoa.id) }, ids.has(pessoa.id) ? `${pessoa.nome} removido do marketing` : `${pessoa.nome} incluído no marketing`)} className={`${botao} ${ids.has(pessoa.id) ? "bg-primary-container text-on-primary-container" : "bg-surface-container-high text-on-surface"}`}>{ids.has(pessoa.id) && <Check className="h-4 w-4" />}{pessoa.nome}</button>)}</div></details>}
     {gestor && dados && ids.size === 0 && <p role="status" className="rounded-xl bg-primary-container p-3 text-sm text-on-primary-container">Para programar conteúdo, abra <strong>Equipe de marketing</strong> acima e selecione ao menos um responsável. Você também pode incluir seu próprio perfil.</p>}
     <section className="grid gap-3 lg:grid-cols-7" aria-label="Agenda semanal">{dias.map((dia) => {
-      const chave = dia; const itens = agendaPorDia.get(chave) ?? [];
-      return <div key={chave} className="min-h-44 rounded-2xl bg-surface-container-low p-3"><div className="mb-3 flex items-center justify-between border-b border-outline-variant/30 pb-2"><h2 className="font-label-lg capitalize">{new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(`${dia}T12:00:00Z`))}</h2><span className="text-on-surface-variant text-sm">{itens.length}</span></div><div className="space-y-2">{itens.map((item) => <article key={item.id} id={`marketing-agenda-${item.id}`} className={`rounded-xl bg-surface-container-lowest p-3 shadow-sm ${alertasPendentes.has(item.id) ? "ring-2 ring-primary" : ""}`}><div className="mb-1 flex items-center justify-between gap-1"><span className="rounded-full bg-primary-container px-2 py-0.5 text-xs text-on-primary-container">{item.categoria === "tarefa" ? "Tarefa" : item.categoria}</span><span className="text-xs text-on-surface-variant">{rotuloData(item.agendado_para).split(" ").slice(-1)}</span></div><h3 className="font-label-md leading-snug">{item.titulo}</h3><p className="mt-1 text-xs text-on-surface-variant">{nome(item.responsavel_id)} · {item.categoria === 'tarefa' && item.situacao === 'publicado' ? 'concluída' : item.situacao}</p>{item.descricao_conteudo && <p className="mt-2 line-clamp-3 text-sm text-on-surface-variant">{item.descricao_conteudo}</p>}{item.midia_caminho && <a className="mt-2 inline-block text-xs font-semibold text-primary underline" href={`/api/operacao/marketing/midia?caminho=${encodeURIComponent(item.midia_caminho)}`} target="_blank" rel="noreferrer">Abrir foto ou vídeo</a>}{item.responsavel_id === usuarioId && item.situacao !== "publicado" && item.situacao !== "cancelado" && <div className="mt-3 flex flex-wrap gap-1">{item.situacao === "planejado" && <button disabled={salvando} className={`${botao} bg-surface-container-high text-xs`} onClick={() => void enviar({ acao: "confirmar", id: item.id }, "Compromisso confirmado")}>Confirmar</button>}<button disabled={salvando} className={`${botao} bg-primary text-on-primary text-xs`} onClick={() => void enviar({ acao: "publicar", id: item.id }, item.categoria === "tarefa" ? "Tarefa concluída" : "Publicação registrada")}>{item.categoria === "tarefa" ? "Concluir tarefa" : "Marcar publicado"}</button></div>}</article>)}{!dados?.maisAgenda && !itens.some((item) => item.categoria !== "tarefa" && item.situacao !== "cancelado") && <div className="space-y-1"><p className="text-sm text-on-surface-variant">Sem conteúdo programado</p>{(souMarketing || gestor) && <button type="button" className="text-xs font-semibold text-primary" onClick={() => { setFormAgenda((atual) => ({ ...atual, agendado_para: `${chave}T12:00` })); document.getElementById("formulario-agenda-marketing")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>Programar este dia</button>}</div>}</div></div>;
+      const chave = dia; const itens = agendaPorDia.get(chave) ?? []; const pedidosDia = solicitacoesPorDia.get(chave) ?? [];
+      return <div key={chave} className="min-h-44 rounded-2xl bg-surface-container-low p-3"><div className="mb-3 flex items-center justify-between border-b border-outline-variant/30 pb-2"><h2 className="font-label-lg capitalize">{new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(`${dia}T12:00:00Z`))}</h2><span className="text-on-surface-variant text-sm">{itens.length + pedidosDia.length}</span></div><div className="space-y-2">{pedidosDia.map((pedido) => <article key={`pedido-${pedido.id}`} className="rounded-xl border border-primary/30 bg-primary-container/40 p-3"><span className="text-xs font-semibold text-primary">Prazo da solicitação</span><h3 className="mt-1 font-label-md leading-snug">{pedido.titulo}</h3><p className="mt-1 text-xs text-on-surface-variant">{rotuloData(pedido.prazo!)} · {nome(pedido.responsavel_id!)}</p><p className="mt-2 line-clamp-3 text-sm text-on-surface-variant">{pedido.descricao}</p></article>)}{itens.map((item) => <article key={item.id} id={`marketing-agenda-${item.id}`} className={`rounded-xl bg-surface-container-lowest p-3 shadow-sm ${alertasPendentes.has(item.id) ? "ring-2 ring-primary" : ""}`}><div className="mb-1 flex items-center justify-between gap-1"><span className="rounded-full bg-primary-container px-2 py-0.5 text-xs text-on-primary-container">{item.categoria === "tarefa" ? "Tarefa" : item.categoria}</span><span className="text-xs text-on-surface-variant">{rotuloData(item.agendado_para).split(" ").slice(-1)}</span></div><h3 className="font-label-md leading-snug">{item.titulo}</h3><p className="mt-1 text-xs text-on-surface-variant">{nome(item.responsavel_id)} · {item.categoria === 'tarefa' && item.situacao === 'publicado' ? 'concluída' : item.situacao}</p>{item.descricao_conteudo && <p className="mt-2 line-clamp-3 text-sm text-on-surface-variant">{item.descricao_conteudo}</p>}{item.midia_caminho && <a className="mt-2 inline-block text-xs font-semibold text-primary underline" href={`/api/operacao/marketing/midia?caminho=${encodeURIComponent(item.midia_caminho)}`} target="_blank" rel="noreferrer">Abrir foto ou vídeo</a>}{item.responsavel_id === usuarioId && item.situacao !== "publicado" && item.situacao !== "cancelado" && <div className="mt-3 flex flex-wrap gap-1">{item.situacao === "planejado" && <button disabled={salvando} className={`${botao} bg-surface-container-high text-xs`} onClick={() => void enviar({ acao: "confirmar", id: item.id }, "Compromisso confirmado")}>Confirmar</button>}<button disabled={salvando} className={`${botao} bg-primary text-on-primary text-xs`} onClick={() => void enviar({ acao: "publicar", id: item.id }, item.categoria === "tarefa" ? "Tarefa concluída" : "Publicação registrada")}>{item.categoria === "tarefa" ? "Concluir tarefa" : "Marcar publicado"}</button></div>}</article>)}{!dados?.maisAgenda && !itens.some((item) => item.categoria !== "tarefa" && item.situacao !== "cancelado") && <div className="space-y-1"><p className="text-sm text-on-surface-variant">Sem conteúdo programado</p>{(souMarketing || gestor) && <button type="button" className="text-xs font-semibold text-primary" onClick={() => { setFormAgenda((atual) => ({ ...atual, agendado_para: `${chave}T12:00` })); document.getElementById("formulario-agenda-marketing")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>Programar este dia</button>}</div>}</div></div>;
     })}</section>
     {dados?.maisAgenda && <button type="button" disabled={carregandoMais} onClick={() => void carregarMaisAgenda()} className={`${botao} bg-surface-container-high text-on-surface`}>{carregandoMais ? "Carregando compromissos..." : "Carregar mais compromissos"}</button>}
     <div className="grid gap-4 xl:grid-cols-2">
