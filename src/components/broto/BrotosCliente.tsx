@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, PackageCheck, ShoppingBasket } from "lucide-react";
 
 type Cliente = { id: string; razao_social: string; cnpj: string; telefone: string | null; endereco: string; cidade: string; uf: string; cep: string; complemento: string | null; ativo: boolean };
@@ -22,18 +22,22 @@ export function BrotosCliente() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
+  const versaoCarregamento = useRef(0);
   const carregar = useCallback(async () => {
+    const versao = ++versaoCarregamento.current;
     setCarregando(true);
+    setErro("");
     try {
       const resposta = await fetch(`/api/broto/cliente?pagina=${paginaPedidos}`, { cache: "no-store" });
       if (!resposta.ok) throw new Error("Não foi possível carregar os brotos. Confira o acesso ao banco.");
       const resultado = await resposta.json() as Dados;
+      if (versao !== versaoCarregamento.current) return;
       setDados(resultado);
       if (resultado.cliente) setCadastro({ razao_social: resultado.cliente.razao_social, cnpj: resultado.cliente.cnpj, telefone: resultado.cliente.telefone ?? "", endereco: resultado.cliente.endereco, cidade: resultado.cliente.cidade, uf: resultado.cliente.uf, cep: resultado.cliente.cep, complemento: resultado.cliente.complemento ?? "" });
-    } catch (e) { setErro(e instanceof Error ? e.message : "Falha ao carregar"); }
-    finally { setCarregando(false); }
+    } catch (e) { if (versao === versaoCarregamento.current) setErro(e instanceof Error ? e.message : "Falha ao carregar"); }
+    finally { if (versao === versaoCarregamento.current) setCarregando(false); }
   }, [paginaPedidos]);
-  useEffect(() => { void carregar(); }, [carregar]);
+  useEffect(() => { void carregar(); return () => { versaoCarregamento.current++; }; }, [carregar]);
   const pedidosCarregados = dados !== null;
   useEffect(() => {
     if (!pedidosCarregados || salvando) return;
