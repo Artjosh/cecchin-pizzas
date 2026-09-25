@@ -68,6 +68,7 @@ function Assistente({ pedido, permitirTeste }: { pedido: string; permitirTeste: 
       <LocationPickerMap
         className="absolute inset-0"
         controles
+        autoCentralizarSePermitido
         address={address}
         selectedLocation={coordenada}
         markingMode={modoMarcacao}

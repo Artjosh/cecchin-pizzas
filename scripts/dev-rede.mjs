@@ -43,6 +43,10 @@ const authRedirectUrl = `http://${hostDeCallback}:${porta}`;
 const cliVinext = fileURLToPath(new URL("../node_modules/vinext/dist/cli.js", import.meta.url));
 
 console.log(`Cecchin Pizzas na rede: ${appUrl}`);
+console.log(`Neste computador (GPS e câmera): http://localhost:${porta}`);
+if (new URL(appUrl).protocol === "http:" && !["localhost", "127.0.0.1"].includes(hostDaRede)) {
+  console.log("Em outro aparelho, GPS e câmera exigem acesso por HTTPS; o IP da rede em HTTP não abre a permissão do navegador.");
+}
 console.log(`Callback de acesso: ${authRedirectUrl}`);
 console.log("O Supabase local aceita os redirecionamentos privados de desenvolvimento.");
 

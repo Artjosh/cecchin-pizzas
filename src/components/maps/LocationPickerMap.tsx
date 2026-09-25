@@ -18,6 +18,7 @@ interface LocationPickerMapProps {
   markingMode?: boolean;
   onMarkingModeChange?: (active: boolean) => void;
   controles?: boolean;
+  autoCentralizarSePermitido?: boolean;
   children?: React.ReactNode;
 }
 
@@ -85,12 +86,15 @@ function BuscaDeEndereco({ address, addressAction, aoEscolher }: { address?: str
   </div>;
 }
 
-export function LocationPickerMap({ onLocationSelect, className, address, controles = true, addressAction, addressBelow, selectedLocation, markingMode = false, onMarkingModeChange, children }: LocationPickerMapProps) {
+export function LocationPickerMap({ onLocationSelect, className, address, controles = true, autoCentralizarSePermitido = false, addressAction, addressBelow, selectedLocation, markingMode = false, onMarkingModeChange, children }: LocationPickerMapProps) {
   const recipiente = useRef<HTMLDivElement>(null);
   const biblioteca = useRef<BibliotecaMapa | null>(null);
   const mapa = useRef<MapaMapLibre | null>(null);
   const pino = useRef<Marker | null>(null);
   const gps = useRef<Marker | null>(null);
+  const posicaoPendente = useRef<Coordenada | null>(null);
+  const interacaoUsuario = useRef(false);
+  const tentativaAutomatica = useRef(false);
   const versao = useRef(0);
   const escolherAtual = useRef<(local: Coordenada, endereco?: string) => Promise<void>>(async () => {});
   const marcacaoAtual = useRef(markingMode);
@@ -99,7 +103,26 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
   const [informacaoRota, setInformacaoRota] = useState<{ duration: string; estimated: boolean } | null>(null);
   const [mensagem, setMensagem] = useState<string | null>(null);
 
+  function mostrarLocalizacao(local: Coordenada, mapaPronto = false) {
+    const modulo = biblioteca.current;
+    const instancia = mapa.current;
+    if (!modulo || !instancia || (!mapaPronto && !instancia.loaded())) {
+      posicaoPendente.current = local;
+      setMensagem("Localização obtida. Aguardando o mapa carregar…");
+      return;
+    }
+    if (!gps.current) {
+      const elemento = document.createElement("div");
+      elemento.className = "h-4 w-4 rounded-full border-2 border-surface bg-tertiary shadow-md";
+      gps.current = new modulo.Marker({ element: elemento }).setLngLat(paraLngLat(local)).addTo(instancia);
+    } else gps.current.setLngLat(paraLngLat(local));
+    instancia.flyTo({ center: paraLngLat(local), zoom: 15, duration: 1800, essential: true });
+    setMensagem("Mapa centralizado na sua localização");
+  }
+
   const escolher = useCallback(async (local: Coordenada, endereco?: string) => {
+    interacaoUsuario.current = true;
+    posicaoPendente.current = null;
     const atual = ++versao.current;
     pino.current?.setLngLat(paraLngLat(local));
     mapa.current?.flyTo({ center: paraLngLat(local), zoom: 16, essential: true });
@@ -133,8 +156,19 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
     const marcador = new modulo.Marker({ element: criarPino(), draggable: true, anchor: "bottom" }).setLngLat(paraLngLat(selectedLocation ?? CENTRO_PORTO_ALEGRE));
     pino.current = marcador;
     marcador.on("dragend", () => { void escolherAtual.current(deLngLat(marcador.getLngLat())); });
-    instancia.on("load", () => { aplicarVisualOperacional(instancia); setPronto(true); });
+    instancia.on("load", () => {
+      aplicarVisualOperacional(instancia);
+      setPronto(true);
+      if (posicaoPendente.current) {
+        const local = posicaoPendente.current;
+        posicaoPendente.current = null;
+        mostrarLocalizacao(local, true);
+      }
+    });
     instancia.on("click", (evento) => { if (marcacaoAtual.current) void escolherAtual.current(deLngLat(evento.lngLat)); });
+    instancia.on("mousedown", () => { interacaoUsuario.current = true; });
+    instancia.on("touchstart", () => { interacaoUsuario.current = true; });
+    instancia.on("wheel", () => { interacaoUsuario.current = true; });
     return () => { marcador.remove(); gps.current?.remove(); instancia.remove(); mapa.current = null; pino.current = null; gps.current = null; };
   }, [bibliotecaCarregada]);
 
@@ -146,9 +180,27 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
 
   useEffect(() => {
     if (!selectedLocation || !mapa.current) return;
+    interacaoUsuario.current = true;
     pino.current?.setLngLat(paraLngLat(selectedLocation)).addTo(mapa.current);
     mapa.current.flyTo({ center: paraLngLat(selectedLocation), zoom: 15, essential: true });
   }, [selectedLocation, bibliotecaCarregada]);
+
+  useEffect(() => {
+    if (!autoCentralizarSePermitido || !pronto || tentativaAutomatica.current) return;
+    if (selectedLocation) { tentativaAutomatica.current = true; return; }
+    if (!window.isSecureContext || !navigator.geolocation || !navigator.permissions) return;
+    let cancelado = false;
+    const timer = window.setTimeout(() => {
+      tentativaAutomatica.current = true;
+      void navigator.permissions.query({ name: "geolocation" }).then((permissao) => {
+        if (cancelado || permissao.state !== "granted" || interacaoUsuario.current) return;
+        navigator.geolocation.getCurrentPosition(({ coords }) => {
+          if (!cancelado && !interacaoUsuario.current) mostrarLocalizacao({ lat: coords.latitude, lng: coords.longitude });
+        }, () => { /* A centralização automática é opcional; o controle manual informa erros. */ }, { maximumAge: 300000, timeout: 10000 });
+      }).catch(() => { /* Sem consulta confiável da permissão, não abre um prompt automático. */ });
+    }, 2800);
+    return () => { cancelado = true; window.clearTimeout(timer); };
+  }, [autoCentralizarSePermitido, pronto, selectedLocation]);
 
   useEffect(() => {
     if (!selectedLocation || !pronto) { setInformacaoRota(null); return; }
@@ -167,15 +219,29 @@ export function LocationPickerMap({ onLocationSelect, className, address, contro
   }, [pronto, selectedLocation]);
 
   function centralizar() {
-    const modulo = biblioteca.current;
-    if (!modulo || !mapa.current) { setMensagem("Carregando mapa…"); return; }
-    if (!navigator.geolocation) { setMensagem("Localização do dispositivo indisponível"); return; }
+    interacaoUsuario.current = true;
+    if (!window.isSecureContext) {
+      setMensagem(`O navegador bloqueia o GPS em HTTP pela rede. Se este é o computador que roda o app, abra http://localhost:${window.location.port || "80"}. Em outro aparelho, use um endereço HTTPS.`);
+      return;
+    }
+    const politica = document as Document & { permissionsPolicy?: { allowsFeature: (nome: string) => boolean }; featurePolicy?: { allowsFeature: (nome: string) => boolean } };
+    if ((politica.permissionsPolicy ?? politica.featurePolicy)?.allowsFeature("geolocation") === false) {
+      setMensagem("Esta janela bloqueia a localização. Abra o site em uma aba própria do navegador para usar o GPS.");
+      return;
+    }
+    if (!navigator.geolocation) { setMensagem("Localização indisponível neste navegador ou dispositivo."); return; }
     setMensagem("Buscando sua localização…");
-    navigator.geolocation.getCurrentPosition(({ coords }) => {
-      const local = { lat: coords.latitude, lng: coords.longitude };
-      if (!gps.current && mapa.current) { const e = document.createElement("div"); e.className = "h-4 w-4 rounded-full border-2 border-surface bg-tertiary shadow-md"; gps.current = new modulo.Marker({ element: e }).setLngLat(paraLngLat(local)).addTo(mapa.current); } else gps.current?.setLngLat(paraLngLat(local));
-      mapa.current?.flyTo({ center: paraLngLat(local), zoom: 14, essential: true }); setMensagem("Mapa centralizado na sua localização");
-    }, () => setMensagem("Permita a localização para centralizar o mapa"), { enableHighAccuracy: true, maximumAge: 300000, timeout: 8000 });
+    try {
+      navigator.geolocation.getCurrentPosition(({ coords }) => {
+        mostrarLocalizacao({ lat: coords.latitude, lng: coords.longitude });
+      }, (erro) => {
+        if (erro.code === 1) setMensagem("Localização bloqueada para este site. No ícone ao lado do endereço, permita Localização e recarregue. Se continuar bloqueada, confira a permissão do navegador e do sistema.");
+        else if (erro.code === 3) setMensagem("O GPS demorou para responder. Tente novamente em um local com sinal ou use a busca de endereço.");
+        else setMensagem("Não foi possível obter a posição do dispositivo. Use a busca de endereço ou tente novamente.");
+      }, { enableHighAccuracy: true, maximumAge: 300000, timeout: 12000 });
+    } catch {
+      setMensagem("O navegador impediu o pedido de localização. Verifique as permissões deste site e tente novamente.");
+    }
   }
 
   return <div className={cn("relative h-full w-full isolate overflow-hidden", estilos.mapa, className)}>
