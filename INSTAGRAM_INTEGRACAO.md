@@ -2,7 +2,7 @@
 
 ## Estado atual
 
-`/operacional/marketing` tem agenda, pedidos, biblioteca, responsáveis e uma prévia visual fictícia. O upload fica no Storage privado. O botão “Marcar publicado” apenas registra uma ação humana no banco; não envia conteúdo ao Instagram. Não há contas próprias conectadas. A interface deve continuar identificando claramente essa prévia até a integração real estar ativa.
+`/operacional/marketing` tem agenda, pedidos, biblioteca, responsáveis e uma prévia visual fictícia. O upload fica no Storage privado. O botão “Registrar manualmente” apenas registra uma ação humana no banco; não envia conteúdo ao Instagram. Não há contas próprias conectadas. A interface deve continuar identificando claramente essa prévia até a integração real estar ativa.
 
 ## Integração escolhida
 

@@ -19,7 +19,7 @@ Use Node e npm compatíveis com o lockfile, instale com `npm ci` em um checkout 
 
 Antes de subir um servidor, confira se já existe um em uso. Validações e seus efeitos estão em [TESTES.md](TESTES.md); não execute comandos proibidos pelo usuário.
 
-Neste workspace, o usuário prefere que **typecheck e linter nunca sejam executados automaticamente**. Rode somente se houver pedido explícito posterior. O estado funcional e as lacunas estão na [auditoria datada](../AUDITORIA_SISTEMA_2026-09-25.md); o [handoff](../HANDOFF_IA.md) registra a continuação para agentes.
+Neste workspace, o usuário prefere que **typecheck e linter nunca sejam executados automaticamente**. Rode somente se houver pedido explícito posterior. O estado funcional e as lacunas estão na [auditoria datada](AUDITORIA_SISTEMA_2026-09-25.md); o [handoff](HANDOFF_IA.md) registra a continuação para agentes.
 
 ## Onde encontrar
 

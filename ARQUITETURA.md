@@ -1,6 +1,6 @@
 # Arquitetura do frontend
 
-Estado do código local revisado em **25/09/2026**. Evidências de execução têm data nos relatórios; funcionalidades locais não implicam implantação em produção. A auditoria transversal e suas lacunas estão em [AUDITORIA_SISTEMA_2026-09-25.md](../AUDITORIA_SISTEMA_2026-09-25.md).
+Estado do código local revisado em **25/09/2026**. Evidências de execução têm data nos relatórios; funcionalidades locais não implicam implantação em produção. A auditoria transversal e suas lacunas estão em [AUDITORIA_SISTEMA_2026-09-25.md](AUDITORIA_SISTEMA_2026-09-25.md).
 
 ## Fluxo de dados
 
@@ -59,7 +59,7 @@ Agenda usa filtros na URL e densidade persistida no navegador: posições 1–5 
 
 `/admin/montar-equipe` e `/admin/operacao` usam os componentes de `src/components/equipe/` nos modos Banco e Desenho. Operação separa integrantes, `?aba=pre-cadastros` e `?aba=vinculos`; a principal lista somente perfis em cards com busca/paginação. `/admin/equipe` trata contas e permissões, não substitui o perfil operacional.
 
-O topo da montagem mostra evento, horário/endereço, base, extras, líderes e ações compactas. A grade desktop comporta dois cards de equipe e três de pessoas quando há largura. Ambas as listas ordenam forno primeiro, com avaliação como critério dentro dos grupos; ambas têm busca. A direita conta habilidades de forno e atendimento, que podem coexistir na mesma pessoa.
+O topo da montagem mostra evento, horário/endereço e abas **Equipe** e **Carro e saída**. Os controles de base, extras, líderes e sugestão ficam na aba Equipe. A grade desktop comporta dois cards de equipe e três de pessoas quando há largura, com rolagem dentro de cada painel. Ambas as listas ordenam forno primeiro, com avaliação como critério dentro dos grupos; ambas têm busca. A direita conta habilidades de forno e atendimento, que podem coexistir na mesma pessoa. A aba Carro e saída mostra o planejamento do evento selecionado sem exigir rolar até o fim das pessoas.
 
 Adicionar individualmente uma pessoa de forno a torna líder inicialmente; o operador pode retirar essa liderança. A quantidade planejada acompanha a adição automática. Remover a liderança não apaga a habilidade de forno. Rascunhos podem ser salvos incompletos. Para confirmar, a composição deve satisfazer a quantidade de líderes planejada e as funções necessárias. Sugestões completas usam os papéis da opção calculada.
 
@@ -103,7 +103,7 @@ Central mantém atendimento humano/bot, fila de envio, mídias autorizadas e ocu
 
 `/admin/localidades` edita taxa e minutos separadamente. O ETL histórico preservou 68 taxas de deslocamento e 18 vigências de preços. Os tempos normal/pico da planilha estavam vazios e continuam nulos até decisão administrativa. Ausência de taxa num bairro específico exige investigar a fonte e o registro, sem copiar preço de catálogo para taxa.
 
-Marketing oferece agenda interna, pedidos, biblioteca e concorrência. A visualização Instagram em metade da tela desktop é uma **prévia fictícia**, com alternância no celular; não há OAuth de contas próprias, leitura de feed/stories próprios ou publicação automática. O upload guarda a mídia na agenda interna, e marcar um conteúdo como publicado registra apenas a conclusão humana. Métricas de concorrentes dependem de credenciais e coleta configuradas. O desenho de integração oficial, múltiplas contas e publicação assíncrona está em [Instagram na central de marketing](INSTAGRAM_INTEGRACAO.md).
+Marketing oferece agenda interna, pedidos, biblioteca e concorrência. A visualização Instagram em metade da tela desktop é uma **prévia fictícia**, com alternância no celular; não há OAuth de contas próprias, leitura de feed/stories próprios ou publicação automática. O upload guarda a mídia na agenda interna, e “Registrar manualmente” registra apenas a conclusão humana. Métricas de concorrentes dependem de credenciais e coleta configuradas. O desenho de integração oficial, múltiplas contas e publicação assíncrona está em [Instagram na central de marketing](INSTAGRAM_INTEGRACAO.md).
 
 ## Desempenho e evidências
 

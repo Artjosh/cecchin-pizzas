@@ -1,6 +1,8 @@
-﻿# Auditoria funcional do sistema — 25/09/2026
+# Auditoria funcional do sistema — 25/09/2026
 
-Esta é a memória da auditoria solicitada antes desta rodada de interface. A inspeção original foi de código, migrations e amostras do banco **local**. Não equivale a teste completo em produção. Nesta rodada não foram executados testes, typecheck ou linter. ✅ implementado no código observado; 🟡 parcial; ⚠️ regra ou operação problemática; ❓ sem confirmação de ponta a ponta. A existência de tabela ou tela isolada não foi tomada como prova do fluxo.
+Esta é a memória da auditoria solicitada em 25/09/2026. A inspeção original foi de código, migrations e amostras do banco **local**. A atualização documental abaixo confronta commits posteriores com o texto, sem nova prova integral de ponta a ponta. Não equivale a teste completo em produção. Na revisão visual e documental não foram executados testes, typecheck ou linter. ✅ implementado no código observado; 🟡 parcial; ⚠️ regra ou operação problemática; ❓ sem confirmação de ponta a ponta. A existência de tabela ou tela isolada não foi tomada como prova do fluxo.
+
+**Como ler a evidência:** a coluna de código/banco indica onde a regra está implementada ou foi observada. Ela não prova execução no ambiente alvo. Para considerar uma entrega pronta, conferir separadamente arquivo versionado, migration aplicada e objeto no catálogo, serviço executando a imagem nova, efeito persistido e resultado externo quando houver provedor. Os números locais abaixo são fotografias datadas.
 
 ## Escala, logística, frota e equipe
 
@@ -17,7 +19,7 @@ Esta é a memória da auditoria solicitada antes desta rodada de interface. A in
 | 22 | Pico/trânsito ⚠️ | `localidade`, `janela_pico` e fator de rota têm configuração administrativa. | OSRM não traz trânsito ao vivo; fator fixo não representa congestionamento real. Expor como estimativa e calibrar dados próprios. |
 | 23 | Carro de funcionário/terceiro 🟡 | `veiculo_operacional.proprietario_id`, perfil/CNH e disponibilidade do carro são independentes. | Não há ciclo completo de aceite/autorização de terceiro e veículo externo ocasional. |
 | 24 | Frota da empresa 🟡 | `veiculo_operacional` aceita proprietário nulo; BFF `/api/operacao/veiculos`. | Na auditoria local havia **zero veículos físicos** cadastrados: modelagem não prova operação. Cadastrar frota real e conferir agenda. |
-| 25 | Início da escala 🟡 | Montagem de equipe e `LogisticaPainel` têm ações manuais. | Não existe um único assistente que encadeie equipe, carga, carro, rota e aprovação. |
+| 25 | Início da escala 🟡 | `MontagemEquipe.tsx` tem abas no topo para Equipe e Carro e saída; `LogisticaPainel` abre o evento selecionado. Base usa regra configurável e fallback da migration 124. | A navegação conjunta não é um assistente transacional completo de equipe, carga, carro, rota e aprovação. A aba foi conferida visualmente sem veículo real; alocação efetiva ainda requer prova. |
 | 26 | Próprio x terceiro 🟡 | Planejador distingue carro de empresa e particular. | Carro de terceiro fora do cadastro não tem contrato/aceite/custo completo. |
 | 27 | Mais eventos que carros / “levar” 🟡 | Propostas de `modo=levar` e viagens com paradas são previstas. | Depende de escolha/registro manual e de compatibilidade de horários; validar eventos simultâneos reais. |
 | 28 | Flexibilidade até 30 minutos ✅ | Migration `089` ajusta a margem de flexibilidade, e o planejador a aplica. | Conferir resultados no ambiente alvo antes de depender da regra. |
@@ -38,7 +40,7 @@ Esta é a memória da auditoria solicitada antes desta rodada de interface. A in
 | 11 | Agenda de marketing 🟡 | `MarketingPainel` e API de marketing gravam compromissos por semana. | Não publica de fato no Instagram; “publicado” é registro operacional. |
 | 12 | Anexos de marketing 🟡 | Upload/consulta de mídia autorizada e `midia_caminho` na agenda. | Não converte nem publica o anexo no provedor. Validar armazenamento/permissões no alvo. |
 | 13 | Solicitação de serviço marketing 🟡 | Formulário e estados de recebimento/prazo em `MarketingPainel`. | Fluxo humano existe, mas sem integração de postagem automática. |
-| 14 | Instagram ⚠️ | Há links/perfis e visualização de publicações de concorrentes quando coletadas. | Não há central de múltiplas contas próprias, conexão OAuth ou feed próprio real. A prévia criada nesta rodada é **mock visual explícito**. |
+| 14 | Instagram ⚠️ | `MarketingPainel.tsx` mostra prévia fictícia e agenda interna; concorrentes podem ter publicações coletadas quando o worker dispõe de credenciais. [INSTAGRAM_INTEGRACAO.md](INSTAGRAM_INTEGRACAO.md) define a implementação proposta. | Não há central de múltiplas contas próprias, conexão OAuth, feed próprio real nem publicação pela API. “Registrar manualmente” não prova postagem externa. |
 | 15 | Concorrência 🟡 | Cadastro e job de coleta existem; erros/última coleta são exibidos. | Sem chaves/ambiente e dados coletados, métricas ficam vazias. Não tratar cadastro como coleta comprovada. |
 | 16 | Biblioteca de conteúdos 🟡 | `BibliotecaMarketing` existe e é conectada à área de marketing. | Não está ligada a publicação automática no Instagram. |
 | 17 | Clientes Broto 🟡 | Tabelas/API/UI de Brotos. | Cadastro ainda exige CNPJ, limitando clientes pessoa física; revisar contrato. Banco local da auditoria não tinha clientes Broto. |
@@ -50,13 +52,22 @@ Esta é a memória da auditoria solicitada antes desta rodada de interface. A in
 
 | # | Requisito e estado | Evidência no código/banco | Lacuna e correção necessária |
 |---:|---|---|---|
-| 35 | Banco e migrations 🟡 | Na checagem local anterior, **122 arquivos de migration e 122 aplicadas**, até `20260924122`. Há RLS/RPC/views para os fluxos principais. | Produção não foi conferida; confirmar schema efetivo e dados do alvo. Várias tabelas operacionais locais estavam vazias. |
+| 35 | Banco e migrations 🟡 | A checagem original encontrou 122/122 até `20260924122`. Depois, as versões 123 e 124 foram versionadas e registradas como aplicadas ao banco local; há **124 arquivos** em `supabase/migrations/`. Há RLS/RPC/views para os fluxos principais. | Nesta atualização não foi consultado o histórico nem o catálogo do banco. Produção não foi conferida; confirmar schema efetivo e dados do alvo. Várias tabelas operacionais locais estavam vazias. |
 | 36 | APIs 🟡 | Route handlers Vinext, PostgREST com JWT, Nest e RPCs fazem validação de sessão/domínio. | Auditoria de todos os endpoints e cenários de erro não equivale a cobertura total. Evitar confundir HTTP 200 com efeito persistido. |
 | 37 | Automações/notificações ⚠️ | Worker, fila WhatsApp e e-mail existem; auditoria local viu 28 envios WhatsApp registrados. | Havia 15 notificações e-mail com HTTP 403 e `attempts=5`, enquanto a seleção do worker busca `<5`: ficam paradas. Corrigir credencial/canal e dar caminho explícito de recuperação. Dois workers simultâneos devem ser avaliados. |
 | 38 | Ponta a ponta ❓ | Havia evidência local de um checkout real administrativo de R$ 1,00 confirmado via Pix e convertido em evento; migrations/testes versionados cobrem partes. | Não prova cartão, estorno, produção, todas as telas, carga, concorrência nem liquidação em extrato. Teste real exige autorização e ambiente controlado. |
 | 39 | Funcionalidades “fake” ⚠️ | Modo Desenho e `src/servidor/fonte.ts` oferecem mock; marketing tem integração parcial; mapa sem GPS real. | Não usar visual mock como evidência de persistência. Rotular prévias e conferir fonte real em cada tela. A Central WhatsApp continua real mesmo no Desenho. |
 
 ## Achados transversais e ordem sugerida
+
+### Mudanças posteriores à inspeção inicial
+
+- O Mapa Tático passou a mostrar os eventos do dia com coordenadas estáveis, rotas rodoviárias em lotes e uma aba lateral de saídas. Isso melhora a leitura e o planejamento; não valida todos os endereços históricos, nem converte estimativa OSRM em trânsito ao vivo ou rastreio GPS.
+- A montagem passou a calcular Base no Banco, oferecer pequena margem de escala apertada e separar Equipe de Carro e saída em abas no topo. A troca de abas foi vista no navegador em desktop e celular; o banco local observado não tinha carro para verificar uma alocação completa.
+- A skill [desenhar-interface](skills/desenhar-interface/SKILL.md) formaliza hierarquia, densidade, estados e revisão responsiva. É procedimento de projeto, não evidência de que todas as telas foram redesenhadas.
+- O plano de [Instagram](INSTAGRAM_INTEGRACAO.md) descreve OAuth, contas, mídia e publicação; continua sem implementação. A agenda identifica a conclusão manual com o rótulo “Registrar manualmente”.
+
+### Prioridades de correção
 
 1. Corrigir a fila de e-mail permanentemente parada e a escolha de múltiplos carros no bot; ambos podem produzir estado operacional enganoso.
 2. Cadastrar veículos e conferir disponibilidade/planos no banco alvo. Sem frota, uma UI bonita não valida logística.
