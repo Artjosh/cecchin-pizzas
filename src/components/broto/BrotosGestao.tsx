@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircleDollarSign, Package, Plus, Truck } from "lucide-react";
