@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const sessao = await sessaoAtual();
   if (!sessao || !permitidos.has(sessao.usuario.papel)) return erro("Sem permissão", 403);
   if (request.nextUrl.searchParams.get("somenteAlertas") === "1") {
-    const alertas = await consultar("alerta_marketing?select=agenda_id,criado_em,lido_em,agenda_marketing(agendado_para,titulo)&lido_em=is.null&order=criado_em.desc&limit=100", sessao.accessToken);
+    const alertas = await consultar("alerta_marketing?select=agenda_id,criado_em,lido_em,agenda_marketing(agendado_para,titulo,situacao)&lido_em=is.null&order=criado_em.desc&limit=100", sessao.accessToken);
     if (!alertas.ok) return erro("Não foi possível carregar os alertas", 503);
     return NextResponse.json({ alertas: alertas.dados ?? [] }, { headers: { "Cache-Control": "no-store" } });
   }
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     consultar<unknown[]>(consultaAgenda, sessao.accessToken),
     consultar("solicitacao_marketing?select=id,solicitante_id,responsavel_id,titulo,descricao,categoria,situacao,prazo,criado_em&order=criado_em.desc&limit=100", sessao.accessToken),
     consultar("perfil_marketing?select=usuario_id,ativo&ativo=eq.true&limit=100", sessao.accessToken),
-    consultar("alerta_marketing?select=agenda_id,criado_em,lido_em,agenda_marketing(agendado_para,titulo)&lido_em=is.null&order=criado_em.desc&limit=100", sessao.accessToken),
+    consultar("alerta_marketing?select=agenda_id,criado_em,lido_em,agenda_marketing(agendado_para,titulo,situacao)&lido_em=is.null&order=criado_em.desc&limit=100", sessao.accessToken),
     consultar("concorrente_marketing?select=id,nome,instagram_usuario,google_place_id,seguidores_instagram,publicacoes_instagram,nota_google,avaliacoes_google,instagram_atualizado_em,google_atualizado_em,consulta_erro,ativo&ativo=is.true&order=nome.asc&limit=100", sessao.accessToken),
   ]);
   if (!agenda.ok || !Array.isArray(agenda.dados) || !solicitacoes.ok || !perfis.ok || !alertas.ok || !concorrentes.ok) return erro("Não foi possível carregar o marketing", 503);
@@ -72,6 +72,11 @@ export async function POST(request: NextRequest) {
     if (typeof dados.id !== "string") return erro("Compromisso inválido", 400);
     const r = await chamarFuncao("confirmar_agenda_marketing", { p_id: dados.id, p_publicado: acao === "publicar" }, sessao.accessToken);
     return r.ok ? NextResponse.json({ ok: true }) : erro("Compromisso indisponível", r.status >= 500 ? 503 : 400);
+  }
+  if (acao === "remover_agenda") {
+    if (typeof dados.id !== "string" || !/^[0-9a-f-]{36}$/i.test(dados.id)) return erro("Compromisso inválido", 400);
+    const r = await chamarFuncao("remover_agenda_marketing", { p_id: dados.id }, sessao.accessToken);
+    return r.ok ? NextResponse.json({ ok: true }) : erro("Não foi possível remover o compromisso", r.status >= 500 ? 503 : 400);
   }
   if (acao === "atribuir") {
     if (typeof dados.usuario_id !== "string" || typeof dados.ativo !== "boolean") return erro("Integrante inválido", 400);
