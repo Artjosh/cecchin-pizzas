@@ -2,7 +2,9 @@
 
 Pesquisa de evolução: [transferência pela extensão, sessões headless e múltiplas contas](../cecchin-pizzas-backend/infra/INSTAGRAM_SESSOES_SERVIDOR.md). A importação pela extensão é o fluxo principal do MVP; contas são compartilhadas conforme permissões do marketing, com troca por contexto e noVNC apenas para recuperação excepcional. Proposta ainda não implementada nem validada com sessões reais no servidor.
 
-Atualizado em 25/09/2026. Este documento separa a ponte local do navegador da API oficial da Meta. A palavra "Instagram" na UI nao significa que todas as funcoes usam a API oficial.
+Atualizado em 26/09/2026. Este documento separa a ponte local do navegador da API oficial da Meta. A palavra "Instagram" na UI nao significa que todas as funcoes usam a API oficial.
+
+**Estado do app Meta:** em 26/09/2026, o painel Meta Developers aberto para esta integracao nao tinha nenhum app criado. O MCP Meta foi registrado no Codex, mas nao houve autenticacao/autorizacao concluida. Portanto OAuth, leitura oficial e publicacao real continuam indisponiveis ate criar o app, configurar os produtos/permissoes e callback, fornecer os secrets ao runtime e concluir OAuth. Nao ha tokens ou credenciais disponiveis no projeto.
 
 ## Arquitetura
 
@@ -30,7 +32,7 @@ A ponte usa endpoints web internos do Instagram, que podem mudar. Respostas e re
 - Uma curtida de publicacao ja foi confirmada pela interface oficial em uma rodada anterior, com desfazer em seguida.
 - O 404 das rotas moveis de curtida e resposta a Story foi corrigido usando as mutacoes GraphQL da sessao web. Pela central, curtir e descurtir Story foram confirmados; a curtida de teste foi desfeita. Uma reacao emoji retornou "Resposta enviada.".
 - As fotos quebradas do feed passaram a usar a URL renovada pela consulta de perfil; tres avatares visiveis foram conferidos carregados no navegador.
-- A consulta GraphQL de posts pode devolver `data` com publicacoes e `errors` em campos secundarios. A ponte preserva os posts e o cursor quando a lista e valida; a correção aguarda validação após recarga da extensão.
+- A consulta GraphQL de posts pode devolver `data` com publicacoes e `errors` em campos secundarios. A ponte preserva os posts e o cursor quando a lista e valida. A pessoa usuaria confirmou posteriormente que o perfil voltou a carregar varios posts; nao equivale a uma medicao de desempenho nem valida todas as contas e cursores.
 - Resposta de Story em texto e envio de resposta a comentario ainda nao foram exercitados com mensagem real nesta rodada.
 
 ## Configuracao da API oficial para publicacao
@@ -43,7 +45,7 @@ Configurar no runtime do frontend/BFF e no worker, sem expor valores ao navegado
 - `INSTAGRAM_GRAPH_API_VERSION`, versao suportada no momento do deploy.
 - `SUPABASE_URL` e `SUPABASE_SECRET_KEY` (ou a compatibilidade `SUPABASE_SERVICE_ROLE_KEY`) no worker, para criar URL temporaria do objeto privado.
 
-O app Meta precisa do produto/permissoes de Instagram Login e do nivel de acesso aprovado para a conta pretendida. O callback solicita `instagram_business_basic` e `instagram_business_content_publish`; os escopos registrados nao provam que a Meta concedeu acesso. O OAuth e a publicacao real nao foram testados nesta entrega.
+O app Meta precisa do produto/permissoes de Instagram Login e do nivel de acesso aprovado para a conta pretendida. O callback solicita `instagram_business_basic` e `instagram_business_content_publish`; os escopos registrados nao provam que a Meta concedeu acesso. Em 26/09/2026 ainda nao existia app Meta configurado para este projeto, e OAuth e publicacao real nao foram testados.
 
 O composer oficial aceita uma imagem JPEG/PNG/WebP por publicacao no feed. Reels, carrossel e publicacao de Story ainda nao estao habilitados nesta UI. A fila registra `rascunho`, `agendado`, `preparando`, `publicando`, `publicado` e `falhou`, com idempotencia e reconciliacao. Isso nao prova que o worker/container em execucao recebeu esta versao. As migrations `20260925125` e `20260925126` foram registradas como aplicadas apenas no Supabase local; nenhum ambiente remoto foi confirmado.
 
@@ -58,7 +60,7 @@ O composer oficial aceita uma imagem JPEG/PNG/WebP por publicacao no feed. Reels
 
 ## Referencias
 
-- [Colecao oficial Meta: Instagram API with Instagram Login](https://www.postman.com/meta/instagram/folder/1z5vxzu/instagram-api-with-instagram-login)
+- [Colecao oficial Meta: Instagram API with Instagram Login](https://www.postman.com/meta/instagram/folder/6raa77c/instagram-api-with-instagram-login)
 - [Documentacao oficial da Instagram API](https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api?entity=request-23987686-3fe78620-2258-44b6-893f-42d76c7200d7)
 - [Implementacao da ponte local](browser-extension/instagram-bridge/README.md)
 

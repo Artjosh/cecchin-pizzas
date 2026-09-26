@@ -2,6 +2,8 @@
 
 Esta é a memória da auditoria solicitada em 25/09/2026. A inspeção original foi de código, migrations e amostras do banco **local**. A atualização documental abaixo confronta commits posteriores com o texto, sem nova prova integral de ponta a ponta. Não equivale a teste completo em produção. Na revisão visual e documental não foram executados testes, typecheck ou linter. ✅ implementado no código observado; 🟡 parcial; ⚠️ regra ou operação problemática; ❓ sem confirmação de ponta a ponta. A existência de tabela ou tela isolada não foi tomada como prova do fluxo.
 
+> **Nota de continuidade - 26/09/2026:** este relatório permanece como fotografia de 25/09; as verificações abaixo não atualizam a auditoria inteira. A pessoa usuária confirmou que, após a correção, os perfis voltaram a carregar vários posts. A migration 127 também mudou lembretes e remoção da agenda; veja o [estado atual da integração Instagram](INSTAGRAM_INTEGRACAO.md) e o [registro de migrations](../cecchin-pizzas-backend/migracao/README.md). O painel Meta Developers não tinha app criado para esta integração, então OAuth/publicação continuam sem validação externa.
+
 **Como ler a evidência:** a coluna de código/banco indica onde a regra está implementada ou foi observada. Ela não prova execução no ambiente alvo. Para considerar uma entrega pronta, conferir separadamente arquivo versionado, migration aplicada e objeto no catálogo, serviço executando a imagem nova, efeito persistido e resultado externo quando houver provedor. Os números locais abaixo são fotografias datadas.
 
 ## Escala, logística, frota e equipe

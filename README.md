@@ -40,6 +40,6 @@ A montagem e o diretório de equipe compartilham componentes nos dois modos. Ban
 
 **A Central do WhatsApp usa a integração real mesmo com Desenho selecionado.** O seletor não é um isolamento global contra efeitos externos.
 
-Limites conhecidos: o cadastro de veículos e o planejamento logístico existem, mas o rastreio não transmite GPS, não existe upload de foto implementado e rotas usam estimativas de carro sem trânsito em tempo real. Veja a [arquitetura](ARQUITETURA.md) e o [contrato de equipe](../cecchin-pizzas-backend/migracao/DIMENSIONAMENTO_EQUIPE.md).
+Limites conhecidos: o cadastro de veículos e o planejamento logístico existem, mas o rastreio de veículos não transmite GPS e não há upload de fotos de veículos; rotas usam estimativas de carro sem trânsito em tempo real. Veja a [arquitetura](ARQUITETURA.md) e o [contrato de equipe](../cecchin-pizzas-backend/migracao/DIMENSIONAMENTO_EQUIPE.md).
 
 Para retomar a auditoria e a revisão de interface, leia [AUDITORIA_SISTEMA_2026-09-25.md](AUDITORIA_SISTEMA_2026-09-25.md) e [HANDOFF_IA.md](HANDOFF_IA.md). São fotografias datadas; confira novamente o ambiente antes de depender de seus números.

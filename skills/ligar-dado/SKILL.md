@@ -16,7 +16,7 @@ Leia [arquitetura](../../ARQUITETURA.md) e o [backend](../../../cecchin-pizzas-b
 | Escrita atômica de domínio | BFF → RPC PostgreSQL existente |
 | Fila, bot, webhooks e retries | Serviços Nest/adaptador |
 | Mídia WhatsApp | BFF autoriza mensagem sob RLS e busca ponte privada |
-| Upload genérico/Storage | Ainda não implementado; não pressupor bucket |
+| Upload geral no domínio | Ainda não há contrato genérico; a Biblioteca de Marketing usa o bucket privado `marketing-conteudos` |
 
 Uma transação não exige Nest se a RPC já garante suas invariantes. Não recrie autorização em React nem use service_role para esconder uma policy incorreta.
 
