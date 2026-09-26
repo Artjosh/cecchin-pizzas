@@ -6,6 +6,7 @@ vi.mock("@/src/servidor/auth/sessao-atual", () => ({ sessaoAtual: mocks.sessao }
 vi.mock("@/src/servidor/config", () => ({ config: { supabase: { url: "http://storage.local", anonKey: "chave-publica" } } }));
 import { GET } from "@/app/api/operacao/marketing/biblioteca/route";
 import { POST as salvarMidia } from "@/app/api/operacao/marketing/midia/route";
+import { POST as assinarMidia } from "@/app/api/operacao/marketing/midia/assinar/route";
 
 const org = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const arquivo = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb.jpg";
@@ -56,4 +57,17 @@ it("salva a mídia escolhida no diretório da organização", async () => {
   const [url, opcoes] = mocks.fetch.mock.calls[0] as [string, RequestInit];
   expect(url).toMatch(new RegExp(`/storage/v1/object/marketing-conteudos/${org}/[0-9a-f-]+\\.png$`));
   expect(opcoes.headers).toEqual(expect.objectContaining({ authorization: "Bearer jwt-usuario", "content-type": "image/png" }));
+});
+
+it("assina o envio direto ao Storage sem receber os bytes no BFF", async () => {
+  mocks.fetch.mockResolvedValueOnce(Response.json({ url: `/object/upload/sign/marketing-conteudos/${org}/arquivo.png?token=assinatura` }));
+  const resposta = await assinarMidia(new NextRequest("http://localhost/api/operacao/marketing/midia/assinar", {
+    method: "POST", headers: { origin: "http://localhost", "content-type": "application/json" },
+    body: JSON.stringify({ tipo: "image/png", tamanho: 1_500_000 }),
+  }));
+  expect(resposta.status).toBe(200);
+  const dados = await resposta.json();
+  expect(dados.caminho).toMatch(new RegExp(`^${org}/[0-9a-f-]+\\.png$`));
+  expect(dados.url).toContain("/storage/v1/object/upload/sign/marketing-conteudos/");
+  expect(mocks.fetch.mock.calls[0][1]).toEqual(expect.objectContaining({ method: "POST", body: "{}" }));
 });

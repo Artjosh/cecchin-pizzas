@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileImage, Film, FolderOpen, RefreshCw, Upload } from "lucide-react";
+import { FileImage, Film, RefreshCw, Upload, ArrowUpRight } from "lucide-react";
+import { enviarMidiaMarketing } from "../../lib/enviar-midia-marketing";
 
 type Arquivo = { caminho: string; criado_em: string | null; tamanho: number | null; tipo: string | null };
 type Resposta = { arquivos?: Arquivo[]; temMais?: boolean; mensagem?: string };
@@ -39,10 +40,7 @@ export function BibliotecaMarketing() {
     if (!arquivo || ocupado) return;
     setOcupado(true); setErro(""); setAviso("");
     try {
-      const dados = new FormData(); dados.set("arquivo", arquivo);
-      const resposta = await fetch("/api/operacao/marketing/midia", { method: "POST", body: dados });
-      const resultado = await resposta.json() as { caminho?: string; mensagem?: string };
-      if (!resposta.ok || !resultado.caminho) throw new Error(resultado.mensagem ?? "Falha ao salvar o arquivo");
+      await enviarMidiaMarketing(arquivo);
       setArquivo(null);
       if (campoArquivo.current) campoArquivo.current.value = "";
       if (await carregar(0)) setAviso("Arquivo salvo na biblioteca.");
@@ -50,20 +48,25 @@ export function BibliotecaMarketing() {
     finally { setOcupado(false); }
   }
 
-  return <section aria-labelledby="biblioteca-titulo" className="space-y-5">
-    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-outline-variant/30 pb-4">
-      <div><div className="flex items-center gap-2 text-primary"><FolderOpen className="h-5 w-5" /><span className="text-xs font-semibold uppercase tracking-widest">Acervo interno</span></div><h2 id="biblioteca-titulo" className="mt-2 font-title-lg text-on-surface">Biblioteca de conteúdos</h2><p className="mt-1 text-sm text-on-surface-variant">Fotos e vídeos da equipe, prontos para vincular à agenda.</p></div>
-      <button type="button" disabled={ocupado} onClick={() => void carregar(pagina)} className="inline-flex items-center gap-2 rounded-xl bg-surface-container-high px-3 py-2 text-sm text-on-surface hover:bg-surface-container disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${ocupado ? "animate-spin" : ""}`} />Atualizar</button>
+  return <section aria-labelledby="biblioteca-titulo" className="space-y-8">
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div><h2 id="biblioteca-titulo" className="text-2xl font-semibold tracking-tight">Biblioteca</h2><p className="mt-1 text-sm text-on-surface-variant">Arquivos para a agenda e as publicações da equipe.</p></div>
+      <button type="button" disabled={ocupado} onClick={() => void carregar(pagina)} aria-label="Atualizar biblioteca" className="rounded-xl bg-surface-container-high p-2.5 text-on-surface disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${ocupado ? "animate-spin" : ""}`} /></button>
     </div>
-    <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4">
-      <div className="flex flex-wrap items-center gap-4"><div className="flex min-w-0 flex-1 items-center gap-3"><div className="rounded-xl bg-primary-container p-3 text-on-primary-container"><Upload className="h-5 w-5" /></div><div><h3 className="font-label-lg">Adicionar mídia</h3><p className="text-xs text-on-surface-variant">JPG, PNG, WebP, MP4, MOV ou WebM · até 100 MB</p></div></div><label htmlFor="marketing-arquivo-biblioteca" className="cursor-pointer rounded-xl border border-outline-variant/60 bg-surface-container px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-high">Escolher arquivo</label><input ref={campoArquivo} id="marketing-arquivo-biblioteca" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" onChange={(evento) => { setArquivo(evento.target.files?.[0] ?? null); setErro(""); setAviso(""); }} className="sr-only" /><button type="button" disabled={!arquivo || ocupado} onClick={() => void enviar()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary disabled:cursor-not-allowed disabled:opacity-50"><Upload className="h-4 w-4" />{ocupado && arquivo ? "Salvando…" : "Salvar arquivo"}</button></div>
-      <p className="mt-3 text-xs text-on-surface-variant">{arquivo ? `${arquivo.name} · ${(arquivo.size / 1048576).toFixed(1)} MB` : "Escolha um arquivo para habilitar o salvamento."}</p>
+    <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(16rem,0.7fr)]">
+      <div className="flex min-h-56 flex-col justify-between rounded-2xl bg-surface-container-lowest p-6">
+        <div><div className="mb-6 flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container text-on-primary-container"><Upload className="h-5 w-5" /></div><h3 className="text-lg font-semibold">Adicionar ao acervo</h3><p className="mt-1 max-w-sm text-sm text-on-surface-variant">Selecione uma foto ou vídeo. O arquivo ficará disponível para vincular à agenda.</p></div>
+        <div className="mt-8 flex flex-wrap items-center gap-3"><label htmlFor="marketing-arquivo-biblioteca" className="cursor-pointer rounded-xl bg-surface-container-high px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container">Escolher arquivo</label><input ref={campoArquivo} id="marketing-arquivo-biblioteca" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" onChange={(evento) => { setArquivo(evento.target.files?.[0] ?? null); setErro(""); setAviso(""); }} className="sr-only" /><button type="button" disabled={!arquivo || ocupado} onClick={() => void enviar()} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary disabled:cursor-not-allowed disabled:opacity-50">{ocupado && arquivo ? "Salvando…" : "Salvar arquivo"}</button></div>
+      </div>
+      <div className="flex flex-col justify-between py-2 text-sm"><div><p className="font-semibold">Arquivo selecionado</p><p className="mt-2 break-all text-on-surface-variant">{arquivo ? arquivo.name : "Nenhum arquivo selecionado"}</p>{arquivo && <p className="mt-1 text-on-surface-variant">{(arquivo.size / 1048576).toFixed(1)} MB</p>}</div><p className="mt-6 text-xs leading-5 text-on-surface-variant">JPG, PNG, WebP, MP4, MOV ou WebM<br />Tamanho máximo: 100 MB</p></div>
     </div>
     {erro && <p role="alert" className="rounded-xl bg-error-container p-3 text-sm text-on-error-container">{erro}</p>}
     {aviso && <p role="status" className="text-sm text-on-surface-variant">{aviso}{atualizadoEm ? ` · ${atualizadoEm}` : ""}</p>}
-    {ocupado && !carregou && <p role="status" className="rounded-xl bg-surface-container-lowest p-6 text-sm text-on-surface-variant">Carregando arquivos…</p>}
-    {carregou && !ocupado && !arquivos.length && !erro && <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-outline-variant/60 bg-surface-container-lowest px-5 py-10 text-center"><FileImage className="h-8 w-8 text-primary" /><h3 className="font-label-lg">Biblioteca vazia</h3><p className="max-w-xs text-sm text-on-surface-variant">Escolha uma foto ou vídeo acima para adicionar o primeiro arquivo.</p></div>}
-    {!!arquivos.length && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{arquivos.map((item) => <a key={item.caminho} href={`/api/operacao/marketing/midia?caminho=${encodeURIComponent(item.caminho)}`} target="_blank" rel="noreferrer" className="group flex min-w-0 items-center gap-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-3 hover:bg-surface-container-high"><span className="rounded-lg bg-surface-container p-3 text-primary">{item.tipo?.startsWith("video/") ? <Film className="h-5 w-5" /> : <FileImage className="h-5 w-5" />}</span><span className="min-w-0"><strong className="block truncate text-sm group-hover:text-primary">{item.caminho.split("/").at(-1)}</strong><span className="text-xs text-on-surface-variant">{item.criado_em ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(item.criado_em)) : "Data indisponível"}{item.tamanho != null ? ` · ${(item.tamanho / 1048576).toFixed(1)} MB` : ""}</span></span></a>)}</div>}
-    {(pagina > 0 || temMais) && <nav aria-label="Páginas da biblioteca" className="flex items-center justify-between border-t border-outline-variant/30 pt-4 text-sm"><button type="button" disabled={ocupado || pagina === 0} onClick={() => void carregar(pagina - 1)} className="rounded-xl bg-surface-container px-3 py-2 disabled:opacity-50">Anterior</button><span>Página {pagina + 1}</span><button type="button" disabled={ocupado || !temMais} onClick={() => void carregar(pagina + 1)} className="rounded-xl bg-surface-container px-3 py-2 disabled:opacity-50">Próxima</button></nav>}
+    <div className="space-y-4"><div className="flex items-center justify-between"><h3 className="text-lg font-semibold">Arquivos</h3><span className="text-xs text-on-surface-variant">Página {pagina + 1}</span></div>
+      {ocupado && !carregou && <p role="status" className="py-8 text-sm text-on-surface-variant">Carregando arquivos…</p>}
+      {carregou && !ocupado && !arquivos.length && !erro && <div className="py-10 text-center"><FileImage className="mx-auto h-7 w-7 text-primary" /><p className="mt-3 font-semibold">Nenhum arquivo ainda</p><p className="mt-1 text-sm text-on-surface-variant">O primeiro arquivo salvo aparecerá aqui.</p></div>}
+      {!!arquivos.length && <div className="divide-y divide-outline-variant/20">{arquivos.map((item) => <a key={item.caminho} href={`/api/operacao/marketing/midia?caminho=${encodeURIComponent(item.caminho)}`} target="_blank" rel="noreferrer" className="group flex min-w-0 items-center gap-3 py-3 hover:text-primary"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-container-high text-primary">{item.tipo?.startsWith("video/") ? <Film className="h-5 w-5" /> : <FileImage className="h-5 w-5" />}</span><span className="min-w-0 flex-1"><strong className="block truncate text-sm">{item.caminho.split("/").at(-1)}</strong><span className="text-xs text-on-surface-variant">{item.criado_em ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(item.criado_em)) : "Data indisponível"}{item.tamanho != null ? ` · ${(item.tamanho / 1048576).toFixed(1)} MB` : ""}</span></span><ArrowUpRight className="h-4 w-4 shrink-0 text-on-surface-variant" /></a>)}</div>}
+      {(pagina > 0 || temMais) && <nav aria-label="Páginas da biblioteca" className="flex items-center justify-end gap-3 pt-3 text-sm"><button type="button" disabled={ocupado || pagina === 0} onClick={() => void carregar(pagina - 1)} className="rounded-xl bg-surface-container-high px-3 py-2 disabled:opacity-50">Anterior</button><span>{pagina + 1}</span><button type="button" disabled={ocupado || !temMais} onClick={() => void carregar(pagina + 1)} className="rounded-xl bg-surface-container-high px-3 py-2 disabled:opacity-50">Próxima</button></nav>}
+    </div>
   </section>;
 }

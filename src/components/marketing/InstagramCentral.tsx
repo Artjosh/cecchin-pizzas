@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CalendarClock, Camera, CheckCircle2, CircleAlert, ExternalLink, Heart, MessageCircle, Plus, RefreshCw, Send, Settings2, UserRound } from "lucide-react";
 import { horarioSaoPauloParaIso } from "@/src/lib/agenda-marketing-data";
+import { enviarMidiaMarketing } from "@/src/lib/enviar-midia-marketing";
 import { instagramViaNavegador, type InstagramBrowserComment, type InstagramBrowserHome, type InstagramBrowserItem, type InstagramBrowserProfile, type InstagramBrowserStory } from "@/src/servidor/instagram/navegador";
 
 type Conta = { id: string; instagram_user_id: string; username: string; account_type: string; scopes: string[]; status: string; token_expires_at: string; last_error: string | null };
@@ -395,11 +396,8 @@ export function InstagramCentral({ gestor }: Props) {
     if (!arquivo) return;
     setEnviandoMidia(true); setErro(""); setMensagem("");
     try {
-      const form = new FormData(); form.set("arquivo", arquivo);
-      const response = await fetch("/api/operacao/marketing/midia", { method: "POST", body: form });
-      const body = await response.json() as { caminho?: string; mensagem?: string };
-      if (!response.ok || !body.caminho) throw new Error(body.mensagem ?? "Não foi possível guardar a imagem");
-      setMidia(body.caminho); setMensagem("Imagem guardada na biblioteca privada.");
+      const caminho = await enviarMidiaMarketing(arquivo);
+      setMidia(caminho); setMensagem("Imagem guardada na biblioteca privada.");
     } catch (falha) { setErro(falha instanceof Error ? falha.message : "Falha ao guardar imagem"); }
     finally { setEnviandoMidia(false); }
   };
