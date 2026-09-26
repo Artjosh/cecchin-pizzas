@@ -150,7 +150,7 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
   const nome = (id: string) => pessoas.find((p) => p.id === id)?.nome ?? (id === usuarioId ? "Você" : "Integrante");
   const perfilAberto = dados?.concorrentes.find((item) => item.id === concorrenteAberto);
 
-  return <div className="flex min-h-0 flex-col gap-3">
+  return <div className="flex h-full min-h-0 flex-col gap-3">
     <header className="flex flex-wrap items-center justify-between gap-2">
       <div><TituloNoHeader>Marketing</TituloNoHeader><p className="text-xs text-on-surface-variant">Central do Instagram e organização interna de conteúdo</p></div>
       <div className="flex items-center gap-2"><button className={`${botao} bg-surface-container text-on-surface`} onClick={() => setSemana((atual) => somarDias(atual, -7))}>Anterior</button><span className="min-w-28 text-center font-label-md">{semana}</span><button className={`${botao} bg-surface-container text-on-surface`} onClick={() => setSemana((atual) => somarDias(atual, 7))}>Próxima</button><button aria-label="Atualizar agenda" className={`${botao} bg-surface-container text-on-surface`} onClick={() => void carregar()}><RefreshCw className={`h-4 w-4 ${carregando ? "animate-spin" : ""}`} /></button></div>
@@ -159,11 +159,11 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
       {([ ["agenda","Agenda"],["pedidos","Pedidos"],["biblioteca","Biblioteca"],["concorrencia","Concorrência"],["equipe","Equipe"] ] as const).map(([id,nome])=><button key={id} type="button" onClick={()=>{setAba(id);setMobilePreview(false);}} aria-current={aba===id?"page":undefined} className={`shrink-0 rounded-lg px-3 py-2 ${aba===id?"bg-surface-container-high font-semibold":"text-on-surface-variant hover:bg-surface-container"}`}>{nome}</button>)}
       <button type="button" className="ml-auto shrink-0 rounded-lg bg-primary-container px-3 py-2 text-on-primary-container lg:hidden" onClick={()=>setMobilePreview(v=>!v)}>{mobilePreview?"Ver gestão":"Ver Instagram"}</button>
     </nav>
-    <div className="grid min-h-0 gap-3 lg:grid-cols-2">
-      <section aria-label="Central do Instagram" className={`${mobilePreview?"":"hidden lg:block"} h-[calc(100dvh-12rem)] min-h-[28rem] overflow-hidden rounded-2xl bg-surface-container-low p-3`}>
+    <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
+      <section aria-label="Central do Instagram" className={`${mobilePreview?"":"hidden lg:block"} h-full min-h-0 overflow-hidden rounded-2xl bg-surface-container-low p-3`}>
         <InstagramCentral gestor={gestor} />
       </section>
-      <div className={`${mobilePreview?"hidden lg:block":""} min-h-0 max-h-[calc(100dvh-12rem)] space-y-3 overflow-y-auto rounded-2xl bg-surface-container-low p-3`}>
+      <div className={`${mobilePreview?"hidden lg:block":""} h-full min-h-0 space-y-3 overflow-y-auto rounded-2xl bg-surface-container-low p-3`}>
     {erro && <p role="alert" className="rounded-xl bg-error-container p-3 text-on-error-container">{erro}</p>}
     {aviso && <p role="status" className="rounded-xl bg-tertiary-container p-3 text-on-tertiary-container">{aviso}</p>}
     {dados && (souMarketing || gestor) && <p className="text-sm text-on-surface-variant" role="status">{dados.maisAgenda ? `Ao menos ${diasProgramados} de 7 dias com conteúdo programado. Carregue o restante para conferir a semana.` : `${diasProgramados} de 7 dias com conteúdo programado nesta semana.`}</p>}

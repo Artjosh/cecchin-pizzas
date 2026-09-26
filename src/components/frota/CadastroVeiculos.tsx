@@ -69,7 +69,9 @@ export function CadastroVeiculos({ veiculos, pessoas, modoProprio = false }: { v
     setAtivo(veiculo.ativo); setErro(""); setAberto(true);
   }
   async function salvar(evento: FormEvent) {
-    evento.preventDefault(); setErro(""); setOcupado(true);
+    evento.preventDefault(); setErro("");
+    if (!/^[A-Z0-9]{7}$/.test(placa)) { setErro("A placa precisa ter exatamente 7 letras ou numeros (ex.: ABC1D23)."); return; }
+    setOcupado(true);
     try {
       const resposta = await fetch("/api/operacao/veiculos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editando, modelo, placa, carroceria, forno_maximo: forno, bebida_maxima: bebida, lugares, limite_eventos_levar: limite, proprietario_id: proprietario || null, ativo }) });
       const corpo = await resposta.json();
@@ -83,7 +85,7 @@ export function CadastroVeiculos({ veiculos, pessoas, modoProprio = false }: { v
     {aberto && <form onSubmit={salvar} className="grid gap-3 rounded-2xl bg-surface-container-low p-4 sm:grid-cols-2 xl:grid-cols-4">
       <h3 className="font-semibold sm:col-span-2 xl:col-span-4">{editando ? "Editar veículo" : "Novo veículo"}</h3>
       <label className="text-sm">Modelo<input className={entrada} value={modelo} onChange={e => setModelo(e.target.value)} required maxLength={100} /></label>
-      <label className="text-sm">Placa<input className={entrada} value={placa} onChange={e => setPlaca(e.target.value.toUpperCase())} required maxLength={10} /></label>
+      <label className="text-sm">Placa<input className={entrada} value={placa} onChange={e => setPlaca(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} required maxLength={10} title="Informe 7 letras ou numeros, como ABC1D23" /></label>
       <label className="text-sm">Carroceria<select className={entrada} value={carroceria} onChange={e => setCarroceria(e.target.value)}>{["sedan", "hatch", "utilitario", "van", "outro"].map(v => <option key={v} value={v}>{v}</option>)}</select></label>
       {!modoProprio && <label className="text-sm">Proprietário<select className={entrada} value={proprietario} onChange={e => setProprietario(e.target.value)}><option value="">Frota da empresa</option>{pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></label>}
       <label className="text-sm">Maior forno que comporta<select className={entrada} value={forno} onChange={e => setForno(e.target.value)}>{Object.entries(fornos).map(([v,n]) => <option key={v} value={v}>{n}</option>)}</select></label>

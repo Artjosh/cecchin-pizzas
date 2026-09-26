@@ -12,9 +12,9 @@ Extensao Chromium local da central de marketing. Ela usa a sessao ja aberta do I
 ## O que faz
 
 - Le feed e bandeja de Stories pela sessao web ja autenticada.
-- Busca perfis, publicacoes, comentarios e mais paginas da timeline quando solicitado pela central.
+- Busca perfis, publicacoes, comentarios e mais paginas da timeline e dos perfis quando solicitado pela central.
 - A interface oferece navegacao entre itens de Story e fecha a modal com `Esc`.
-- Pode curtir/remover curtida e publicar comentarios quando a pessoa usa os respectivos controles da UI. Esses pedidos alteram a conta real do Instagram.
+- Curtidas de publicacoes usam a aba existente do Instagram quando a publicacao esta carregada nela. Curtidas de Stories, reacoes, respostas a Stories e comentarios sao acoes reais da conta. A extensao nao abre outra aba para executar essas acoes.
 
 As consultas e acoes sao executadas dentro da aba do Instagram. A extensao nao copia nem armazena cookies. A ponte entrega a pagina local dados normalizados de perfil, feed, Stories e comentarios.
 

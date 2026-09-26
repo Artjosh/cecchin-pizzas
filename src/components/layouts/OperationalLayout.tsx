@@ -347,7 +347,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
                   )}
                 >
                   <Truck className="w-5 h-5" />
-                  <span className="font-label-lg text-label-lg">Fornos & Frota</span>
+                  <span className="font-label-lg text-label-lg">Frota</span>
                 </Link>
               </>
             )}
@@ -398,7 +398,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
           do último cartão da agenda, o `desligar` da última linha do catálogo.
           Sai junto com o interruptor, quando a última tela estiver ligada.
         */}
-        <main className={pathname === "/operacional/whatsapp" || pathname === "/operacional/mapa" ? "h-[calc(100dvh-4rem)] min-h-0 min-w-0 overflow-hidden bg-surface p-3 md:p-4" : "flex-1 bg-surface px-space-md py-3 md:px-space-lg pb-24 min-w-0"}>
+        <main className={pathname === "/operacional/whatsapp" || pathname === "/operacional/mapa" || pathname === "/operacional/marketing" ? "h-[calc(100dvh-4rem)] min-h-0 min-w-0 overflow-hidden bg-surface p-3 md:p-4" : "flex-1 bg-surface px-space-md py-3 md:px-space-lg pb-24 min-w-0"}>
           {usuario?.papel === "staff" && pathname !== "/operacional/whatsapp" && <AvisoDisponibilidade />}{children}
         </main>
       </div>

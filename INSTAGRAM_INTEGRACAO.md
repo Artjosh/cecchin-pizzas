@@ -1,5 +1,7 @@
 # Instagram na central de marketing
 
+Pesquisa de evolução: [transferência pela extensão, sessões headless e múltiplas contas](../cecchin-pizzas-backend/infra/INSTAGRAM_SESSOES_SERVIDOR.md). A importação pela extensão é o fluxo principal do MVP; contas são compartilhadas conforme permissões do marketing, com troca por contexto e noVNC apenas para recuperação excepcional. Proposta ainda não implementada nem validada com sessões reais no servidor.
+
 Atualizado em 25/09/2026. Este documento separa a ponte local do navegador da API oficial da Meta. A palavra "Instagram" na UI nao significa que todas as funcoes usam a API oficial.
 
 ## Arquitetura
@@ -13,29 +15,23 @@ A ponte so funciona quando a extensao esta instalada e atualizada no mesmo perfi
 
 ## Funcionalidades da ponte
 
-O codigo da extensao e da central implementa:
+- Timeline com paginacao por cursor, avatares, videos e Stories com progresso pelo tempo da midia.
+- Perfis com dados e contagens quando o Instagram os fornece, primeira pagina de posts ao abrir e paginas seguintes ao rolar ou tocar em "Carregar mais posts".
+- Comentarios, publicacao de comentarios e resposta vinculada a um comentario.
+- Curtir e descurtir Stories; responder por texto ou reacao emoji. Essas acoes usam a sessao na aba existente do Instagram.
+- Curtir publicacoes pela aba existente quando a publicacao ja esta carregada no feed oficial dessa aba. A ponte nao abre uma nova aba.
 
-- Feed de contas seguidas, normalizado a partir da timeline.
-- Stories recentes e visualizador com navegacao pelos itens retornados, controles anterior/proximo e tecla `Esc` para fechar.
-- Perfil dentro da central e grade de publicacoes do perfil.
-- Modal para ler comentarios e formulario para publicar comentario.
-- Curtir e remover curtida de uma publicacao.
-- Carregamento da proxima pagina ao rolar ate o fim do feed, usando cursor `next_max_id` e IDs ja exibidos.
-- Remocao de itens sem imagem/video e preenchimento de avatares a partir do usuario da publicacao ou de uma consulta complementar em serie com cache.
-
-Essas acoes usam endpoints web internos e nao documentados, tais como `feed/timeline`, `feed/reels_tray`, `feed/reels_media`, `feed/user/{id}`, `media/{id}/comments`, `media/{id}/like`, `media/{id}/unlike` e `media/{id}/comment`. Eles podem mudar sem aviso e nao sao garantidos pela Meta. Curtidas e comentarios sao escritas reais na conta quando acionadas pela UI; nao clicar em controles de envio durante uma validacao visual.
+A ponte usa endpoints web internos do Instagram, que podem mudar. Respostas e reacoes sao acoes reais da conta. A extensao nao copia nem armazena cookies.
 
 ## Validacao observada no navegador
 
-- A central autenticada carregou timeline e bandeja de Stories no Brave.
-- O visualizador abriu dois itens retornados para um Story; o controle **Proximo** avancou ao segundo, e `Esc` fechou a modal.
-- Uma tentativa de perfil falhou com HTTP 429. O worker anterior fazia ate dez consultas complementares de avatar em paralelo por atualizacao; isso e um candidato a rajada desnecessaria de requisicoes. O codigo foi alterado para usar cache e ate quatro consultas sequenciais por pagina, mas a causa do 429 ainda precisa ser comprovada apos recarregar a extensao.
-- Houve cartoes sem midia na timeline antes da correcao do filtro. A filtragem foi alterada, mas a ausencia dos cartoes vazios ainda precisa ser verificada com a extensao recarregada.
-- A paginacao por scroll foi implementada no codigo, mas o carregamento da pagina seguinte ainda nao foi confirmado no navegador.
-- A modal de comentarios foi exibida anteriormente, mas a instancia antiga da extensao respondeu "Acao da extensao desconhecida". Leitura de comentarios, envio de comentario, curtida, perfil e publicacoes do perfil continuam sem validacao ponta a ponta nesta versao.
-- A curtida nao foi enviada durante os testes. Nenhum comentario foi publicado.
-
-**Proxima verificacao:** recarregar a extensao atualizada, atualizar Instagram na central, conferir avatares e ausencia de cartoes vazios, rolar para carregar mais e abrir um perfil e comentarios. Nao enviar comentario nem curtir uma publicacao real como parte do teste. Registrar um resultado 429 como erro da chamada e verificar qual endpoint o causou; nao declarar bloqueio da conta sem evidencias do proprio Instagram.
+- A central carregou a timeline e a bandeja de Stories no Brave.
+- O visualizador mostrou o campo de resposta, o controle de curtida e seis reacoes; a modal de comentarios mostrou a selecao "Respondendo a @usuario".
+- Uma curtida de publicacao ja foi confirmada pela interface oficial em uma rodada anterior, com desfazer em seguida.
+- O 404 das rotas moveis de curtida e resposta a Story foi corrigido usando as mutacoes GraphQL da sessao web. Pela central, curtir e descurtir Story foram confirmados; a curtida de teste foi desfeita. Uma reacao emoji retornou "Resposta enviada.".
+- As fotos quebradas do feed passaram a usar a URL renovada pela consulta de perfil; tres avatares visiveis foram conferidos carregados no navegador.
+- A consulta GraphQL de posts pode devolver `data` com publicacoes e `errors` em campos secundarios. A ponte preserva os posts e o cursor quando a lista e valida; a correção aguarda validação após recarga da extensão.
+- Resposta de Story em texto e envio de resposta a comentario ainda nao foram exercitados com mensagem real nesta rodada.
 
 ## Configuracao da API oficial para publicacao
 
@@ -55,8 +51,8 @@ O composer oficial aceita uma imagem JPEG/PNG/WebP por publicacao no feed. Reels
 
 - A extensao declara `scripting` e host permissions para `www.instagram.com` e `http://localhost:3000`. O content script roda apenas na pagina local de marketing.
 - Nao ha permissao de cookies; a extensao executa `fetch` dentro da aba oficial, autenticada pelo proprio navegador. A senha nao e lida nem enviada ao Cecchin.
-- A ponte entrega dados da conta autenticada e pode realizar curtida/comentario quando o usuario aciona esses botoes. Mantenha validacao de origem e limite cada origem explicitamente.
-- Feed, perfis, Stories, comentarios e curtidas pela ponte nao sao API oficial, nem uma incorporacao do app Instagram. O Instagram pode rejeitar chamadas, limitar frequencia, mudar esquemas ou remover endpoints.
+- A ponte entrega dados da conta autenticada e pode curtir ou publicar comentario quando o usuario aciona esses controles. Mantenha validacao de origem e limite cada origem explicitamente.
+- Feed, perfis, Stories, curtidas e comentarios pela ponte nao sao API oficial, nem uma incorporacao do app Instagram. O Instagram pode rejeitar chamadas, limitar frequencia, mudar esquemas ou remover endpoints.
 - A ponte nao consulta DM, nao envia mensagens, nao segue contas e nao publica midia.
 - A API oficial/worker ainda depende de credenciais, aprovacao da Meta, callback HTTPS e secrets de runtime. Nao registrar tokens, cookies, nomes ou payloads de sessoes reais em documentacao versionada.
 

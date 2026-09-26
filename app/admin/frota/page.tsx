@@ -1,6 +1,6 @@
 import { AdminFleetView } from "@/src/views/AdminFleetView";
 
-export const metadata = { title: "Fornos & Frota · Cecchin Pizzas" };
+export const metadata = { title: "Frota · Cecchin Pizzas" };
 /*
  * `force-dynamic` porque a view lê cookie: a fonte dos dados (`cecchin_fonte`)
  * e a sessão. Sem isto, a página é pré-renderizada no build — o cookie não

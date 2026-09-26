@@ -4,6 +4,8 @@ Leia primeiro [AGENTS.md](AGENTS.md) do frontend e o `AGENTS.md` do backend. Est
 
 ## Restrições e estado
 
+- Pesquisa revisada em 25/09/2026: [transferência Instagram pela extensão e sessões headless](../cecchin-pizzas-backend/infra/INSTAGRAM_SESSOES_SERVIDOR.md). Prioridade obrigatória: importar a sessão local, validar no servidor e funcionar com o PC fechado. Pool headless com contexto por conta, snapshots criptografados, contas compartilhadas por ACL e seleção independente por usuário/aba. noVNC somente para recuperação excepcional. Próximo passo: provar transferência, restauração e isolamento entre contas; arquitetura ainda não implementada/deployada nem validada com sessões reais.
+
 - O usuário pediu expressamente para **nunca executar typecheck nem linter automaticamente**. Só após pedido explícito posterior. A auditoria e a revisão visual de 25/09/2026 foram conduzidas sem testes; não descreva isso como uma proibição permanente de testes.
 - Não fazer cobrança real, enviar WhatsApp/e-mail, resetar banco/ETL ou reiniciar containers como consequência de uma inspeção visual. A Central WhatsApp usa dados reais mesmo no modo Desenho.
 - A inspeção anterior relatou 4 staff ativos, zero veículos físicos e fila de e-mail com falhas HTTP 403. Depois dela, as migrations 123 e 124 foram versionadas e registradas como aplicadas **no banco local**; há 124 arquivos em `supabase/migrations/`. Esses dados são fotografias datadas, não garantias do estado atual nem de produção. Confira histórico e catálogo do banco alvo.
