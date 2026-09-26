@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FileImage, Film, RefreshCw, Upload, ArrowUpRight } from "lucide-react";
 import { enviarMidiaMarketing } from "../../lib/enviar-midia-marketing";
+import { MarketingToast } from "./MarketingToast";
 
 type Arquivo = { caminho: string; criado_em: string | null; tamanho: number | null; tipo: string | null };
 type Resposta = { arquivos?: Arquivo[]; temMais?: boolean; mensagem?: string };
@@ -16,7 +17,6 @@ export function BibliotecaMarketing() {
   const [carregou, setCarregou] = useState(false);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
-  const [atualizadoEm, setAtualizadoEm] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [previa, setPrevia] = useState("");
   const campoArquivo = useRef<HTMLInputElement>(null);
@@ -28,15 +28,14 @@ export function BibliotecaMarketing() {
     return () => URL.revokeObjectURL(url);
   }, [arquivo]);
 
-  const carregar = useCallback(async (proximaPagina: number) => {
+  const carregar = useCallback(async (proximaPagina: number, avisar = false) => {
     setOcupado(true); setErro(""); setAviso("");
     try {
       const resposta = await fetch(`/api/operacao/marketing/biblioteca?pagina=${proximaPagina}`, { cache: "no-store" });
       const dados = await resposta.json() as Resposta;
       if (!resposta.ok || !Array.isArray(dados.arquivos)) throw new Error(dados.mensagem ?? "Falha ao carregar a biblioteca");
       setArquivos(dados.arquivos); setTemMais(Boolean(dados.temMais)); setPagina(proximaPagina);
-      setAviso("Biblioteca atualizada.");
-      setAtualizadoEm(new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date()));
+      if (avisar) setAviso("Biblioteca atualizada.");
       return true;
     } catch (falha) { setErro(mensagemFalha(falha, "Falha ao carregar a biblioteca")); return false; }
     finally { setCarregou(true); setOcupado(false); }
@@ -57,9 +56,10 @@ export function BibliotecaMarketing() {
   }
 
   return <section aria-labelledby="biblioteca-titulo" className="space-y-8">
+    <MarketingToast mensagem={erro || aviso} erro={Boolean(erro)} aoFechar={() => { setErro(""); setAviso(""); }} />
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><h2 id="biblioteca-titulo" className="text-2xl font-semibold tracking-tight">Biblioteca</h2><p className="mt-1 text-sm text-on-surface-variant">Arquivos para a agenda e as publicações da equipe.</p></div>
-      <button type="button" disabled={ocupado} onClick={() => void carregar(pagina)} aria-label="Atualizar biblioteca" className="rounded-xl bg-surface-container-high p-2.5 text-on-surface disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${ocupado ? "animate-spin" : ""}`} /></button>
+      <button type="button" disabled={ocupado} onClick={() => void carregar(pagina, true)} aria-label="Atualizar biblioteca" className="rounded-xl bg-surface-container-high p-2.5 text-on-surface disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${ocupado ? "animate-spin" : ""}`} /></button>
     </div>
     <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(16rem,0.7fr)]">
       <div className="flex min-h-56 flex-col justify-between rounded-2xl bg-surface-container-lowest p-6">
@@ -68,8 +68,6 @@ export function BibliotecaMarketing() {
       </div>
       <div className="flex min-w-0 flex-col text-sm"><p className="font-semibold">Arquivo selecionado</p><div className="mt-3 flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-surface-container-lowest">{previa && arquivo?.type.startsWith("image/") ? <img src={previa} alt={`Prévia de ${arquivo.name}`} className="h-full w-full object-contain" /> : previa && arquivo?.type.startsWith("video/") ? <video src={previa} controls preload="metadata" className="h-full w-full object-contain" /> : <FileImage className="h-8 w-8 text-on-surface-variant" />}</div><p className="mt-3 truncate text-on-surface-variant">{arquivo ? arquivo.name : "Nenhum arquivo selecionado"}</p>{arquivo && <p className="mt-1 text-on-surface-variant">{(arquivo.size / 1048576).toFixed(1)} MB</p>}<p className="mt-auto pt-5 text-xs leading-5 text-on-surface-variant">JPG, PNG, WebP, MP4, MOV ou WebM · até 100 MB</p></div>
     </div>
-    {erro && <p role="alert" className="rounded-xl bg-error-container p-3 text-sm text-on-error-container">{erro}</p>}
-    {aviso && <p role="status" className="text-sm text-on-surface-variant">{aviso}{atualizadoEm ? ` · ${atualizadoEm}` : ""}</p>}
     <div className="space-y-4 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5"><div className="flex items-center justify-between"><h3 className="text-lg font-semibold">Arquivos</h3><span className="text-xs text-on-surface-variant">Página {pagina + 1}</span></div>
       {ocupado && !carregou && <p role="status" className="py-8 text-sm text-on-surface-variant">Carregando arquivos…</p>}
       {carregou && !ocupado && !arquivos.length && !erro && <div className="py-10 text-center"><FileImage className="mx-auto h-7 w-7 text-primary" /><p className="mt-3 font-semibold">Nenhum arquivo ainda</p><p className="mt-1 text-sm text-on-surface-variant">O primeiro arquivo salvo aparecerá aqui.</p></div>}
