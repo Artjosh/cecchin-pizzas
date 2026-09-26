@@ -1,33 +1,36 @@
 # Cecchin Instagram Bridge
 
-Extensao Chromium local da central de marketing. Ela usa a sessao ja aberta do Instagram no mesmo perfil do Brave/Chrome; nao faz login e nao recebe a senha.
+Extensão Chromium local que conecta a central de marketing ao Instagram Web aberto no mesmo perfil do Brave ou Chrome. A extensão não realiza login nem recebe ou armazena sua senha ou cookies. Ela depende da sessão já autenticada em uma aba do Instagram.
 
 ## Instalar ou atualizar
 
-1. Abra `brave://extensions` (ou `chrome://extensions`), habilite o modo do desenvolvedor e use **Carregar sem compactacao** para instalar esta pasta, se ainda nao estiver instalada.
-2. Para aplicar alteracoes posteriores em `service-worker.js`, clique em **Recarregar** no card desta extensao.
-3. Recarregue `http://localhost:3000/operacional/marketing` e use **Atualizar Instagram**.
-4. Mantenha uma aba autenticada em `https://www.instagram.com/` aberta no mesmo perfil do navegador.
+1. Abra `brave://extensions` ou `chrome://extensions` e habilite o **Modo do desenvolvedor**.
+2. Se a extensão ainda não estiver instalada, escolha **Carregar sem compactação** e selecione esta pasta (`browser-extension/instagram-bridge`). Se já estiver instalada, use **Recarregar** no card da Cecchin Instagram Bridge.
+3. Depois de recarregar a extensão, atualize a página da central em `http://localhost:3000/operacional/marketing` para que o content script seja injetado novamente.
+4. Mantenha uma aba concluída e autenticada em `https://www.instagram.com/` aberta no mesmo perfil do navegador. A extensão usa a aba do Instagram ativa; se não houver uma ativa, usa a acessada mais recentemente.
 
-## O que faz
+## Recursos e comportamento
 
-- Le feed e bandeja de Stories pela sessao web ja autenticada.
-- Busca perfis, publicacoes, comentarios e mais paginas da timeline e dos perfis quando solicitado pela central.
-- A interface oferece navegacao entre itens de Story e fecha a modal com `Esc`.
-- Curtidas de publicacoes usam a aba existente do Instagram quando a publicacao esta carregada nela. Curtidas de Stories, reacoes, respostas a Stories e comentarios sao acoes reais da conta. A extensao nao abre outra aba para executar essas acoes.
+A central pode consultar o feed e a bandeja de Stories, carregar páginas adicionais do feed e de perfis, exibir informações e fotos de perfil e buscar comentários. A interface da central controla a navegação entre itens de Stories e pode fechar a visualização com `Esc`; esses controles pertencem à central, não à extensão.
 
-As consultas e acoes sao executadas dentro da aba do Instagram. A extensao nao copia nem armazena cookies. A ponte entrega a pagina local dados normalizados de perfil, feed, Stories e comentarios.
+As ações suportadas incluem curtir ou descurtir publicações, curtir Stories, enviar reações ou respostas a Stories e comentar ou responder a comentários. A curtida de publicação é acionada no conteúdo correspondente dentro da aba do Instagram: a publicação precisa estar carregada no feed dessa aba. Se não estiver, a ação falha e a extensão não abre outra aba nem navega automaticamente até a publicação. As demais ações são enviadas pela sessão da aba escolhida e podem falhar se a sessão expirar, se o Instagram limitar as consultas ou alterar seus endpoints.
 
-## Permissoes e limites
+A extensão não publica fotos, vídeos, Reels ou Stories, não agenda publicações, não envia mensagens diretas comuns e não segue contas. A confirmação de um item na agenda da central também não publica no Instagram.
 
-A extensao pede `scripting` e acesso a `https://www.instagram.com/*` e `http://localhost:3000/*`. O content script e limitado a `/operacional/marketing`; a mensagem valida a origem local antes de consultar a aba do Instagram. Nao ha permissao de cookies.
+## Permissões e privacidade
 
-A implementacao usa endpoints web internos nao documentados do Instagram. Eles podem mudar, retornar erros HTTP ou limitar frequencia. Isso nao e a API Graph oficial e nao e garantido pela Meta. A extensao nao envia DMs, nao segue contas e nao publica midia.
+O `manifest.json` solicita a permissão `scripting` e acesso a `https://www.instagram.com/*` e `http://localhost:3000/*`. O content script só é injetado em `http://localhost:3000/operacional/marketing*`; ele verifica a origem local e só encaminha mensagens desse canal à extensão. O service worker valida novamente a origem e escolhe uma aba do Instagram já aberta. Não há permissão de leitura de cookies nem host permission para outros domínios.
 
-A conexao OAuth da conta profissional da Cecchin e a publicacao via API oficial sao outro fluxo. Consulte [Instagram na central de marketing](../../INSTAGRAM_INTEGRACAO.md).
+As consultas são executadas no contexto principal da aba existente do Instagram. Dados normalizados retornam à central local; não são enviados a um serviço intermediário desta extensão.
 
-## Referencia de formato
+## Limitações
 
-O codigo e uma implementacao propria inspirada em formatos publicos descritos por [SpeedGram: Instagram web (Polaris) API surface](https://github.com/aryasarukkai/instagram-fast-react-client/blob/main/speedgram/docs/web-api-surface.md). O codigo GPL do SpeedGram nao foi copiado.
+A implementação usa endpoints internos da versão web do Instagram, que não são documentados nem garantidos pela Meta. Mudanças no site, expiração de sessão, erros HTTP e limites de frequência podem interromper consultas e ações. Aguarde se receber uma limitação de frequência; se a sessão tiver expirado, entre normalmente no Instagram e atualize a central.
 
-Para outra origem, revise `matches`, `host_permissions` e as validacoes em `content.js` e `service-worker.js`; mantenha cada origem explicita.
+Este mecanismo não é a API Graph oficial. A integração OAuth e a publicação por API oficial são um fluxo separado, descrito em [Instagram na central de marketing](../../INSTAGRAM_INTEGRACAO.md).
+
+## Referência de implementação
+
+O código é uma implementação própria inspirada em formatos públicos descritos por [SpeedGram: Instagram web (Polaris) API surface](https://github.com/aryasarukkai/instagram-fast-react-client/blob/main/speedgram/docs/web-api-surface.md). Código GPL do SpeedGram não foi copiado.
+
+Para suportar outra origem, revise as permissões e `matches` em `manifest.json` e as validações de origem em `content.js` e `service-worker.js`. Mantenha cada origem explicitamente permitida.

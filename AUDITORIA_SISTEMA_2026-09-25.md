@@ -89,3 +89,6 @@ Valores de localidades: [ETL](../cecchin-pizzas-backend/migracao/ETL.md) documen
 
 Fluxo InfinitePay: [contrato](../cecchin-pizzas-backend/infra/INFINITEPAY.md). NSU e slug chegam por callback/webhook e são verificados via `payment_check`; a digitação manual no admin é apenas recuperação quando a notificação automática não chegou. Não inventar identificadores a partir do link ou do UUID do pedido.
 
+### Nota de continuidade - 26/09/2026
+
+No código atual, o botão **"Postagem automatizada"** da agenda envia `acao: "confirmar"`. A rota `app/api/operacao/marketing/route.ts` encaminha essa ação a `confirmar_agenda_marketing` com `p_publicado: false`; isso confirma o compromisso na agenda, mas não publica no Instagram. **"Registar como manual"** envia `acao: "publicar"`, registrando manualmente o item como publicado na agenda; essa chamada também não envia mídia ao Instagram. Portanto, os rótulos não comprovam postagem automática nem integração operacional de publicação. Esta é uma conferência estática dos caminhos no código, não uma validação ponta a ponta. As constatações datadas de 25/09 acima permanecem históricas; para o estado e limitações atuais da integração, consulte [HANDOFF_IA.md](HANDOFF_IA.md) e [INSTAGRAM_INTEGRACAO.md](INSTAGRAM_INTEGRACAO.md).

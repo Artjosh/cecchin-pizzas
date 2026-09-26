@@ -1,6 +1,6 @@
 # Arquitetura do frontend
 
-Estado do código local revisado em **25/09/2026**. Evidências de execução têm data nos relatórios; funcionalidades locais não implicam implantação em produção. A auditoria transversal e suas lacunas estão em [AUDITORIA_SISTEMA_2026-09-25.md](AUDITORIA_SISTEMA_2026-09-25.md).
+Estado do código local revisado em **26/09/2026**. Evidências de execução têm data nos relatórios; funcionalidades locais não implicam implantação em produção. A auditoria transversal e suas lacunas estão em [AUDITORIA_SISTEMA_2026-09-25.md](AUDITORIA_SISTEMA_2026-09-25.md).
 
 ## Fluxo de dados
 
@@ -103,7 +103,7 @@ Central mantém atendimento humano/bot, fila de envio, mídias autorizadas e ocu
 
 `/admin/localidades` edita taxa e minutos separadamente. O ETL histórico preservou 68 taxas de deslocamento e 18 vigências de preços. Os tempos normal/pico da planilha estavam vazios e continuam nulos até decisão administrativa. Ausência de taxa num bairro específico exige investigar a fonte e o registro, sem copiar preço de catálogo para taxa.
 
-Marketing oferece agenda interna, pedidos, biblioteca e concorrencia. A central Instagram tem uma ponte local para a sessao autenticada no navegador, com feed, Stories, perfis, comentarios e curtidas; ela usa endpoints web internos nao oficiais. A extensao nao abre uma nova aba para curtir publicacoes. Separadamente, ha codigo para OAuth e publicacao de conta profissional pela API oficial da Meta, mas falta criar/configurar um app Meta, conceder acesso e validar a publicacao externa. O upload guarda midia na biblioteca privada; itens da biblioteca podem ser associados ao programar na agenda. Na agenda, `Confirmar compromisso` confirma o plano interno e `Marcar como publicado` registra que a pessoa publicou por fora; nenhum deles publica no Instagram. Metricas de concorrentes dependem de credenciais e coleta configuradas. Consulte [Instagram na central de marketing](INSTAGRAM_INTEGRACAO.md).
+Marketing oferece agenda interna, pedidos, biblioteca e concorrência. A central Instagram tem uma ponte local para a sessão autenticada no navegador, com feed, Stories, perfis, comentários e curtidas; ela usa endpoints web internos não oficiais. A extensão não abre uma nova aba para curtir publicações. Separadamente, há código para OAuth e publicação de conta profissional pela API oficial da Meta; configuração de app, credenciais e autorização precisam ser confirmadas no ambiente antes de considerar o fluxo operacional. O upload guarda mídia na biblioteca privada; itens da biblioteca podem ser associados ao programar na agenda. Na agenda, o botão atualmente rotulado **“Postagem automatizada”** chama a ação `confirmar`, que apenas confirma o compromisso interno; não agenda nem publica no Instagram. **“Registar como manual”** chama a ação `publicar` e registra o item como publicado na agenda, sem publicar na plataforma. A composição oficial e a fila de publicação são um fluxo separado na aba Instagram, atualmente limitado a imagem única no feed. Alertas de confirmação ficam recolhidos por padrão, e os compromissos de um dia são mostrados um por vez com navegação no cabeçalho. Métricas de concorrentes dependem de credenciais e coleta configuradas. Consulte [Instagram na central de marketing](INSTAGRAM_INTEGRACAO.md) para escopos e limitações observadas.
 
 ## Desempenho e evidências
 

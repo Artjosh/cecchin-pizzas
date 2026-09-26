@@ -1,16 +1,16 @@
 # Verificação do frontend
 
-Revisado em 16/09/2026. Este documento descreve os comandos disponíveis e o que cada evidência comprova. Não declara uma suíte passando agora. Restrições do usuário sobre testes, typecheck, lint, build e processos prevalecem.
+Revisado em 26/09/2026. Este documento descreve os comandos disponíveis e o que cada evidência comprova; não declara uma suíte passando agora. Preferência permanente do usuário: não executar typecheck nem lint automaticamente. Essa regra também vale para comandos compostos que os invoquem, como `npm test` e `npm run test:tudo`; só execute após pedido explícito. A tabela documenta os efeitos dos comandos, não autoriza sua execução.
 
 ## Comandos e efeitos
 
 | Comando na raiz do frontend | Executa | Dependências/efeitos |
 |---|---|---|
-| `npm run typecheck` ou `npm run lint` | TypeScript sem emissão | Os dois scripts são equivalentes |
+| `npm run typecheck` ou `npm run lint` | TypeScript sem emissão | Os dois scripts são equivalentes; execução apenas após pedido explícito |
 | `npm run test:unidade` | Vitest, projeto unidade | Lógica isolada |
-| `npm test` | Typecheck + unidade | Não é apenas teste unitário |
+| `npm test` | Typecheck + unidade | Não é apenas teste unitário; inclui typecheck |
 | `npm run test:integracao` | Vitest, projeto integração | BFF/GoTrue/PostgREST locais; pode criar fixtures |
-| `npm run test:tudo` | Typecheck + projetos Vitest | Requer os serviços configurados |
+| `npm run test:tudo` | Typecheck + projetos Vitest | Inclui typecheck e requer serviços configurados |
 | `npm run build` | Build Vinext | Não comprova UI nem deploy |
 
 Configuração efetiva está no manifest e nos arquivos de Vitest. Não fixe contagem de testes neste documento. Leia preparação/limpeza do cenário antes de rodar contra um banco com dados reais.

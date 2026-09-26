@@ -1,44 +1,53 @@
 ---
 name: verificar-tela
-description: Inspecionar interface e interações em desktop, tablet e celular usando o ambiente disponível sem interromper processos existentes.
+description: Inspecionar interface e interações em desktop, tablet e celular com o navegador disponível, preservando sessão, processos e dados existentes.
 ---
 
 # Verificar tela
 
-Build, tipos e HTTP 200 não comprovam layout. Leia [TESTES](../../TESTES.md) e as restrições da sessão. Scripts deste diretório são provas de cenários específicos; alguns geram sessões, alteram fixtures ou fazem chamadas reais.
+Uma captura, build ou resposta HTTP 200 não comprova que a interface está correta. Confira a página renderizada e as interações relevantes nos tamanhos afetados. Leia [TESTES](../../TESTES.md), as instruções locais e as restrições da sessão antes de escolher qualquer verificação.
 
-## Preparar
+## Preparação
 
-Prefira o navegador disponível e o servidor já em uso. Não instale dependência nem sobrescreva package.json/lockfile só para tirar screenshot. **Nunca use git checkout nesses arquivos para desfazer sua instalação**, pois pode apagar trabalho de outra pessoa.
+1. Prefira a aba já aberta e o servidor em uso. Preserve a sessão, os filtros e o estado inicial do usuário; não abra serviços externos ou contas sociais sem pedido explícito.
+2. Leia o código da tela e os dados/estados que ela usa. Para mudanças de layout, consulte também [desenhar-interface](../desenhar-interface/SKILL.md).
+3. Não instale dependências, altere manifests, carregue dados fictícios no banco, nem reinicie ou encerre serviços só para obter uma captura.
+4. Nunca execute typecheck ou linter automaticamente neste workspace. Comandos compostos que os invoquem também exigem pedido explícito. Testes, build e scripts com efeitos seguem [TESTES](../../TESTES.md) e as instruções do usuário; uma tarefa visual não os autoriza por si só.
 
-O script legado `servidor.sh` faz build, remove saída e encerra processo da porta escolhida. Não é o procedimento padrão e não deve rodar quando build/reinício estão proibidos. Se houver necessidade de ambiente isolado, confirme o alvo e o processo que a tarefa pode controlar.
-
-Não trate 404 em dev como motivo automático para reiniciar. Confira a rota e o estado do grafo conforme [VINEXT](../../VINEXT.md).
+Use a automação de navegador disponível para redimensionar a aba existente e inspecionar o DOM/acessibilidade quando útil. Se ela não estiver disponível, o Playwright local está instalado. Não presuma que um navegador novo herda a sessão autenticada. Não exponha cookies, tokens, payloads autenticados ou dados pessoais em logs, capturas ou respostas.
 
 ## Capturar e interagir
 
-Referências usuais: 1440×900, 834×1112 e 390×844, além do breakpoint relatado pelo usuário. Capture viewport para avaliar header/fixed; use página inteira apenas para verificar conteúdo abaixo.
+Confira os viewports pertinentes ao pedido. Referências úteis: 1440×900, 834×1112 e 390×844; inclua o breakpoint indicado pelo usuário. Prefira captura da viewport para avaliar conteúdo fixo e a dobra. Use captura da página inteira só para conferir conteúdo abaixo da dobra.
 
-`captura.mjs` e `capturar-rotas.mjs` são ferramentas existentes; leia suas variáveis e ações antes de usar. `ALVO`, `ROTAS`, `EMAIL`, `SAIDA` e `FONTE` variam por script. No PowerShell, defina variáveis com `$env:...`; não copie sintaxe Bash. Não escreva segredos no histórico do terminal.
+Após a inspeção visual, teste as ações afetadas por clique/toque, foco e teclado. Confira estados de carregamento, vazio, erro e conteúdo, seleção, navegação, paginação e rolagem quando fizerem parte do fluxo. Verifique que ações importantes continuam visíveis e alcançáveis em mobile. Para alterações de persistência ou autorização, uma captura não basta: obtenha evidência apropriada da API/banco sem produzir escritas reais não autorizadas.
 
-`sessao.mjs` usa geração administrativa de link para preparar sessão. Use conta de prova autorizada; nunca exponha o token. **Central WhatsApp permanece real mesmo quando a fonte é mock.**
+## Scripts existentes
 
-Além da imagem, confira clique/toque, foco, teclado, busca, paginação, seleção, arraste, scroll e estados vazios conforme o fluxo. Mudanças de RLS/persistência precisam de evidência de banco/API, não apenas screenshots.
+Os scripts desta pasta são provas específicas, não um runner genérico de screenshots. Leia o script e identifique rotas, autenticação, seletores, fixtures e chamadas de escrita antes de executá-lo:
+
+- `captura.mjs` percorre um fluxo antigo e específico de contratação e mapa; não o use para uma captura genérica nem contra dados operacionais sem autorização para aquele fluxo.
+- `capturar-rotas.mjs` percorre rotas em três viewports. Se `EMAIL` for definido, `sessao.mjs` gera uma sessão local via credencial administrativa do Supabase. Use apenas ambiente e conta de prova autorizados; não imprima chaves nem tokens. `FONTE=mock` não torna toda a interface mock: a Central WhatsApp permanece real.
+- Outros arquivos `.mjs` podem consultar serviços, criar fixtures ou realizar ações reais. Inspecione-os e siga os limites descritos em [TESTES](../../TESTES.md).
+- `servidor.sh` é legado e destrutivo: encerra o processo que escuta na porta escolhida, remove `dist/`, roda build e carrega `.env`. Não o use para verificar uma tela ou substituir o servidor existente.
+
+Ao configurar scripts no PowerShell, use `$env:NOME`; instruções Bash não são intercambiáveis. Nunca passe segredos na linha de comando ou os grave no histórico do terminal.
 
 ## O que observar
 
-- Conteúdo sem corte lateral, header cobrindo títulos ou fixed cobrindo ações.
-- Botões alcançáveis e com nomes acessíveis, inclusive quando o texto some no mobile.
-- Contagens e estados coerentes com dados; ausência não preenchida por valores fictícios.
-- Modais, nomes longos e mapas funcionando nas larguras menores.
-- Scroll preservado quando necessário (chat/histórico), e retorno à origem com filtros.
-- Drag da superfície do card sem seleção de texto ou conflito com botões.
-- Mapa com tiles e canvas visíveis; HTTP 200/ausência de erro não prova WebGL renderizado.
+- Conteúdo sem corte lateral; cabeçalhos fixos sem cobrir títulos ou ações.
+- Ações visíveis e acessíveis, com nome útil inclusive quando o rótulo visual some no mobile.
+- Hierarquia, espaçamento e densidade coerentes; rolagem apenas onde o desenho e o conteúdo pedem.
+- Contagens e estados coerentes com os dados; não preencher ausências com valores fictícios.
+- Modais, nomes longos e mapas utilizáveis em larguras menores.
+- Retorno à origem preservando filtros; rolagem de conversas/histórico sem saltos inesperados.
+- Arraste sem seleção de texto nem conflito com controles clicáveis.
+- Mapa com tiles e canvas efetivamente visíveis. HTTP 200 ou ausência de erro não prova que WebGL renderizou.
 
-Abra as capturas com a ferramenta de imagem e inspecione. Para WebGL, uma captura remota vazia pode ser limitação do método; confirme no navegador alvo antes de concluir que o mapa funciona ou falha.
+Para mapas, uma captura remota vazia pode ser limitação do método; confirme no navegador alvo antes de concluir que o mapa funciona ou falha.
 
 ## Evidência
 
-Capturas ficam em `capturas/`, ignoradas pelo Git, com dados pessoais mascarados. Registre cenário, modo, viewport, resultado e limitações. Não declare algo verificado apenas porque um arquivo PNG existe.
+Se salvar capturas, use `skills/verificar-tela/capturas/`, ignorada pelo Git, e remova ou mascare qualquer dado pessoal antes de compartilhar. Abra e inspecione as imagens; a existência de um PNG não é evidência de que foi validado.
 
-Não publique dumps RSC com dados de sessão ou clientes.
+Ao relatar o resultado, informe tela, estado, viewport, interações verificadas e limitações. Distinga inspeção visual de testes automatizados. Não publique dumps RSC, cookies, tokens ou payloads de clientes.

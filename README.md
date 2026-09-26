@@ -40,6 +40,8 @@ A montagem e o diretório de equipe compartilham componentes nos dois modos. Ban
 
 **A Central do WhatsApp usa a integração real mesmo com Desenho selecionado.** O seletor não é um isolamento global contra efeitos externos.
 
+A agenda da Central de Marketing mostra os sete dias da semana; cada dia aberto exibe um item por vez, com navegação entre itens, e a lista de pendências fica recolhida inicialmente. O botão atualmente rotulado **Postagem automatizada** confirma o compromisso interno; não publica no Instagram. **Registar como manual** registra que a publicação foi feita fora da central. A programação do calendário também não executa publicação automática. Veja [Instagram na central de marketing](INSTAGRAM_INTEGRACAO.md) para os limites da integração.
+
 Limites conhecidos: o cadastro de veículos e o planejamento logístico existem, mas o rastreio de veículos não transmite GPS e não há upload de fotos de veículos; rotas usam estimativas de carro sem trânsito em tempo real. Veja a [arquitetura](ARQUITETURA.md) e o [contrato de equipe](../cecchin-pizzas-backend/migracao/DIMENSIONAMENTO_EQUIPE.md).
 
 Para retomar a auditoria e a revisão de interface, leia [AUDITORIA_SISTEMA_2026-09-25.md](AUDITORIA_SISTEMA_2026-09-25.md) e [HANDOFF_IA.md](HANDOFF_IA.md). São fotografias datadas; confira novamente o ambiente antes de depender de seus números.

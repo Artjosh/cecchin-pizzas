@@ -2,6 +2,8 @@
 
 > **Atualização de continuidade - 26/09/2026:** o texto detalhado abaixo é uma fotografia de 25/09. Desde então, migrations 125-127 foram versionadas; 127 foi registrada como aplicada ao Supabase local e altera os lembretes da agenda e sua remoção lógica. A pessoa usuária confirmou que os perfis do Instagram voltaram a carregar vários posts. A extensão já foi recarregada. Não havia app criado no painel Meta Developers, então a API oficial continua sem OAuth/credenciais/publicação externa. Veja [Instagram](INSTAGRAM_INTEGRACAO.md), [auditoria datada](AUDITORIA_SISTEMA_2026-09-25.md) e [migrations](../cecchin-pizzas-backend/migracao/README.md). Esta atualização não é uma revalidação geral do sistema.
 
+> **Atualização de continuidade - agenda de marketing, 26/09/2026:** a interface da agenda foi ajustada após a auditoria: cabeçalho compacto reúne título, descrição, contagem semanal e pendência; os sete dias devem caber na faixa mobile; pendências ficam recolhidas por padrão; o detalhe do dia exibe um item por vez e usa navegação no cabeçalho quando há vários. O botão **“Postagem automatizada”** é um rótulo enganoso: atualmente chama a ação interna `confirmar` e só confirma o agendamento na agenda. **Não publica no Instagram.** “Registar como manual” chama `publicar`, que registra a publicação manualmente no sistema; também não envia conteúdo ao Instagram. A publicação externa continua pendente de integração oficial configurada. Essas são constatações do código atual de `MarketingPainel.tsx` e `app/api/operacao/marketing/route.ts`, não uma validação ponta a ponta das gravações.
+
 Leia primeiro [AGENTS.md](AGENTS.md) do frontend e o `AGENTS.md` do backend. Este workspace contém **dois Git separados**: [frontend](README.md) e [backend](../cecchin-pizzas-backend/README.md). Consulte o [índice do frontend](README.md), a [arquitetura](ARQUITETURA.md) e a [auditoria funcional](AUDITORIA_SISTEMA_2026-09-25.md). Não dependa do histórico deste chat para continuar.
 
 ## Restrições e estado
@@ -28,9 +30,17 @@ Leia primeiro [AGENTS.md](AGENTS.md) do frontend e o `AGENTS.md` do backend. Est
 - Localidades: a inspeção visual do banco local confirmou **582 localidades e 68 com taxa**. O ETL documenta as 68 taxas e 18 vigências de preço; tempos normal/pico da fonte vieram vazios. A tela agora mostra a contagem real de localidades com taxa. Não confundir preço de evento com taxa do bairro.
 - NSU e slug: o fluxo normal recebe via webhook/callback e valida via payment_check. Campos manuais do admin são contingência de recuperação; não preencher sinteticamente.
 
-## Instagram - verificação parcial em 25/09/2026
+## Instagram - fotografia da verificação em 25/09/2026 (histórica)
 
 A sessão do Instagram no navegador alimentou o feed e a bandeja de Stories. O visualizador mostrou dois itens retornados e avançou ao segundo; `Esc` fechou a modal. A tentativa de abrir um perfil retornou HTTP 429. Antes disso, a extensão fazia até dez consultas de avatar em paralelo; a redução para consultas sequenciais com cache e uma hipótese de mitigação, não uma causa confirmada do 429. Não houve teste confirmado do perfil/grade, comentários ponta a ponta, curtida ou paginação nessa versão; nenhuma curtida ou comentário foi enviado. O filtro de cards sem mídia, a busca de avatar e a paginação foram alterados no código e precisam de recarga da extensão e nova verificação no navegador. A API oficial para publicar segue independente e não foi autenticada nem usada.
+
+## Agenda de marketing - atualização de interface em 26/09/2026
+
+- O cabeçalho da seção Agenda agrupa título/descrição e os indicadores da semana numa faixa compacta em telas estreitas. A faixa dos dias foi ajustada para apresentar os sete dias em mobile. Alertas de confirmação ficam numa linha recolhida que expande seus detalhes sob demanda.
+- Ao abrir um dia, a agenda apresenta um compromisso por vez. Se houver mais de um item, os botões anterior/próximo e o contador ficam no cabeçalho do detalhe, sem uma linha de controles separada. A verificação visual anterior usou uma semana com apenas um item por dia; a navegação entre múltiplos itens não foi exercitada com dados reais.
+- **Atenção ao rótulo “Postagem automatizada”:** o botão está ligado a `acao: "confirmar"`, que chama `confirmar_agenda_marketing` com `p_publicado: false`. Isso confirma o agendamento interno; não existe publicação automática no Instagram nessa ação. O botão “Registar como manual” usa `acao: "publicar"` (`p_publicado: true`) para registrar que a publicação foi feita manualmente. Não tratar nenhum deles como envio externo.
+- O botão de programação continua disponível no dia mesmo quando já há conteúdo agendado, e o registro manual traz a dica “Registra na agenda; não publica no Instagram.”
+- A aparência foi conferida no navegador em viewport mobile; não foram executados testes, typecheck nem linter. A revisão visual não valida a operação ponta a ponta do backend nem a publicação externa.
 
 ## Próximos passos de revisão
 

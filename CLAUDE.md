@@ -1,10 +1,10 @@
 # Guia de desenvolvimento — frontend
 
-Revisado em 16/09/2026. Leia [README](README.md), [arquitetura](ARQUITETURA.md) e, para runtime, [VINEXT](VINEXT.md). A documentação acompanha o código local, não atesta deploy.
+Revisado em 26/09/2026. Leia [README](README.md), [arquitetura](ARQUITETURA.md) e, para runtime, [VINEXT](VINEXT.md). A documentação acompanha o código local, não atesta deploy.
 
 ## Antes de alterar
 
-Consulte [coordenação do workspace](../AGENTES.md), quando disponível, e preserve alterações existentes. Registre o escopo e o resultado; não transforme entradas antigas em bloqueios permanentes. Instruções do usuário prevalecem sobre estes procedimentos. Não execute typecheck, lint, testes, build ou reinícios quando estiverem proibidos na sessão.
+Consulte [coordenação do workspace](../AGENTES.md), quando disponível, e preserve alterações existentes. Registre o escopo e o resultado; não transforme entradas antigas em bloqueios permanentes. Instruções do usuário prevalecem sobre estes procedimentos. Neste workspace, não execute typecheck nem lint automaticamente, inclusive por comandos compostos como `npm test`; só faça isso após pedido explícito. Respeite também qualquer restrição da sessão sobre testes, build ou reinícios.
 
 Scripts e evidências ficam em `skills/<assunto>/`; capturas em `skills/verificar-tela/capturas/`, ignoradas pelo Git. Não crie uma pasta paralela `.claude`. Consulte o `SKILL.md` pertinente antes de usar o procedimento.
 
