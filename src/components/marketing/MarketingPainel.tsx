@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CalendarDays, Check, Clock3, Plus, RefreshCw, Send } from "lucide-react";
 import { dataSaoPaulo, horarioSaoPauloParaIso, inicioSemana, somarDias } from "../../lib/agenda-marketing-data";
 import { BibliotecaMarketing } from "./BibliotecaMarketing";
@@ -22,11 +23,14 @@ function rotuloData(iso: string) {
 
 const campo = "w-full rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3 py-2.5 text-on-surface outline-none focus:border-primary";
 const botao = "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-label-md transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+const tituloMarketing = <>Marketing<span className="hidden text-xs font-normal text-on-surface-variant xl:block">Central do Instagram e organização interna de conteúdo</span></>;
 
 export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: string; gestor: boolean; pessoas: Pessoa[] }) {
   const [aba, setAba] = useState<"agenda" | "pedidos" | "concorrencia" | "biblioteca" | "equipe">("agenda");
   const [mobilePreview, setMobilePreview] = useState(true);
   const [semana, setSemana] = useState(() => inicioSemana(new Date()));
+  const [headerActionsTarget, setHeaderActionsTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => { setHeaderActionsTarget(document.getElementById("operational-header-actions")); }, []);
   const [dados, setDados] = useState<Dados | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [carregandoMais, setCarregandoMais] = useState(false);
@@ -151,10 +155,23 @@ export function MarketingPainel({ usuarioId, gestor, pessoas }: { usuarioId: str
   const perfilAberto = dados?.concorrentes.find((item) => item.id === concorrenteAberto);
 
   return <div className="flex h-full min-h-0 flex-col gap-3">
-    <header className="flex flex-wrap items-center justify-between gap-2">
-      <div><TituloNoHeader>Marketing</TituloNoHeader><p className="text-xs text-on-surface-variant">Central do Instagram e organização interna de conteúdo</p></div>
-      <div className="flex items-center gap-2"><button className={`${botao} bg-surface-container text-on-surface`} onClick={() => setSemana((atual) => somarDias(atual, -7))}>Anterior</button><span className="min-w-28 text-center font-label-md">{semana}</span><button className={`${botao} bg-surface-container text-on-surface`} onClick={() => setSemana((atual) => somarDias(atual, 7))}>Próxima</button><button aria-label="Atualizar agenda" className={`${botao} bg-surface-container text-on-surface`} onClick={() => void carregar()}><RefreshCw className={`h-4 w-4 ${carregando ? "animate-spin" : ""}`} /></button></div>
-    </header>
+    <TituloNoHeader>{tituloMarketing}</TituloNoHeader>
+    {headerActionsTarget && createPortal(<>
+      <details className="relative md:hidden">
+        <summary aria-label={`Navegar pela semana de ${semana}`} className="flex cursor-pointer list-none items-center rounded-xl bg-surface-container p-2 text-on-surface [&::-webkit-details-marker]:hidden"><CalendarDays className="h-4 w-4" /></summary>
+        <div className="fixed left-2 right-2 top-16 z-50 flex items-center justify-between gap-2 whitespace-nowrap rounded-xl border border-outline-variant/40 bg-surface-container p-2 shadow-lg">
+          <button type="button" className="rounded-lg px-2 py-1.5 text-sm hover:bg-surface-container-high" onClick={() => setSemana((atual) => somarDias(atual, -7))}>Anterior</button>
+          <span className="text-sm">{semana}</span>
+          <button type="button" className="rounded-lg px-2 py-1.5 text-sm hover:bg-surface-container-high" onClick={() => setSemana((atual) => somarDias(atual, 7))}>Próxima</button>
+        </div>
+      </details>
+      <div className="hidden items-center gap-1 md:flex">
+        <button type="button" className="rounded-xl bg-surface-container px-3 py-2 text-sm text-on-surface" onClick={() => setSemana((atual) => somarDias(atual, -7))}>Anterior</button>
+        <span className="min-w-24 text-center text-sm">{semana}</span>
+        <button type="button" className="rounded-xl bg-surface-container px-3 py-2 text-sm text-on-surface" onClick={() => setSemana((atual) => somarDias(atual, 7))}>Próxima</button>
+      </div>
+      <button type="button" aria-label="Atualizar agenda" className="rounded-xl bg-surface-container p-2 text-on-surface" onClick={() => void carregar()}><RefreshCw className={`h-4 w-4 ${carregando ? "animate-spin" : ""}`} /></button>
+    </>, headerActionsTarget)}
     <nav aria-label="Áreas do marketing" className="flex gap-1 overflow-x-auto rounded-xl bg-surface-container-low p-1 text-sm">
       {([ ["agenda","Agenda"],["pedidos","Pedidos"],["biblioteca","Biblioteca"],["concorrencia","Concorrência"],["equipe","Equipe"] ] as const).map(([id,nome])=><button key={id} type="button" onClick={()=>{setAba(id);setMobilePreview(false);}} aria-current={aba===id?"page":undefined} className={`shrink-0 rounded-lg px-3 py-2 ${aba===id?"bg-surface-container-high font-semibold":"text-on-surface-variant hover:bg-surface-container"}`}>{nome}</button>)}
       <button type="button" className="ml-auto shrink-0 rounded-lg bg-primary-container px-3 py-2 text-on-primary-container lg:hidden" onClick={()=>setMobilePreview(v=>!v)}>{mobilePreview?"Ver gestão":"Ver Instagram"}</button>

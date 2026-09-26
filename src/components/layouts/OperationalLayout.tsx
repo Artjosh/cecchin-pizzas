@@ -374,6 +374,7 @@ export function OperationalLayout({ children }: { children: React.ReactNode }) {
             <h1 className="min-w-0 line-clamp-2 text-sm font-bold leading-tight md:block md:truncate md:text-xl">{titulo?.caminho===pathname?titulo.conteudo:"Operação"}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-space-sm">
+            <div id="operational-header-actions" className="relative flex items-center gap-1 md:gap-2" />
             {!podeVer(['gestao']) && <Link prefetch={false}
               href="/api/operacao/whatsapp?contato=1"
               className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors"
