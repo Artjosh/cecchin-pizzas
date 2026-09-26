@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({ sessao: vi.fn(), fetch: vi.fn() }));
 vi.mock("@/src/servidor/auth/sessao-atual", () => ({ sessaoAtual: mocks.sessao }));
 vi.mock("@/src/servidor/config", () => ({ config: { supabase: { url: "http://storage.local", anonKey: "chave-publica" } } }));
 import { GET } from "@/app/api/operacao/marketing/biblioteca/route";
+import { POST as salvarMidia } from "@/app/api/operacao/marketing/midia/route";
 
 const org = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const arquivo = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb.jpg";
@@ -43,4 +44,16 @@ it("rejeita página inválida e não devolve entradas fora do formato de mídia"
   const dados = await resposta.json();
   expect(dados.arquivos).toHaveLength(1);
   expect(dados.arquivos[0].caminho).toBe(`${org}/${arquivo}`);
+});
+
+it("salva a mídia escolhida no diretório da organização", async () => {
+  mocks.fetch.mockResolvedValueOnce(Response.json({ Key: "arquivo" }));
+  const dados = new FormData();
+  dados.set("arquivo", new File([new Uint8Array([137, 80, 78, 71])], "imagem.png", { type: "image/png" }));
+  const resposta = await salvarMidia(new NextRequest("http://localhost/api/operacao/marketing/midia", { method: "POST", headers: { origin: "http://localhost" }, body: dados }));
+  expect(resposta.status).toBe(200);
+  expect((await resposta.json()).caminho).toMatch(new RegExp(`^${org}/[0-9a-f-]+\\.png$`));
+  const [url, opcoes] = mocks.fetch.mock.calls[0] as [string, RequestInit];
+  expect(url).toMatch(new RegExp(`/storage/v1/object/marketing-conteudos/${org}/[0-9a-f-]+\\.png$`));
+  expect(opcoes.headers).toEqual(expect.objectContaining({ authorization: "Bearer jwt-usuario", "content-type": "image/png" }));
 });
